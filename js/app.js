@@ -137,6 +137,19 @@ function renderInline(str)
         return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
     });
 
+    // Auto-link standalone markdown file references (e.g. ch01_history_and_standards.md)
+    s = s.replace(/\b(ch\d+_[a-zA-Z0-9_\-]+\.md)\b/g, function(match, filename)
+    {
+        const cleanTarget = filename.replace('.md', '');
+        return `<a href="javascript:void(0)" onclick="handleInternalLink('${cleanTarget}')" class="doc-internal-link">📄 ${filename}</a>`;
+    });
+
+    s = s.replace(/\b(\d{2}_[a-zA-Z0-9_\-]+\.md)\b/g, function(match, filename)
+    {
+        const cleanTarget = filename.replace('.md', '');
+        return `<a href="javascript:void(0)" onclick="handleInternalLink('${cleanTarget}')" class="doc-internal-link">📄 ${filename}</a>`;
+    });
+
     // Inline Code `code`
     s = s.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
 
@@ -473,19 +486,12 @@ function loadDocument(docId)
 
     currentDocId = docId;
 
-    // Update active state in sidebar
-    document.querySelectorAll('.nav-item').forEach(el =>
+    // Update active book card in sidebar if search is not active
+    const searchInput = document.getElementById('sidebar-filter-input');
+    if (!searchInput || !searchInput.value.trim())
     {
-        if (el.dataset.id === docId)
-        {
-            el.classList.add('active');
-            el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-        else
-        {
-            el.classList.remove('active');
-        }
-    });
+        renderBookCards();
+    }
 
     // Content retrieval (from embedded DOCS_CONTENT or fetch fallback)
     let rawText = (typeof DOCS_CONTENT !== 'undefined' && DOCS_CONTENT[docId]) ? DOCS_CONTENT[docId] : null;
@@ -674,21 +680,114 @@ function initSidebar()
     }
 
     currentDocList = [];
-    let html = '';
-
     DOCS_MANIFEST.forEach(cat =>
     {
-        html += `
-            <div class="nav-category">
-                <div class="category-header">
-                    <span class="cat-icon">${cat.icon}</span>
-                    <span>${cat.category}</span>
-                </div>
-        `;
-
         cat.items.forEach(item =>
         {
             currentDocList.push(item);
+        });
+    });
+
+    renderBookCards();
+}
+
+function renderBookCards()
+{
+    const navContent = document.getElementById('sidebar-content');
+    if (!navContent || typeof DOCS_MANIFEST === 'undefined')
+    {
+        return;
+    }
+
+    let html = `
+        <div class="sidebar-section-title">📚 TỦ SÁCH & TÀI LIỆU</div>
+        <div class="book-menu-list">
+    `;
+
+    DOCS_MANIFEST.forEach(cat =>
+    {
+        const totalItems = cat.items.length;
+        const isActive = isCurrentDocInBook(cat.id);
+
+        html += `
+            <div class="book-menu-card ${isActive ? 'active' : ''}" onclick="selectBook('${cat.id}')">
+                <div class="book-card-header">
+                    <span class="book-card-icon">${cat.icon}</span>
+                    <span class="book-card-badge">${totalItems} ${cat.id === 'cpp' ? 'tài liệu' : 'chương'}</span>
+                </div>
+                <div class="book-card-title">${cat.category}</div>
+                <div class="book-card-desc">${cat.desc}</div>
+                <div class="book-card-action">
+                    <span>📖 Mở Mục Lục Sách</span>
+                    <span class="action-arrow">›</span>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    navContent.innerHTML = html;
+}
+
+function isCurrentDocInBook(catId)
+{
+    if (!currentDocId || typeof DOCS_MANIFEST === 'undefined')
+    {
+        return false;
+    }
+    const cat = DOCS_MANIFEST.find(c => c.id === catId);
+    return cat && cat.items.some(item => item.id === currentDocId);
+}
+
+function selectBook(catId)
+{
+    const cat = DOCS_MANIFEST.find(c => c.id === catId);
+    if (!cat || cat.items.length === 0)
+    {
+        return;
+    }
+
+    // Default to the first item (INDEX or Roadmap)
+    const targetDoc = cat.items[0];
+    loadDocument(targetDoc.id);
+    closeSidebar();
+    renderBookCards();
+}
+
+function filterDocs(query)
+{
+    const q = query.toLowerCase().trim();
+    const navContent = document.getElementById('sidebar-content');
+    if (!navContent)
+    {
+        return;
+    }
+
+    if (!q)
+    {
+        renderBookCards();
+        return;
+    }
+
+    const matches = currentDocList.filter(item =>
+        item.title.toLowerCase().includes(q) ||
+        item.id.toLowerCase().includes(q) ||
+        item.tag.toLowerCase().includes(q)
+    );
+
+    let html = `
+        <div class="sidebar-section-title">🔍 KẾT QUẢ TÌM KIẾM (${matches.length})</div>
+        <div class="search-results-list">
+    `;
+
+    if (matches.length === 0)
+    {
+        html += `<p style="padding: 16px; color: var(--text-tertiary); font-size: 0.86rem;">Không tìm thấy chương nào khớp với "${escapeHtml(query)}".</p>`;
+    }
+    else
+    {
+        matches.forEach(item =>
+        {
             html += `
                 <a class="nav-item" data-id="${item.id}" onclick="loadDocument('${item.id}')">
                     <span class="item-title">${item.title}</span>
@@ -696,28 +795,10 @@ function initSidebar()
                 </a>
             `;
         });
+    }
 
-        html += `</div>`;
-    });
-
+    html += `</div>`;
     navContent.innerHTML = html;
-}
-
-function filterDocs(query)
-{
-    const q = query.toLowerCase().trim();
-    document.querySelectorAll('.nav-item').forEach(el =>
-    {
-        const title = el.querySelector('.item-title').textContent.toLowerCase();
-        if (!q || title.includes(q))
-        {
-            el.style.display = 'flex';
-        }
-        else
-        {
-            el.style.display = 'none';
-        }
-    });
 }
 
 /* ==========================================================================
