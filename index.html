@@ -82,10 +82,51 @@
                     <h1 class="doc-main-title" id="doc-main-title">Đang tải tài liệu...</h1>
                 </header>
 
+                <!-- Chapter Navigator Bar (Top) -->
+                <nav class="chapter-nav-bar" id="chapter-nav-bar">
+                    <button class="btn-chap-nav" id="btn-chap-prev" onclick="navigateChapter(-1)" title="Chương trước">
+                        <span class="nav-arrow">‹</span>
+                        <span class="nav-text">Trước</span>
+                    </button>
+                    <button class="btn-chap-picker" id="btn-chap-picker" onclick="toggleChapterModal()" title="Mở danh sách số chương">
+                        <span class="picker-icon">🔢</span>
+                        <span class="picker-title" id="current-chap-label">Chương...</span>
+                        <span class="picker-caret">▾</span>
+                    </button>
+                    <button class="btn-chap-nav" id="btn-chap-next" onclick="navigateChapter(1)" title="Chương kế tiếp">
+                        <span class="nav-text">Sau</span>
+                        <span class="nav-arrow">›</span>
+                    </button>
+                </nav>
+
                 <!-- Rendered Markdown Body -->
                 <div class="markdown-body" id="markdown-body">
                     <!-- Markdown content dynamically rendered by app.js -->
                 </div>
+
+                <!-- Mobile Swipe Hint (Chỉ hiển thị trên Mobile Browser) -->
+                <div class="mobile-swipe-hint" id="mobile-swipe-hint" onclick="toggleChapterModal()" title="Chạm để mở bàn phím chọn chương">
+                    <span class="swipe-arrows">‹‹</span>
+                    <span class="swipe-hint-text">👈 Vuốt trái / phải để lật chương 👉</span>
+                    <span class="swipe-arrows">››</span>
+                </div>
+
+                <!-- Chapter Navigator Bar (Bottom - Chỉ hiển thị trên Desktop Web) -->
+                <nav class="chapter-nav-bar chapter-nav-bottom" id="chapter-nav-bar-bottom">
+                    <button class="btn-chap-nav" id="btn-chap-prev-b" onclick="navigateChapter(-1)" title="Chương trước">
+                        <span class="nav-arrow">‹</span>
+                        <span class="nav-text">Trước</span>
+                    </button>
+                    <button class="btn-chap-picker" id="btn-chap-picker-b" onclick="toggleChapterModal()" title="Mở danh sách số chương">
+                        <span class="picker-icon">🔢</span>
+                        <span class="picker-title" id="current-chap-label-b">Chương...</span>
+                        <span class="picker-caret">▾</span>
+                    </button>
+                    <button class="btn-chap-nav" id="btn-chap-next-b" onclick="navigateChapter(1)" title="Chương kế tiếp">
+                        <span class="nav-text">Sau</span>
+                        <span class="nav-arrow">›</span>
+                    </button>
+                </nav>
 
                 <!-- Linear Reading Navigation (Prev / Next Buttons) -->
                 <nav class="doc-footer-nav" id="doc-footer-nav">
@@ -102,16 +143,33 @@
         📑
     </button>
 
-    <!-- Mobile Bottom Sheet TOC Modal -->
+    <!-- Mobile Bottom Sheet TOC Modal (Headings of Current Chapter) -->
     <div class="toc-modal" id="toc-modal">
         <div class="toc-header">
-            <span>📑 Mục Lục Bài Viết</span>
+            <span>📑 Mục Lục Đề Mục Bài Viết</span>
             <button class="btn-icon" onclick="closeTocModal()">✕</button>
         </div>
         <div class="toc-list" id="toc-list">
             <!-- Dynamically populated by buildToc() in app.js -->
         </div>
     </div>
+
+    <!-- Mobile Bottom Sheet Chapter Palette Modal (Numbers Grid) -->
+    <div class="chapter-modal" id="chapter-modal">
+        <div class="chapter-modal-header">
+            <div class="modal-title-wrap">
+                <span class="modal-book-tag" id="chapter-modal-book-tag">SÁCH</span>
+                <span class="modal-main-title">Bàn Phím Chọn Chương</span>
+            </div>
+            <button class="btn-icon" onclick="closeChapterModal()">✕</button>
+        </div>
+        <div class="chapter-modal-body">
+            <div class="chapter-grid" id="chapter-grid-container">
+                <!-- Dynamically populated number buttons [INDEX] [01] [02] ... [64] -->
+            </div>
+        </div>
+    </div>
+    <div class="chapter-backdrop" id="chapter-backdrop" onclick="closeChapterModal()"></div>
 
     <!-- Data & Controller Scripts -->
     <script src="js/docs_data.js"></script>

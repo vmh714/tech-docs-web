@@ -546,13 +546,458 @@ function renderDocumentView(meta, rawMarkdown)
 
     // Body Render
     const bodyContainer = document.getElementById('markdown-body');
-    bodyContainer.innerHTML = renderMarkdown(rawMarkdown);
+    let bodyHtml = renderMarkdown(rawMarkdown);
+
+    // If viewing an INDEX page or summary, prepend Quick Chapter Number Grid
+    const ctx = getCurrentBookContext(meta.id);
+    if (ctx && (meta.id.endsWith('_INDEX') || meta.id === 'cpp_summary'))
+    {
+        let gridHtml = `
+            <div class="index-quick-grid-card">
+                <div class="index-quick-grid-title">🔢 Bàn Phím Số Chọn Chương Nhanh</div>
+                <div class="chapter-grid">
+        `;
+        ctx.items.forEach((item, idx) =>
+        {
+            const fn = item.file.toLowerCase();
+            let btnText = '';
+            let isSpecial = false;
+
+            if (fn.includes('index.md')) { btnText = 'Mục Lục'; isSpecial = true; }
+            else if (fn.includes('learn_summary')) { btnText = 'Tổng Quan'; isSpecial = true; }
+            else if (fn.includes('frontmatter')) { btnText = 'Lời Tựa'; isSpecial = true; }
+            else
+            {
+                const m = fn.match(/ch(\d+)/) || fn.match(/(\d{2})_/);
+                btnText = m ? m[1] : String(idx + 1).padStart(2, '0');
+            }
+
+            const activeClass = item.id === meta.id ? 'active' : '';
+            const specialClass = isSpecial ? 'special-btn' : '';
+            gridHtml += `
+                <button class="chap-grid-btn ${specialClass} ${activeClass}" 
+                        title="${escapeHtml(item.title)}" 
+                        onclick="loadDocument('${item.id}')">
+                    ${btnText}
+                </button>
+            `;
+        });
+        gridHtml += `</div></div>`;
+        bodyHtml = gridHtml + bodyHtml;
+    }
+
+    bodyContainer.innerHTML = bodyHtml;
 
     // Build Table of Contents
     buildToc();
 
+    // Update Top & Bottom Chapter Navigator Controls
+    updateChapterNav(meta.id);
+
     // Render Bottom Prev / Next Navigation
     renderFooterNav(meta.id);
+}
+
+/* ==========================================================================
+   CHAPTER NAVIGATION CONTROLLER & NUMBER PALETTE
+   ========================================================================== */
+function getCurrentBookContext(docId)
+{
+    if (typeof DOCS_MANIFEST === 'undefined')
+    {
+        return null;
+    }
+
+    for (let c = 0; c < DOCS_MANIFEST.length; c++)
+    {
+        const cat = DOCS_MANIFEST[c];
+        const idx = cat.items.findIndex(item => item.id === docId);
+        if (idx !== -1)
+        {
+            return {
+                category: cat,
+                items: cat.items,
+                currentIndex: idx,
+                currentItem: cat.items[idx]
+            };
+        }
+    }
+    return null;
+}
+
+function extractShortChapterLabel(item)
+{
+    if (!item)
+    {
+        return '';
+    }
+    const fn = item.file.toLowerCase();
+    if (fn.includes('index.md'))
+    {
+        return 'Mục Lục (Index)';
+    }
+    if (fn.includes('learn_summary'))
+    {
+        return 'Tóm Tắt (Summary)';
+    }
+    if (fn.includes('frontmatter'))
+    {
+        return 'Lời Mở Đầu';
+    }
+
+    const m = fn.match(/ch(\d+)/);
+    if (m)
+    {
+        return `Chương ${parseInt(m[1], 10)}`;
+    }
+    const m2 = fn.match(/(\d{2})_/);
+    if (m2)
+    {
+        return `Module ${parseInt(m2[1], 10)}`;
+    }
+    return item.title;
+}
+
+function updateChapterNav(docId)
+{
+    const ctx = getCurrentBookContext(docId);
+    if (!ctx)
+    {
+        return;
+    }
+
+    const shortLabel = extractShortChapterLabel(ctx.currentItem);
+    const totalItems = ctx.items.length;
+    const currentNum = ctx.currentIndex + 1;
+    const labelText = `${shortLabel} (${currentNum}/${totalItems})`;
+
+    ['current-chap-label', 'current-chap-label-b'].forEach(id =>
+    {
+        const el = document.getElementById(id);
+        if (el)
+        {
+            el.textContent = labelText;
+        }
+    });
+
+    const isFirst = ctx.currentIndex === 0;
+    const isLast = ctx.currentIndex === totalItems - 1;
+
+    ['btn-chap-prev', 'btn-chap-prev-b'].forEach(id =>
+    {
+        const el = document.getElementById(id);
+        if (el)
+        {
+            el.disabled = isFirst;
+        }
+    });
+
+    ['btn-chap-next', 'btn-chap-next-b'].forEach(id =>
+    {
+        const el = document.getElementById(id);
+        if (el)
+        {
+            el.disabled = isLast;
+        }
+    });
+}
+
+function navigateChapter(delta, isSwipe = false)
+{
+    const ctx = getCurrentBookContext(currentDocId);
+    if (!ctx)
+    {
+        return;
+    }
+
+    const targetIndex = ctx.currentIndex + delta;
+    if (targetIndex >= 0 && targetIndex < ctx.items.length)
+    {
+        const targetDoc = ctx.items[targetIndex];
+        const reader = document.querySelector('.reader-container');
+        if (reader)
+        {
+            const animOut = delta > 0 ? 'slide-next-out' : 'slide-prev-out';
+            const animIn = delta > 0 ? 'slide-next-in' : 'slide-prev-in';
+            reader.classList.add(animOut);
+            setTimeout(() =>
+            {
+                reader.classList.remove(animOut);
+                reader.classList.add(animIn);
+                setTimeout(() =>
+                {
+                    reader.classList.remove(animIn);
+                }, 280);
+            }, 100);
+        }
+
+        if (isSwipe)
+        {
+            const arrow = delta > 0 ? '➔' : '←';
+            showSwipeToast(`${arrow} ${extractShortChapterLabel(targetDoc)}`);
+        }
+        loadDocument(targetDoc.id);
+    }
+    else
+    {
+        if (isSwipe)
+        {
+            showSwipeToast(delta > 0 ? "Đã ở chương cuối cuốn sách" : "Đã ở chương đầu cuốn sách");
+        }
+    }
+}
+
+function toggleChapterModal()
+{
+    const modal = document.getElementById('chapter-modal');
+    const backdrop = document.getElementById('chapter-backdrop');
+    if (!modal)
+    {
+        return;
+    }
+
+    const isOpen = modal.classList.contains('open');
+    if (isOpen)
+    {
+        closeChapterModal();
+    }
+    else
+    {
+        renderChapterGrid();
+        modal.classList.add('open');
+        if (backdrop)
+        {
+            backdrop.classList.add('active');
+        }
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeChapterModal()
+{
+    const modal = document.getElementById('chapter-modal');
+    const backdrop = document.getElementById('chapter-backdrop');
+    if (modal)
+    {
+        modal.classList.remove('open');
+    }
+    if (backdrop)
+    {
+        backdrop.classList.remove('active');
+    }
+    document.body.style.overflow = '';
+}
+
+function renderChapterGrid()
+{
+    const container = document.getElementById('chapter-grid-container');
+    const tagEl = document.getElementById('chapter-modal-book-tag');
+    if (!container)
+    {
+        return;
+    }
+
+    const ctx = getCurrentBookContext(currentDocId);
+    if (!ctx)
+    {
+        return;
+    }
+
+    if (tagEl)
+    {
+        tagEl.textContent = ctx.category.category.replace(/^\d+\.\s*/, '');
+    }
+
+    let html = '';
+    ctx.items.forEach((item, idx) =>
+    {
+        const fn = item.file.toLowerCase();
+        let btnText = '';
+        let isSpecial = false;
+
+        if (fn.includes('index.md'))
+        {
+            btnText = 'Mục Lục';
+            isSpecial = true;
+        }
+        else if (fn.includes('learn_summary'))
+        {
+            btnText = 'Tổng Quan';
+            isSpecial = true;
+        }
+        else if (fn.includes('frontmatter'))
+        {
+            btnText = 'Lời Tựa';
+            isSpecial = true;
+        }
+        else
+        {
+            const m = fn.match(/ch(\d+)/) || fn.match(/(\d{2})_/);
+            if (m)
+            {
+                btnText = m[1];
+            }
+            else
+            {
+                btnText = String(idx + 1).padStart(2, '0');
+            }
+        }
+
+        const isActive = item.id === currentDocId;
+        const specialClass = isSpecial ? 'special-btn' : '';
+        const activeClass = isActive ? 'active' : '';
+
+        html += `
+            <button class="chap-grid-btn ${specialClass} ${activeClass}" 
+                    title="${escapeHtml(item.title)}" 
+                    onclick="selectChapterFromGrid('${item.id}')">
+                ${btnText}
+            </button>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function selectChapterFromGrid(docId)
+{
+    closeChapterModal();
+    loadDocument(docId);
+}
+
+/* ==========================================================================
+   MOBILE SWIPE GESTURE HANDLER (VUỐT TRÁI / PHẢI CHUYỂN CHƯƠNG)
+   ========================================================================== */
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartTime = 0;
+
+function initSwipeGestures()
+{
+    window.addEventListener('touchstart', (e) =>
+    {
+        if (e.touches.length !== 1)
+        {
+            return;
+        }
+        const target = e.target;
+        // Bỏ qua cử chỉ vuốt nếu thao tác trong vùng cuộn ngang, modal hoặc phần tử tương tác
+        if (target.closest('pre, code, .ascii-art, .table-wrapper, .chapter-modal, .sidebar, .toc-modal, button, a, input, select, textarea'))
+        {
+            touchStartX = 0;
+            return;
+        }
+
+        const touch = e.touches[0];
+        // Bỏ qua nếu chạm sát mép màn hình (tránh xung đột cử chỉ Back/Forward của Android MIUI trên Redmi 10)
+        if (touch.clientX < 24 || touch.clientX > window.innerWidth - 24)
+        {
+            touchStartX = 0;
+            return;
+        }
+
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchStartTime = Date.now();
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) =>
+    {
+        if (touchStartX === 0 || touchStartTime === 0)
+        {
+            return;
+        }
+        const touch = e.changedTouches[0];
+        const touchEndX = touch.clientX;
+        const touchEndY = touch.clientY;
+        const diffX = touchEndX - touchStartX;
+        const diffY = touchEndY - touchStartY;
+        const elapsed = Date.now() - touchStartTime;
+
+        // Reset tracking state
+        touchStartX = 0;
+        touchStartY = 0;
+        touchStartTime = 0;
+
+        // Cử chỉ vuốt hợp lệ:
+        // 1. Thời gian vuốt dứt khoát (< 600ms)
+        // 2. Quãng đường ngang tối thiểu 50px (tối ưu cho màn hình 393px của Redmi 10)
+        // 3. Góc vuốt dứt khoát theo trục hoành (diffX > diffY * 1.3)
+        if (elapsed > 600)
+        {
+            return;
+        }
+        if (Math.abs(diffX) < 50)
+        {
+            return;
+        }
+        if (Math.abs(diffX) <= Math.abs(diffY) * 1.3)
+        {
+            return;
+        }
+
+        if (diffX < 0)
+        {
+            // Vuốt từ Phải sang Trái (Swipe Left) ➔ Chương Kế Tiếp
+            navigateChapter(1, true);
+        }
+        else
+        {
+            // Vuốt từ Trái sang Phải (Swipe Right) ➔ Chương Trước Đó
+            navigateChapter(-1, true);
+        }
+    }, { passive: true });
+
+    // Hỗ trợ phím mũi tên Trái / Phải trên Desktop Web
+    window.addEventListener('keydown', (e) =>
+    {
+        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select')
+        {
+            return;
+        }
+        const chapterModal = document.getElementById('chapter-modal');
+        if (chapterModal && chapterModal.classList.contains('open'))
+        {
+            if (e.key === 'Escape')
+            {
+                closeChapterModal();
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowLeft')
+        {
+            navigateChapter(-1, false);
+        }
+        else if (e.key === 'ArrowRight')
+        {
+            navigateChapter(1, false);
+        }
+    });
+}
+
+function showSwipeToast(message)
+{
+    let toast = document.getElementById('swipe-toast');
+    if (!toast)
+    {
+        toast = document.createElement('div');
+        toast.id = 'swipe-toast';
+        toast.className = 'swipe-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add('visible');
+
+    if (window.swipeToastTimeout)
+    {
+        clearTimeout(window.swipeToastTimeout);
+    }
+    window.swipeToastTimeout = setTimeout(() =>
+    {
+        toast.classList.remove('visible');
+    }, 1500);
 }
 
 /* Build dynamic TOC for Mobile Modal */
@@ -940,6 +1385,9 @@ window.addEventListener('DOMContentLoaded', () =>
     {
         loadDocument(initialDocId);
     }
+
+    // 5. Khởi tạo cử chỉ vuốt chuyển chương trên Mobile (Swipe Left/Right)
+    initSwipeGestures();
 
     // Listen to hash changes (Browser Back / Forward buttons)
     window.addEventListener('hashchange', () =>
