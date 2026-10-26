@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>📘 TechDocs Master — Embedded Linux & C++ Architecture</title>
+    <meta name="description" content="Hệ thống tài liệu chuyên sâu về Embedded Linux Programming Interface và C++ Core Architecture tối ưu cho thiết bị di động.">
+
+    <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- App Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Reading Progress Bar -->
+    <div id="progress-bar"></div>
+
+    <!-- Top Navigation Bar (Mobile Header) -->
+    <header class="top-navbar">
+        <div class="nav-left">
+            <button class="btn-icon" id="btn-toggle-sidebar" onclick="toggleSidebar()" aria-label="Mở Menu Danh Mục">
+                ☰
+            </button>
+            <a class="brand-badge" onclick="loadDocument(currentDocList[0].id)">
+                <span class="logo-icon">📘</span>
+                <span>TechDocs</span>
+                <span class="version">Mobile</span>
+            </a>
+        </div>
+
+        <div class="nav-right">
+            <!-- Font Sizing for Mobile Reading Comfort -->
+            <button class="btn-icon font-btn" onclick="changeFontSize(-1)" title="Thu nhỏ cỡ chữ">A-</button>
+            <button class="btn-icon font-btn" onclick="changeFontSize(1)" title="Phóng to cỡ chữ">A+</button>
+            
+            <!-- Dark / Light Theme Toggle -->
+            <button class="btn-icon" id="btn-theme-toggle" onclick="toggleTheme()" title="Chuyển chế độ sáng/tối">
+                🌙
+            </button>
+
+            <!-- Table of Contents Toggle -->
+            <button class="btn-icon" onclick="toggleTocModal()" title="Mục lục bài viết">
+                📑
+            </button>
+        </div>
+    </header>
+
+    <!-- App Layout Container -->
+    <div class="app-container">
+        
+        <!-- Sidebar Navigation Drawer -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-search">
+                <div class="search-input-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="sidebar-filter-input" placeholder="Tìm kiếm bài viết..." oninput="filterDocs(this.value)">
+                </div>
+            </div>
+
+            <div class="sidebar-content" id="sidebar-content">
+                <!-- Dynamically populated by initSidebar() in app.js -->
+            </div>
+        </aside>
+
+        <!-- Sidebar Backdrop for Mobile Touch Dismiss -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+        <!-- Main Document Reader View -->
+        <main class="main-content">
+            <article class="reader-container">
+                
+                <!-- Document Meta Header Card -->
+                <header class="doc-header-card">
+                    <div class="doc-tag-row">
+                        <span class="doc-tag" id="doc-tag">CHUYÊN ĐỀ</span>
+                        <span class="doc-read-time" id="doc-read-time">⏱️ Đang nạp...</span>
+                    </div>
+                    <h1 class="doc-main-title" id="doc-main-title">Đang tải tài liệu...</h1>
+                </header>
+
+                <!-- Rendered Markdown Body -->
+                <div class="markdown-body" id="markdown-body">
+                    <!-- Markdown content dynamically rendered by app.js -->
+                </div>
+
+                <!-- Linear Reading Navigation (Prev / Next Buttons) -->
+                <nav class="doc-footer-nav" id="doc-footer-nav">
+                    <!-- Dynamically populated by renderFooterNav() in app.js -->
+                </nav>
+
+            </article>
+        </main>
+
+    </div>
+
+    <!-- Floating Action Button (FAB) for Instant TOC Access on Mobile -->
+    <button class="toc-fab" id="btn-toc-fab" onclick="toggleTocModal()" aria-label="Mở Mục Lục">
+        📑
+    </button>
+
+    <!-- Mobile Bottom Sheet TOC Modal -->
+    <div class="toc-modal" id="toc-modal">
+        <div class="toc-header">
+            <span>📑 Mục Lục Bài Viết</span>
+            <button class="btn-icon" onclick="closeTocModal()">✕</button>
+        </div>
+        <div class="toc-list" id="toc-list">
+            <!-- Dynamically populated by buildToc() in app.js -->
+        </div>
+    </div>
+
+    <!-- Data & Controller Scripts -->
+    <script src="js/docs_data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
