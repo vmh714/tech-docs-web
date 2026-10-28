@@ -1,4 +1,4 @@
-# Chương 13: ĐỆM I/O TẬP TIN (FILE I/O BUFFERING)
+# Chương 13: Đệm File I/O (File I/O Buffering)
 
 Vì mục đích tốc độ và hiệu suất, các System Call (lời gọi hệ thống) I/O (tức là kernel) và các hàm I/O của thư viện C chuẩn (tức là các hàm stdio) thực hiện đệm (buffer) dữ liệu khi thao tác với các tập tin đĩa. Trong chương này, chúng ta sẽ mô tả cả hai loại đệm này và xem xét cách chúng ảnh hưởng đến hiệu suất ứng dụng. Chúng ta cũng sẽ tìm hiểu các kỹ thuật khác nhau để tác động và vô hiệu hóa cả hai loại đệm này, đồng thời xem xét một kỹ thuật gọi là I/O trực tiếp (direct I/O), rất hữu ích để bỏ qua bộ đệm của kernel trong một số trường hợp nhất định.
 
@@ -18,6 +18,7 @@ Mục đích của thiết kế này là giúp cho `read()` và `write()` chạy
 
 Kernel Linux không áp đặt giới hạn trên cố định đối với kích thước của buffer cache. Kernel sẽ cấp phát số lượng trang buffer cache (buffer cache page) tùy theo yêu cầu, chỉ bị giới hạn bởi lượng bộ nhớ vật lý (physical memory) khả dụng và nhu cầu sử dụng bộ nhớ vật lý cho các mục đích khác (ví dụ: chứa các trang mã lệnh (text) và dữ liệu (data) được yêu cầu bởi các tiến trình đang chạy). Nếu bộ nhớ khả dụng trở nên khan hiếm, kernel sẽ ghi (flush) một số trang buffer cache đã bị sửa đổi xuống đĩa để giải phóng các trang đó cho việc tái sử dụng.
 
+> [!NOTE]
 > Nói một cách chính xác hơn, từ phiên bản kernel 2.4 trở đi, Linux không còn duy trì một buffer cache riêng biệt nữa. Thay vào đó, các bộ đệm I/O tập tin được gộp chung trong page cache (bộ đệm trang), nơi mà ví dụ, cũng chứa các trang từ các tập tin được ánh xạ bộ nhớ (memory-mapped files). Mặc dù vậy, trong phần thảo luận chính, chúng ta vẫn sử dụng thuật ngữ buffer cache, vì thuật ngữ đó phổ biến theo lịch sử trên các cài đặt UNIX.
 
 ### Ảnh hưởng của kích thước bộ đệm đến hiệu năng system call I/O
@@ -55,6 +56,7 @@ Mỗi hàng hiển thị giá trị trung bình của 20 lần chạy cho kích 
 
 Vì tổng lượng dữ liệu được truyền (và do đó là số lượng thao tác đĩa) là như nhau đối với các kích thước bộ đệm khác nhau, những gì Bảng 13-1 minh họa chính là chi phí phụ trội (overhead) của việc thực hiện các lệnh gọi `read()` và `write()`. Với kích thước bộ đệm là 1 byte, 100 triệu lần gọi được thực hiện đến `read()` và `write()`. Với kích thước bộ đệm là 4096 bytes, số lần gọi của mỗi system call giảm xuống còn khoảng 24.000, và hiệu năng gần tối ưu đã đạt được. Vượt quá điểm này, không có sự cải thiện hiệu năng đáng kể nào nữa, bởi vì chi phí thực hiện các system call `read()` và `write()` trở nên không đáng kể so với thời gian cần thiết để sao chép dữ liệu giữa user space và kernel space, và để thực hiện I/O đĩa thực tế.
 
+> [!NOTE]
 > Các hàng cuối cùng của Bảng 13-1 cho phép chúng ta ước tính sơ bộ về thời gian cần thiết để truyền dữ liệu giữa user space và kernel space, và cho I/O tệp. Vì số lượng system call trong các trường hợp này tương đối nhỏ, đóng góp của chúng vào thời gian trôi qua (elapsed time) và thời gian CPU là không đáng kể. Do đó, chúng ta có thể nói rằng System CPU time thực chất đang đo lường thời gian truyền dữ liệu giữa user space và kernel space. Giá trị Elapsed time cung cấp cho chúng ta một ước tính về thời gian cần thiết để truyền dữ liệu đến và đi từ đĩa. (Như chúng ta sẽ thấy ngay sau đây, đây chủ yếu là thời gian cần thiết để đọc đĩa).
 
 Tóm lại, nếu chúng ta đang truyền một lượng lớn dữ liệu đến hoặc đi từ một tệp, thì bằng cách đệm dữ liệu thành các khối lớn, và do đó thực hiện ít system call hơn, chúng ta có thể cải thiện đáng kể hiệu năng I/O.
@@ -107,6 +109,7 @@ int setvbuf(FILE *stream, char *buf, int mode, size_t size);
 
 Đối số `stream` xác định luồng tập tin (file stream) cần thay đổi chế độ đệm. Sau khi luồng đã được mở, lời gọi hàm `setvbuf()` phải được thực hiện trước khi gọi bất kỳ hàm stdio nào khác trên luồng đó. Lời gọi `setvbuf()` ảnh hưởng đến hành vi của tất cả các thao tác stdio tiếp theo trên luồng được chỉ định.
 
+> [!NOTE]
 > Các luồng (streams) được sử dụng bởi thư viện stdio không được nhầm lẫn với cơ chế STREAMS của System V. Cơ chế System V STREAMS không được cài đặt trong nhân (kernel) Linux chính tuyến.
 
 Các đối số `buf` và `size` xác định bộ đệm (buffer) được sử dụng cho luồng. Các đối số này có thể được chỉ định theo hai cách:
@@ -186,6 +189,7 @@ Bộ đệm stdio được tự động xả khi luồng tương ứng bị đó
 
 Trong nhiều bản cài đặt thư viện C, bao gồm cả `glibc`, nếu `stdin` và `stdout` trỏ đến một thiết bị đầu cuối (terminal), thì một lệnh `fflush(stdout)` ẩn sẽ được thực thi bất cứ khi nào dữ liệu được đọc từ `stdin`. Điều này có hiệu quả trong việc xả bất kỳ chuỗi nhắc nhở (prompt) nào được ghi vào `stdout` mà không có ký tự xuống dòng kết thúc (ví dụ: `printf("Date: ")`). Tuy nhiên, hành vi này không được quy định trong chuẩn SUSv3 hay C99 và không được cài đặt trong mọi thư viện C. Các chương trình có tính tương thích cao (portable) nên sử dụng các lời gọi `fflush(stdout)` tường minh để đảm bảo rằng các chuỗi nhắc nhở đó được hiển thị.
 
+> [!NOTE]
 > Chuẩn C99 đưa ra hai yêu cầu nếu một luồng được mở cho cả hai tác vụ nhập và xuất. Thứ nhất, một thao tác xuất không được đi ngay sau một thao tác nhập nếu không có một lời gọi xen kẽ đến `fflush()` hoặc một trong các hàm định vị tệp (như `fseek()`, `fsetpos()`, hoặc `rewind()`). Thứ hai, một thao tác nhập không được đi ngay sau một thao tác xuất nếu không có một lời gọi xen kẽ đến một trong các hàm định vị tệp, trừ khi thao tác nhập gặp phải lỗi kết thúc tệp (end-of-file).
 
 ## 13.3 Điều khiển bộ đệm Kernel của I/O tệp (Controlling Kernel Buffering of File I/O)
@@ -233,6 +237,7 @@ Việc giảm số lượng các thao tác I/O đĩa theo cách này rất hữu
 
 Trong Linux 2.2 trở về trước, `fdatasync()` được triển khai như một lời gọi đến `fsync()`, do đó không mang lại lợi ích về hiệu năng.
 
+> [!NOTE]
 > Bắt đầu từ kernel 2.6.17, Linux cung cấp system call phi chuẩn `sync_file_range()`, cho phép kiểm soát chính xác hơn so với `fdatasync()` khi flush dữ liệu file. Người gọi có thể chỉ định vùng file cần flush, và chỉ định các cờ (flag) điều khiển việc liệu system call có bị block khi ghi đĩa hay không. Xem trang hướng dẫn (manual page) `sync_file_range(2)` để biết thêm chi tiết.
 
 System call `sync()` khiến tất cả các bộ nhớ đệm của kernel chứa thông tin file đã được cập nhật (ví dụ: các khối dữ liệu, khối con trỏ, metadata, v.v.) được ghi xuống đĩa.
@@ -244,8 +249,10 @@ void sync(void);
 
 Trong phần cài đặt của Linux, `sync()` chỉ trả về sau khi toàn bộ dữ liệu đã được truyền đến thiết bị đĩa (hoặc ít nhất là vào bộ nhớ đệm của nó). Tuy nhiên, SUSv3 cho phép một bản cài đặt `sync()` chỉ đơn giản là lên lịch truyền I/O và trả về trước khi quá trình đó hoàn tất.
 
+> [!NOTE]
 > Một luồng kernel (kernel thread) chạy liên tục đảm bảo rằng các bộ nhớ đệm của kernel đã bị sửa đổi sẽ được ghi xuống đĩa nếu chúng không được đồng bộ hóa một cách tường minh trong vòng 30 giây. Điều này được thực hiện để đảm bảo rằng các bộ nhớ đệm không ở trạng thái chưa đồng bộ với file trên đĩa tương ứng (và do đó dễ bị mất mát trong trường hợp hệ thống bị crash) trong thời gian dài. Trong Linux 2.6, tác vụ này được thực hiện bởi `pdflush` kernel thread. (Trong Linux 2.4, nó được thực hiện bởi `kupdated` kernel thread).
 
+> [!NOTE]
 > File `/proc/sys/vm/dirty_expire_centisecs` chỉ định độ tuổi (tính bằng phần trăm của giây) mà một bộ nhớ đệm bẩn (dirty buffer) phải đạt được trước khi nó bị flush bởi `pdflush`. Các file bổ sung trong cùng thư mục sẽ kiểm soát các khía cạnh khác trong hoạt động của `pdflush`.
 
 ### Biến mọi thao tác ghi thành đồng bộ: O_SYNC
@@ -258,6 +265,7 @@ fd = open(pathname, O_WRONLY | O_SYNC);
 
 Sau lời gọi open() này, mọi hàm write() ghi vào file sẽ tự động xả (flush) dữ liệu và siêu dữ liệu (metadata) của file xuống ổ đĩa (nghĩa là các thao tác ghi được thực hiện theo tiêu chuẩn hoàn tất toàn vẹn file I/O đồng bộ - *synchronized I/O file integrity completion*).
 
+> [!NOTE]
 > Các hệ thống BSD cũ sử dụng cờ O_FSYNC để cung cấp tính năng tương tự O_SYNC. Trong glibc, O_FSYNC được định nghĩa là một từ đồng nghĩa (synonym) của O_SYNC.
 
 ### Ảnh hưởng hiệu năng của O_SYNC
@@ -294,6 +302,7 @@ Trước kernel 2.6.33, các cờ O\_DSYNC và O\_RSYNC chưa được triển k
 
 Bắt đầu từ kernel 2.6.33, Linux đã triển khai O\_DSYNC, và việc triển khai O\_RSYNC có thể sẽ được thêm vào trong một phiên bản kernel phát hành trong tương lai.
 
+> [!NOTE]
 > Trước kernel 2.6.33, Linux không triển khai đầy đủ ngữ nghĩa của O\_SYNC. Thay vào đó, O\_SYNC được triển khai dưới dạng O\_DSYNC. Để duy trì hành vi nhất quán cho các ứng dụng được xây dựng cho các kernel cũ hơn, các ứng dụng được liên kết (linked) với các phiên bản thư viện GNU C cũ hơn vẫn tiếp tục cung cấp ngữ nghĩa O\_DSYNC cho O\_SYNC, ngay cả trên Linux 2.6.33 trở lên.
 
 ## 13.4 Tóm tắt về I/O Buffering
@@ -386,6 +395,7 @@ Tiến trình dự kiến truy cập dữ liệu trong vùng tệp được ch�
 
 Bắt đầu từ kernel 2.4, Linux cho phép một ứng dụng bỏ qua bộ nhớ đệm (buffer cache) khi thực hiện I/O đĩa, từ đó truyền dữ liệu trực tiếp từ vùng nhớ người dùng (user space) sang một tệp hoặc thiết bị đĩa. Điều này đôi khi được gọi là direct I/O hoặc raw I/O.
 
+> [!NOTE]
 > Các chi tiết được mô tả ở đây là đặc thù của Linux và không được chuẩn hóa bởi SUSv3. Tuy nhiên, hầu hết các cài đặt UNIX đều cung cấp một số hình thức truy cập direct I/O tới các thiết bị và tệp.
 
 Direct I/O đôi khi bị hiểu nhầm là phương tiện để đạt được hiệu suất I/O nhanh. Tuy nhiên, đối với hầu hết các ứng dụng, việc sử dụng direct I/O có thể làm giảm đáng kể hiệu suất. Điều này là do kernel áp dụng một số tối ưu hóa để cải thiện hiệu suất I/O thực hiện thông qua buffer cache, bao gồm việc thực hiện đọc trước tuần tự (sequential read-ahead), thực hiện I/O theo các cụm khối đĩa (clusters of disk blocks), và cho phép các tiến trình truy cập cùng một tệp chia sẻ các bộ đệm trong cache. Tất cả các tối ưu hóa này đều bị mất khi chúng ta sử dụng direct I/O. Direct I/O chỉ dành cho các ứng dụng có các yêu cầu I/O chuyên biệt. Ví dụ, các hệ thống cơ sở dữ liệu thực hiện việc lưu trữ đệm và tối ưu hóa I/O của riêng chúng thì không cần kernel phải tiêu tốn thời gian CPU và bộ nhớ để thực hiện các tác vụ tương tự.
@@ -394,8 +404,10 @@ Chúng ta có thể thực hiện direct I/O trên một tệp riêng lẻ hoặ
 
 Cờ `O_DIRECT` có hiệu lực kể từ kernel 2.4.10. Không phải tất cả các hệ thống tệp (file systems) và phiên bản kernel của Linux đều hỗ trợ việc sử dụng cờ này. Hầu hết các hệ thống tệp bản địa (native file systems) đều hỗ trợ `O_DIRECT`, nhưng nhiều hệ thống tệp phi UNIX (ví dụ: VFAT) thì không. Có thể cần phải kiểm tra hệ thống tệp liên quan (nếu hệ thống tệp không hỗ trợ `O_DIRECT`, thì `open()` sẽ thất bại với lỗi `EINVAL`) hoặc đọc mã nguồn kernel để kiểm tra tính năng hỗ trợ này.
 
+> [!NOTE]
 > Nếu một tệp (file) được mở bằng cờ `O_DIRECT` bởi một tiến trình (process) và được mở theo cách thông thường (nghĩa là sử dụng bộ đệm `buffer cache`) bởi một tiến trình khác, thì sẽ không có tính đồng bộ (coherency) giữa nội dung của `buffer cache` và dữ liệu được đọc hoặc ghi thông qua thao tác I/O trực tiếp (direct I/O). Những kịch bản như vậy nên được tránh.
 
+> [!NOTE]
 > Trang hướng dẫn sử dụng (manual page) `raw(8)` mô tả một kỹ thuật cũ (nay đã lỗi thời) để có quyền truy cập trực tiếp vào thiết bị đĩa (disk device).
 
 ### Các ràng buộc căn chỉnh (Alignment) cho I/O trực tiếp
@@ -408,6 +420,7 @@ Vì I/O trực tiếp (trên cả thiết bị đĩa và tệp) liên quan đế
 
 Việc không tuân thủ bất kỳ ràng buộc nào trong số này sẽ dẫn đến lỗi `EINVAL`. Trong danh sách trên, kích thước khối (block size) có nghĩa là kích thước khối vật lý của thiết bị (thường là 512 byte).
 
+> [!NOTE]
 > Khi thực hiện I/O trực tiếp, Linux 2.4 có tính ràng buộc khắt khe hơn so với Linux 2.6: việc căn chỉnh, độ dài và vị trí bù phải là bội số của kích thước khối logic của hệ thống tệp (file system) bên dưới. (Kích thước khối logic điển hình của hệ thống tệp là 1024, 2048 hoặc 4096 byte).
 
 ### Chương trình ví dụ

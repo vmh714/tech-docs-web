@@ -52,7 +52,7 @@ Vì vậy, hãy xem xét cách chúng ta có thể thêm locking vào *scull*. M
 
 Không phải tất cả các critical section đều giống nhau, vì vậy kernel cung cấp các primitive (nguyên thủy) khác nhau cho các nhu cầu khác nhau. Trong trường hợp này, mọi quyền truy cập vào cấu trúc dữ liệu *scull* đều diễn ra trong ngữ cảnh tiến trình (process context) như là kết quả của một yêu cầu trực tiếp từ người dùng; sẽ không có quyền truy cập nào được thực hiện từ interrupt handler hoặc các ngữ cảnh bất đồng bộ khác. Không có yêu cầu cụ thể nào về độ trễ (latency - thời gian phản hồi); các lập trình viên ứng dụng hiểu rằng các yêu cầu I/O thường không được thỏa mãn ngay lập tức. Hơn nữa, *scull* không giữ bất kỳ tài nguyên hệ thống quan trọng nào khác trong khi nó đang truy cập vào các cấu trúc dữ liệu của chính nó. Tất cả những điều này có nghĩa là nếu trình điều khiển *scull* đi vào trạng thái ngủ (go to sleep) trong khi chờ đến lượt truy cập cấu trúc dữ liệu, thì sẽ không có ai phàn nàn cả.
 
-"Go to sleep" là một thuật ngữ được định nghĩa rõ ràng trong ngữ cảnh này. Khi một Linux process đạt đến điểm mà nó không thể tiến hành thêm bất kỳ tiến trình nào nữa, nó sẽ đi vào trạng thái ngủ (hoặc "block" - chặn), nhường bộ xử lý cho người khác cho đến một thời điểm nào đó trong tương lai khi nó có thể tiếp tục hoàn thành công việc. Các process thường ngủ khi đang chờ I/O hoàn tất. Khi chúng ta tiến
+"Go to sleep" (đi vào trạng thái ngủ) là một thuật ngữ được định nghĩa rõ ràng trong ngữ cảnh này. Khi một tiến trình Linux đạt đến điểm không thể tiếp tục tiến triển thêm được nữa, nó sẽ đi vào trạng thái ngủ (hoặc "block" - bị chặn), nhường bộ xử lý cho tác vụ khác cho đến một thời điểm trong tương lai khi nó có thể tiếp tục hoàn thành công việc. Các process thường ngủ khi đang chờ I/O hoàn tất. Khi chúng ta tiến
 sâu hơn vào kernel, chúng ta sẽ gặp phải một số tình huống mà chúng ta không thể ngủ. Tuy nhiên, phương thức *write* trong *scull* không phải là một trong những tình huống đó. Vì vậy, chúng ta có thể sử dụng cơ chế locking có thể khiến tiến trình ngủ trong khi chờ quyền truy cập vào critical section.
 
 Cũng quan trọng không kém, chúng ta sẽ thực hiện một thao tác (cấp phát bộ nhớ với *kmalloc*) có khả năng gây sleep (ngủ)—do đó việc sleep là một khả năng có thể xảy ra trong mọi trường hợp. Nếu các vùng găng (critical section) của chúng ta hoạt động bình thường, chúng ta phải sử dụng một cơ chế khóa (locking primitive) hoạt động được khi một Thread (luồng) sở hữu khóa tiến hành sleep. Không phải mọi cơ chế khóa đều có thể được sử dụng ở những nơi có khả năng xảy ra sleep (chúng ta sẽ thấy một số cơ chế không làm được điều này ở phần sau của chương). Tuy nhiên, đối với nhu cầu hiện tại của chúng ta, cơ chế phù hợp nhất là *semaphore* (tín hiệu đồng bộ).
@@ -168,17 +168,17 @@ Semaphore (Semaphore) thực hiện cơ chế loại trừ lẫn nhau (mutual ex
 
 Linux kernel cung cấp một loại semaphore đặc biệt gọi là *rwsem* (hoặc "reader/writer semaphore") cho tình huống này. Việc sử dụng rwsem trong các driver là tương đối hiếm, nhưng chúng đôi khi rất hữu ích.
 
-Mã nguồn sử dụng rwsem phải bao gồm *<linux/rwsem.h>*. Kiểu dữ liệu phù hợp cho semaphore đọc/ghi là `struct rw_semaphore`; một rwsem phải được khởi tạo tường minh (explicitly initialized) tại thời điểm chạy (runtime) với:
+Mã nguồn sử dụng rwsem phải bao gồm `<linux/rwsem.h>`. Kiểu dữ liệu phù hợp cho semaphore đọc/ghi là `struct rw_semaphore`; một rwsem phải được khởi tạo tường minh tại thời điểm chạy (runtime) với:
 
-```
+```c
 
 void init_rwsem(struct rw_semaphore *sem);
 
 ```
 
-Một rwsem mới được khởi tạo sẽ sẵn sàng cho tác vụ tiếp theo (người đọc hoặc người viết) xuất hiện. Giao diện (interface) dành cho mã nguồn cần quyền truy cập chỉ đọc là:
+Một rwsem mới được khởi tạo sẽ sẵn sàng cho tác vụ tiếp theo (người đọc hoặc người viết) xuất hiện. Giao diện dành cho mã nguồn cần quyền truy cập chỉ đọc là:
 
-```
+```c
 
 void down_read(struct rw_semaphore *sem);
 int down_read_trylock(struct rw_semaphore *sem);
@@ -190,7 +190,7 @@ Một lời gọi đến *down\_read* cung cấp quyền truy cập chỉ đọc
 
 Giao diện dành cho người viết (writer) cũng tương tự:
 
-```
+```c
 
 void down_write(struct rw_semaphore *sem);
 int down_write_trylock(struct rw_semaphore *sem);
@@ -440,17 +440,9 @@ void read_unlock_bh(rwlock_t *lock);
 
 Các hàm dành cho quyền truy cập ghi cũng tương tự:
 
-```
-
-```
-
+```c
 void write_lock(rwlock_t *lock);
 void write_lock_irqsave(rwlock_t *lock, unsigned long flags);
-
-```
-
-```
-
 void write_lock_irq(rwlock_t *lock);
 void write_lock_bh(rwlock_t *lock);
 int write_trylock(rwlock_t *lock);
@@ -458,15 +450,16 @@ void write_unlock(rwlock_t *lock);
 void write_unlock_irqrestore(rwlock_t *lock, unsigned long flags);
 void write_unlock_irq(rwlock_t *lock);
 void write_unlock_bh(rwlock_t *lock);
-
 ```
 
 Khóa đọc/ghi có thể gây đói tài nguyên (starvation) đối với tiến trình đọc giống như cách hoạt động của `rwsem`. Hành vi này hiếm khi là một vấn đề lớn; tuy nhiên, nếu có sự tranh chấp khóa (lock contention) đủ lớn để dẫn đến tình trạng đói tài nguyên, hiệu năng hệ thống dù sao đi nữa cũng sẽ rất kém.
 
 ## Locking Traps (Những cạm bẫy khi sử dụng khóa)
+
 Nhiều năm kinh nghiệm làm việc với các cơ chế khóa — kinh nghiệm có từ trước cả Linux — đã cho thấy rằng việc triển khai khóa chính xác là một thử thách rất lớn. Quản lý tính đồng thời (concurrency) bản chất là một công việc phức tạp và có rất nhiều cách để mắc lỗi. Trong phần này, chúng ta sẽ điểm qua nhanh những sự cố có thể xảy ra.
 
 ### Ambiguous Rules (Quy tắc mơ hồ)
+
 Như đã đề cập ở trên, một lược đồ khóa (locking scheme) đúng đắn đòi hỏi phải có các quy tắc rõ ràng và tường minh. Khi bạn tạo ra một tài nguyên có thể được truy cập đồng thời, bạn phải xác định rõ khóa nào sẽ kiểm soát quyền truy cập đó. Việc thiết kế khóa nên được lên kế hoạch ngay từ đầu; việc cố gắng bổ sung khóa vào sau đó có thể rất khó khăn. Thời gian đầu tư vào giai đoạn đầu thường sẽ mang lại kết quả đền đáp xứng đáng trong quá trình gỡ lỗi (debugging).
 
 Khi viết mã nguồn, chắc chắn bạn sẽ gặp một số hàm đều yêu cầu quyền truy cập vào các cấu trúc được bảo vệ bởi một khóa cụ thể. Tại thời điểm này, bạn phải rất cẩn thận: nếu một hàm đã chiếm giữ một khóa (acquire a lock) và sau đó gọi một hàm khác cũng cố gắng chiếm giữ chính khóa đó, mã nguồn của bạn sẽ bị deadlock (treo deadlock). Cả semaphore lẫn spinlock đều không cho phép một tiến trình đang giữ khóa có thể chiếm giữ lại khóa đó lần thứ hai; nếu bạn cố gắng làm như vậy, hệ thống sẽ bị treo.
@@ -478,6 +471,7 @@ Trong trường hợp của *scull*, quyết định thiết kế được đưa
 đang được truy cập. Tất cả các hàm nội bộ, vốn chỉ được gọi từ các hàm *scull* khác, khi đó có thể mặc định rằng semaphore đã được chiếm giữ đúng cách.
 
 ### Quy tắc Thứ tự Khóa (Lock Ordering Rules)
+
 Trong các hệ thống có số lượng lớn các khóa (lock) (và kernel đang dần trở thành một hệ thống như vậy), việc mã nguồn cần giữ (hold) nhiều hơn một khóa cùng lúc là điều không hiếm gặp. Nếu một dạng tính toán nào đó phải được thực hiện bằng cách sử dụng hai tài nguyên khác nhau, mỗi tài nguyên lại có khóa riêng của nó, thì thường không có cách nào khác ngoài việc phải chiếm giữ (acquire) cả hai khóa.
 
 Tuy nhiên, việc lấy nhiều khóa có thể rất nguy hiểm. Nếu bạn có hai khóa, gọi là *Lock1* và *Lock2*, và đoạn mã cần phải chiếm giữ cả hai cùng một lúc, bạn sẽ phải đối mặt với nguy cơ deadlock (tắc nghẽn). Hãy tưởng tượng một thread (luồng) khóa *Lock1* trong khi một thread khác đồng thời chiếm lấy *Lock2*. Sau đó, mỗi thread cố gắng lấy cái mà nó chưa có. Cả hai thread sẽ bị deadlock.
@@ -487,6 +481,7 @@ Giải pháp cho vấn đề này thường khá đơn giản: khi phải chiế
 Một vài quy tắc kinh nghiệm (rule of thumb) có thể hữu ích. Nếu bạn phải lấy một khóa cục bộ (local) trong đoạn mã của mình (ví dụ như khóa thiết bị - device lock) cùng với một khóa thuộc về một phần trung tâm hơn của kernel, hãy lấy khóa của bạn trước. Nếu bạn có sự kết hợp giữa semaphore và spinlock, tất nhiên bạn phải lấy (các) semaphore trước; việc gọi hàm `down` (có thể gây sleep) trong khi đang giữ một spinlock là một lỗi cực kỳ nghiêm trọng. Nhưng hơn hết, hãy cố gắng tránh các tình huống mà bạn cần nhiều hơn một khóa.
 
 ### Khóa Mịn (Fine-Grained) so với Khóa Thô (Coarse-Grained)
+
 Kernel Linux đầu tiên hỗ trợ hệ thống đa xử lý (multiprocessor) là phiên bản 2.0; nó chỉ chứa đúng một spinlock duy nhất. *Big kernel lock* (khóa nhân lớn) đã biến toàn bộ kernel thành một vùng critical section (miền găng) lớn duy nhất; chỉ một CPU có thể thực thi mã kernel tại bất kỳ thời điểm nào. Khóa này giải quyết vấn đề đồng thời (concurrency) đủ tốt để cho phép các nhà phát triển kernel giải quyết tất cả các vấn đề khác liên quan đến việc hỗ trợ SMP. Nhưng nó lại không có khả năng mở rộng (scale) tốt. Ngay cả một hệ thống hai bộ xử lý cũng có thể dành một lượng thời gian đáng kể chỉ để chờ đợi big kernel lock. Hiệu năng của một hệ thống bốn bộ xử lý thậm chí còn không bằng một phần của bốn cỗ máy độc lập.
 
 Vì vậy, các phiên bản kernel tiếp theo đã bao gồm cơ chế khóa mịn hơn (finer-grained locking). Trong phiên bản 2.2, một spinlock kiểm soát quyền truy cập vào hệ thống con I/O khối (block I/O subsystem); một spinlock khác hoạt động cho mạng, v.v. Một kernel hiện đại có thể chứa hàng ngàn khóa, mỗi khóa bảo vệ một tài nguyên nhỏ. Loại khóa mịn này rất tốt cho khả năng mở rộng (scalability); nó cho phép mỗi bộ xử lý làm việc trên tác vụ cụ thể của mình mà không phải tranh chấp (contend) các khóa được sử dụng bởi các bộ xử lý khác. Rất ít người cảm thấy tiếc nuối big kernel lock.\*
@@ -498,6 +493,7 @@ Việc khóa trong trình điều khiển thiết bị (device driver) thường
 Nếu bạn thực sự nghi ngờ rằng sự tranh chấp khóa đang làm giảm hiệu năng, bạn có thể thấy công cụ *lockmeter* rất hữu ích. Bản vá này (có sẵn tại *http://oss.sgi.com/projects/lockmeter/*) thiết bị hóa (instrument) kernel để đo lường thời gian dành ra để chờ trong các khóa. Bằng cách xem xét báo cáo, bạn có thể nhanh chóng xác định xem sự tranh chấp khóa có thực sự là vấn đề hay không.
 
 ## Các Giải pháp Thay thế cho Khóa (Alternatives to Locking)
+
 Kernel Linux cung cấp một số primitive khóa mạnh mẽ có thể được sử dụng để ngăn kernel tự vấp ngã. Nhưng như chúng ta đã thấy, thiết kế và cài đặt của một lược đồ khóa (locking scheme) không phải là không có cạm bẫy. Thường thì không có giải pháp thay thế nào cho semaphore và spinlock; chúng có thể là cách duy nhất để hoàn thành công việc một cách chính xác. Tuy nhiên, có những tình huống mà việc truy cập nguyên tử (atomic access) có thể được thiết lập mà không cần đến cơ chế khóa toàn diện. Phần này xem xét các cách khác để thực hiện công việc đó.
 
 ## Các thuật toán không dùng khóa (Lock-Free Algorithms)
@@ -531,15 +527,15 @@ Hình 5-1 minh họa bản đệm vòng ở một số trạng thái chứa dữ
 │                 │    │░░░░░░░░░░░░░░░░░│    │                 │
 │                 │    │░░░░░░░░░░░░░░░░░│    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-Bản đệm vòng          Bản đệm đầy           Bản đệm trống
+Bộ đệm vòng          Bộ đệm đầy           Bộ đệm trống
 
 ░ = dữ liệu (đã điền)    (trắng) = không gian trống
 
 ```
 
-*Hình 5-1. Bản đệm vòng*
+*Hình 5-1. Bộ đệm vòng*
 
-Bản đệm vòng xuất hiện khá thường xuyên trong các trình điều khiển thiết bị (device drivers). Đặc biệt, các bộ điều hợp mạng (networking adapters) thường sử dụng bản đệm vòng để trao đổi dữ liệu (các gói tin) với bộ xử lý. Lưu ý rằng, kể từ phiên bản 2.6.10, đã có sẵn một triển khai bản đệm vòng tổng quát (generic circular buffer) trong kernel; hãy tham khảo *<linux/kfifo.h>* để biết thông tin về cách sử dụng nó.
+Bộ đệm vòng xuất hiện khá thường xuyên trong các trình điều khiển thiết bị (device drivers). Đặc biệt, các bộ điều hợp mạng (networking adapters) thường sử dụng bộ đệm vòng để trao đổi dữ liệu (các gói tin) với bộ xử lý. Lưu ý rằng, kể từ phiên bản 2.6.10, đã có sẵn một triển khai bộ đệm vòng tổng quát (generic circular buffer) trong kernel; hãy tham khảo `<linux/kfifo.h>` để biết thông tin về cách sử dụng nó.
 
 ### Biến Nguyên tử (Atomic Variables)
 
@@ -697,7 +693,7 @@ wait_for_a_while( );
 /* thực hiện công việc của bạn */
 /* nhả khóa, và kiểm tra... */
 if (test_and_clear_bit(nr, addr) == 0)
-something_went_wrong( ); /* đã bị nhả trước đó: lỗi */
+    something_went_wrong( ); /* đã bị nhả trước đó: lỗi */
 
 ```
 
@@ -774,6 +770,7 @@ void write_sequnlock_bh(seqlock_t *lock);
 Ngoài ra còn có hàm *write\_tryseqlock* trả về giá trị khác không nếu nó có thể lấy được khóa.
 
 ### Read-Copy-Update
+
 Read-copy-update (RCU) là một cơ chế loại trừ lẫn nhau (mutual exclusion scheme) nâng cao, có thể mang lại hiệu suất cao trong các điều kiện phù hợp. Việc sử dụng nó trong các trình điều khiển thiết bị (drivers) rất hiếm nhưng không phải là không có, vì vậy việc tổng quan nhanh về nó ở đây là rất đáng giá. Những ai quan tâm đến toàn bộ chi tiết của thuật toán RCU có thể tìm thấy chúng trong tài liệu trắng (white paper) do chính tác giả công bố (*http://www.rdrop.com/users/paulmck/rclock/intro/rclock\_intro.html*).
 
 RCU áp dụng một số ràng buộc đối với loại cấu trúc dữ liệu mà nó có thể bảo vệ. Nó được tối ưu hóa cho các tình huống mà các thao tác đọc diễn ra phổ biến và thao tác ghi hiếm khi xảy ra. Các tài nguyên được bảo vệ nên được truy cập thông qua con trỏ (pointers), và mọi tham chiếu đến các tài nguyên đó chỉ được nắm giữ bởi mã nguồn có tính nguyên tử (atomic code). Khi cấu trúc dữ liệu cần được thay đổi, luồng ghi (writing thread) sẽ tạo ra một bản sao, thay đổi bản sao đó, sau đó hướng con trỏ liên quan đến phiên bản mới—do đó có tên gọi của thuật toán. Khi kernel chắc chắn rằng không còn tham chiếu nào đến phiên bản cũ tồn tại, nó có thể giải phóng phiên bản đó.
@@ -815,26 +812,27 @@ Hàm func được chỉ định sẽ được gọi khi việc giải phóng t�
 Giao diện RCU đầy đủ phức tạp hơn những gì chúng ta đã thấy ở đây; ví dụ, nó bao gồm các hàm tiện ích để làm việc với các danh sách liên kết được bảo vệ (protected linked lists). Hãy xem các tệp tiêu đề liên quan để biết toàn bộ chi tiết.
 
 ## Tóm tắt nhanh (Quick Reference)
+
 Chương này đã giới thiệu một tập hợp đáng kể các ký hiệu để quản lý tính đồng thời (concurrency). Các ký hiệu quan trọng nhất trong số đó được tóm tắt ở đây:
 
 ```
 
+```c
+
 ## include <asm/semaphore.h>
 
 ```
-
 Tệp tiêu đề định nghĩa semaphore và các thao tác trên chúng.
 
-```
+```c
 
 DECLARE_MUTEX(name);
 DECLARE_MUTEX_LOCKED(name);
 
 ```
-
 Hai macro để khai báo và khởi tạo một semaphore được sử dụng ở chế độ loại trừ lẫn nhau (mutual exclusion mode).
 
-```
+```c
 
 void init_MUTEX(struct semaphore *sem);
 void init_MUTEX_LOCKED(struct semaphore *sem);
@@ -869,74 +867,111 @@ void up_write(struct rw_semaphore *sem)
 void downgrade_write(struct rw_semaphore *sem)
 Các hàm dùng để quản lý quyền truy cập viết đối với semaphore đọc/viết (reader/writer semaphore).
 
+```c
 ## include <linux/completion.h>
-
 DECLARE_COMPLETION(name);
 init_completion(struct completion *c);
 INIT_COMPLETION(struct completion c);
-Tệp tiêu đề (include file) mô tả cơ chế hoàn thành (completion mechanism) của Linux và các phương thức thông thường
-để khởi tạo các completion. `INIT_COMPLETION` chỉ nên được sử dụng để khởi tạo lại một completion
-đã được sử dụng trước đó.
+```
+
+Tệp tiêu đề mô tả cơ chế completion của Linux và các phương thức thông thường để khởi tạo completion. `INIT_COMPLETION` chỉ nên được sử dụng để khởi tạo lại một completion đã được sử dụng trước đó.
+
+```c
 void wait_for_completion(struct completion *c);
+```
+
 Chờ một sự kiện hoàn thành (completion event) được phát tín hiệu (signal).
+
+```c
 void complete(struct completion *c);
 void complete_all(struct completion *c);
-Phát tín hiệu cho một sự kiện hoàn thành. `complete` đánh thức tối đa một thread đang chờ, trong khi
-`complete_all` đánh thức tất cả các thread đang chờ (waiter).
+```
+
+Phát tín hiệu cho một sự kiện hoàn thành. `complete` đánh thức tối đa một luồng đang chờ, trong khi `complete_all` đánh thức tất cả các luồng đang chờ (waiter).
+
+```c
 void complete_and_exit(struct completion *c, long retval);
-Phát tín hiệu sự kiện hoàn thành bằng cách gọi `complete` và gọi `exit` cho thread hiện tại.
+```
 
+Phát tín hiệu sự kiện hoàn thành bằng cách gọi `complete` và gọi `exit` cho luồng hiện tại.
+
+```c
 ## include <linux/spinlock.h>
-
 spinlock_t lock = SPIN_LOCK_UNLOCKED;
 spin_lock_init(spinlock_t *lock);
-Tệp tiêu đề định nghĩa giao diện spinlock (spinlock interface) và hai cách khởi tạo
-khóa (lock).
+```
+
+Tệp tiêu đề định nghĩa giao diện spinlock và hai cách khởi tạo khóa (lock).
+
+```c
 void spin_lock(spinlock_t *lock);
 void spin_lock_irqsave(spinlock_t *lock, unsigned long flags);
 void spin_lock_irq(spinlock_t *lock);
 void spin_lock_bh(spinlock_t *lock);
-Các cách khác nhau để khóa một spinlock và, nếu có thể, vô hiệu hóa ngắt (disable interrupts).
-
 ```
 
-```c
+Các cách khác nhau để khóa một spinlock và, nếu có thể, vô hiệu hóa ngắt (disable interrupts).
 
+```c
 int spin_trylock(spinlock_t *lock);
 int spin_trylock_bh(spinlock_t *lock);
-Các phiên bản không-quay (nonspinning) của các hàm trên; chúng trả về 0 trong trường hợp không thể lấy được
-khóa, và trả về giá trị khác 0 nếu thành công.
+```
+
+Các phiên bản không-quay (nonspinning) của các hàm trên; chúng trả về 0 trong trường hợp không thể lấy được khóa, và trả về giá trị khác 0 nếu thành công.
+
+```c
 void spin_unlock(spinlock_t *lock);
 void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags);
 void spin_unlock_irq(spinlock_t *lock);
 void spin_unlock_bh(spinlock_t *lock);
+```
+
 Các cách tương ứng để giải phóng một spinlock.
-rwlock_t lock = RW_LOCK_UNLOCKED
+
+```c
+rwlock_t lock = RW_LOCK_UNLOCKED;
 rwlock_init(rwlock_t *lock);
-Hai cách khởi tạo khóa đọc/viết (reader/writer lock).
+```
+
+Hai cách khởi tạo khóa đọc/ghi (reader/writer lock).
+
+```c
 void read_lock(rwlock_t *lock);
 void read_lock_irqsave(rwlock_t *lock, unsigned long flags);
 void read_lock_irq(rwlock_t *lock);
 void read_lock_bh(rwlock_t *lock);
-Các hàm dùng để lấy quyền truy cập đọc đối với khóa đọc/viết (reader/writer lock).
+```
+
+Các hàm dùng để lấy quyền truy cập đọc đối với khóa đọc/ghi (reader/writer lock).
+
+```c
 void read_unlock(rwlock_t *lock);
 void read_unlock_irqrestore(rwlock_t *lock, unsigned long flags);
 void read_unlock_irq(rwlock_t *lock);
 void read_unlock_bh(rwlock_t *lock);
-Các hàm dùng để giải phóng quyền truy cập đọc đối với spinlock đọc/viết (reader/writer spinlock).
+```
+
+Các hàm dùng để giải phóng quyền truy cập đọc đối với spinlock đọc/ghi.
+
+```c
 void write_lock(rwlock_t *lock);
 void write_lock_irqsave(rwlock_t *lock, unsigned long flags);
 void write_lock_irq(rwlock_t *lock);
 void write_lock_bh(rwlock_t *lock);
-Các hàm dùng để lấy quyền truy cập viết đối với khóa đọc/viết (reader/writer lock).
+```
+
+Các hàm dùng để lấy quyền truy cập ghi đối với khóa đọc/ghi (reader/writer lock).
+
+```c
 void write_unlock(rwlock_t *lock);
 void write_unlock_irqrestore(rwlock_t *lock, unsigned long flags);
 void write_unlock_irq(rwlock_t *lock);
 void write_unlock_bh(rwlock_t *lock);
-
 ```
 
 Các hàm dùng để giải phóng quyền truy cập viết đối với spinlock đọc/viết (reader/writer spinlock).
+
+```c
 
 ```c
 
@@ -957,8 +992,11 @@ int atomic_add_return(int i, atomic_t *v);
 int atomic_sub_return(int i, atomic_t *v);
 int atomic_inc_return(atomic_t *v);
 int atomic_dec_return(atomic_t *v);
-Truy cập các biến số nguyên một cách nguyên tử (atomically). Các biến `atomic_t` phải được truy cập
-chỉ thông qua các hàm này.
+
+```
+Truy cập các biến số nguyên một cách nguyên tử (atomically). Các biến `atomic_t` chỉ được phép truy cập thông qua các hàm này.
+
+```c
 
 ## include <asm/bitops.h>
 
@@ -969,45 +1007,10 @@ test_bit(nr, void *addr);
 int test_and_set_bit(nr, void *addr);
 int test_and_clear_bit(nr, void *addr);
 int test_and_change_bit(nr, void *addr);
-Truy cập các giá trị bit một cách nguyên tử; chúng có thể được sử dụng cho các cờ (flags) hoặc biến khóa (lock variables). Sử dụng
-các hàm này giúp ngăn chặn bất kỳ tình trạng tranh chấp dữ liệu (race condition) nào liên quan đến việc truy cập đồng thời vào bit.
+
+```
+Truy cập các giá trị bit một cách nguyên tử; chúng có thể được sử dụng cho cờ (flags) hoặc biến khóa (lock variables). Sử dụng các hàm này giúp ngăn ngừa tình trạng tranh chấp (race condition) liên quan đến việc truy cập đồng thời vào bit.
+
+```c
 
 ## include <linux/seqlock.h>
-
-seqlock_t lock = SEQLOCK_UNLOCKED;
-seqlock_init(seqlock_t *lock);
-Tệp tiêu đề định nghĩa seqlock (seqlock) và hai cách khởi tạo chúng.
-unsigned int read_seqbegin(seqlock_t *lock);
-unsigned int read_seqbegin_irqsave(seqlock_t *lock, unsigned long flags);
-int read_seqretry(seqlock_t *lock, unsigned int seq);
-int read_seqretry_irqrestore(seqlock_t *lock, unsigned int seq, unsigned long
-flags);
-
-```
-
-Các hàm để lấy quyền truy cập đọc (read access) đối với tài nguyên được bảo vệ bằng seqlock.
-
-```
-
-void write_seqlock(seqlock_t *lock);
-void write_seqlock_irqsave(seqlock_t *lock, unsigned long flags);
-void write_seqlock_irq(seqlock_t *lock);
-void write_seqlock_bh(seqlock_t *lock);
-int write_tryseqlock(seqlock_t *lock);
-Các hàm để lấy quyền truy cập ghi (write access) đối với tài nguyên được bảo vệ bằng seqlock.
-void write_sequnlock(seqlock_t *lock);
-void write_sequnlock_irqrestore(seqlock_t *lock, unsigned long flags);
-void write_sequnlock_irq(seqlock_t *lock);
-void write_sequnlock_bh(seqlock_t *lock);
-Các hàm để giải phóng quyền truy cập ghi đối với tài nguyên được bảo vệ bằng seqlock.
-
-## include <linux/rcupdate.h>
-
-Tệp tiêu đề (include file) cần thiết để sử dụng cơ chế Read-Copy-Update (RCU).
-void rcu_read_lock;
-void rcu_read_unlock;
-Các macro để lấy quyền truy cập đọc nguyên tử (atomic read access) đối với tài nguyên được bảo vệ bởi RCU.
-void call_rcu(struct rcu_head *head, void (*func)(void *arg), void *arg);
-Sắp xếp để một hàm gọi lại (callback) chạy sau khi tất cả các bộ xử lý (processors) đã được lên lịch (scheduled) và tài nguyên được bảo vệ bởi RCU có thể được giải phóng một cách an toàn.
-
-```

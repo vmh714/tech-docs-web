@@ -1,4 +1,4 @@
-# Chương 8: Cấp phát bộ nhớ
+# Chương 8: Cấp phát bộ nhớ (Allocating Memory)
 
 Cho đến nay, chúng ta đã sử dụng *kmalloc* và *kfree* để cấp phát và giải phóng bộ nhớ. Tuy nhiên, Linux kernel cung cấp một tập hợp các nguyên thủy cấp phát bộ nhớ phong phú hơn. Trong chương này, chúng ta sẽ xem xét các cách khác để sử dụng bộ nhớ trong trình điều khiển thiết bị (device driver) và cách tối ưu hóa tài nguyên bộ nhớ của hệ thống. Chúng ta sẽ không đi sâu vào việc các kiến trúc khác nhau thực sự quản lý bộ nhớ như thế nào. Các module (module) không tham gia vào các vấn đề phân đoạn (segmentation), phân trang (paging), v.v., vì kernel cung cấp một giao diện quản lý bộ nhớ thống nhất cho các driver. Thêm vào đó, chúng ta sẽ không mô tả các chi tiết bên trong của việc quản lý bộ nhớ trong chương này, mà để dành nó cho Chương 15.
 
@@ -10,9 +10,11 @@ Bộ máy cấp phát *kmalloc* là một công cụ mạnh mẽ và dễ học 
 
 Hãy nhớ rằng nguyên mẫu (prototype) cho *kmalloc* là:
 
+```c
 ## include <linux/slab.h>
 
-void \*kmalloc(size\_t size, int flags);
+void *kmalloc(size_t size, int flags);
+```
 
 Trong số những điều khác, điều này ngụ ý rằng bạn nên chủ động xóa sạch bất kỳ bộ nhớ nào có thể bị lộ ra không gian người dùng (user space) hoặc được ghi vào thiết bị; nếu không, bạn có nguy cơ làm rò rỉ thông tin vốn dĩ phải được giữ kín.
 
@@ -106,7 +108,7 @@ Có giới hạn trên cho kích thước của các khối bộ nhớ có thể
 
 ## Lookaside Cache (Lookaside Caches)
 
-Một trình điều khiển thiết bị (device driver) thường kết thúc bằng việc cấp phát nhiều đối tượng có cùng kích thước, lặp đi lặp lại. Cho rằng kernel đã duy trì sẵn một tập hợp các pool bộ nhớ gồm các đối tượng có cùng kích thước, tại sao không thêm một số pool đặc biệt cho các đối tượng có tần suất sử dụng cao này? Trên thực tế, kernel thực sự cài đặt một cơ sở hạ tầng (facility) để tạo ra loại pool này, thường được gọi là *lookaside cache*. Các device driver thông thường không biểu hiện loại hành vi bộ nhớ giustify (biện minh) cho việc sử dụng lookaside cache, nhưng vẫn có các ngoại lệ; các driver USB và SCSI trong Linux 2.6 có sử dụng các cache.
+Một trình điều khiển thiết bị (device driver) thường kết thúc bằng việc cấp phát nhiều đối tượng có cùng kích thước, lặp đi lặp lại. Cho rằng kernel đã duy trì sẵn một tập hợp các pool bộ nhớ gồm các đối tượng có cùng kích thước, tại sao không thêm một số pool đặc biệt cho các đối tượng có tần suất sử dụng cao này? Trên thực tế, kernel thực sự cài đặt một cơ sở hạ tầng (facility) để tạo ra loại pool này, thường được gọi là *lookaside cache*. Các device driver thông thường không biểu hiện loại hành vi sử dụng bộ nhớ đủ để biện minh cho việc dùng lookaside cache, nhưng vẫn có các ngoại lệ; các driver USB và SCSI trong Linux 2.6 có sử dụng các cache này.
 
 Trình quản lý cache trong Linux kernel đôi khi được gọi là "slab allocator". Vì lý do đó, các hàm và kiểu dữ liệu của nó được khai báo trong *<linux/slab.h>*. Slab allocator cài đặt các cache có kiểu là kmem\_cache\_t; chúng được tạo bằng lời gọi hàm *kmem\_cache\_create*:
 
@@ -223,7 +225,7 @@ Sự khác biệt chính khi chuyển từ *scull* sang *scullc* là cải thi�
 
 ### Memory Pools (Vùng nhớ đệm)
 
-Có những nơi trong nhân hệ điều hành (kernel) mà các thao tác cấp phát bộ nhớ (memory allocation) không được phép thất bại. Để đảm bảo việc cấp phát trong các tình huống đó, các nhà phát triển kernel đã tạo ra mộtừu tượng hóa (abstraction) được gọi là *memory pool* (hoặc "mempool"). Memory pool thực chất chỉ là một dạng của lookaside cache luôn cố gắng duy trì sẵn một danh sách bộ nhớ trống để sử dụng trong các trường hợp khẩn cấp (emergency).
+Có những nơi trong nhân hệ điều hành (kernel) mà các thao tác cấp phát bộ nhớ (memory allocation) không được phép thất bại. Để đảm bảo việc cấp phát trong các tình huống đó, các nhà phát triển kernel đã tạo ra một sự trừu tượng hóa (abstraction) được gọi là *memory pool* (hoặc "mempool"). Memory pool thực chất chỉ là một dạng của lookaside cache luôn cố gắng duy trì sẵn một danh sách bộ nhớ trống để sử dụng trong các trường hợp khẩn cấp (emergency).
 
 Một memory pool có kiểu `mempool_t` (được định nghĩa trong *<linux/mempool.h>*); bạn có thể tạo một pool bằng hàm *mempool_create*:
 
@@ -353,7 +355,7 @@ for (i = 0; i < qset; i++)
 
 Ở tầng người dùng (user level), sự khác biệt cảm nhận được chủ yếu là sự cải thiện về tốc độ và việc sử dụng bộ nhớ tốt hơn, bởi vì không có hiện tượng phân mảnh nội bộ (internal fragmentation) của bộ nhớ. Chúng tôi đã chạy một số thử nghiệm sao chép 4 MB từ *scull0* sang *scull1* và sau đó từ *scullp0* sang *scullp1*; kết quả cho thấy một sự cải thiện nhỏ trong việc sử dụng bộ xử lý ở không gian kernel (kernel-space processor usage).
 
-Sự cải thiện hiệu năng không quá kịch tính, bởi vì `kmalloc` được thiết kế để hoạt động nhanh. Lợi ích chính của việc cấp phát ở cấp độ trang không thực sự là tốc độ, mà là việc sử dụng bộ nhớ hiệu quả hơn. Việc cấp phát theo trang không làm lãng phí bộ nhớ, trong khi việc sử dụng `kmalloc` làm lãng phí một lượng bộ nhớ không thể đoán trước do tính chiết trung của việc cấp phát (allocation granularity).
+Sự cải thiện hiệu năng không quá kịch tính, bởi vì `kmalloc` được thiết kế để hoạt động nhanh. Lợi ích chính của việc cấp phát ở cấp độ trang không thực sự là tốc độ, mà là việc sử dụng bộ nhớ hiệu quả hơn. Việc cấp phát theo trang không làm lãng phí bộ nhớ, trong khi việc sử dụng `kmalloc` làm lãng phí một lượng bộ nhớ không thể đoán trước do độ mịn của kích thước cấp phát (allocation granularity).
 
 Nhưng ưu điểm lớn nhất của các hàm `__get_free_page` là các trang nhận được hoàn toàn thuộc về bạn, và về lý thuyết, bạn có thể tập hợp các trang thành một vùng tuyến tính (linear area) bằng cách tinh chỉnh phù hợp các bảng trang (page tables). Ví dụ, bạn có thể cho phép một tiến trình người dùng thực hiện `mmap` các vùng bộ nhớ lấy được dưới dạng các trang đơn lẻ không liên quan đến nhau. Chúng ta sẽ thảo luận về loại thao tác này trong Chương 15, nơi chúng tôi trình bày cách *scullp* cung cấp tính năng ánh xạ bộ nhớ (memory mapping), thứ mà *scull* không thể cung cấp.
 
@@ -403,9 +405,9 @@ Chúng tôi mô tả *vmalloc* ở đây vì nó là một trong những cơ ch�
 ```c
 ## include <linux/vmalloc.h>
 void *vmalloc(unsigned long size);
-void vfree(void * addr);
+void vfree(void *addr);
 void *ioremap(unsigned long offset, unsigned long size);
-void iounmap(void * addr);
+void iounmap(void *addr);
 ```
 
 Cần nhấn mạnh rằng các địa chỉ bộ nhớ do *kmalloc* và *\_\_get\_free\_pages* trả về cũng là các địa chỉ ảo. Giá trị thực tế của chúng vẫn được xử lý bởi MMU (đơn vị quản lý bộ nhớ - memory management unit, thường là một phần của CPU) trước khi được sử dụng để truy cập bộ nhớ vật lý.\* *vmalloc* không khác biệt ở cách nó sử dụng phần cứng, mà khác ở cách kernel thực hiện tác vụ cấp phát.
@@ -577,7 +579,7 @@ Khi kernel khởi động, nó có quyền truy cập vào toàn bộ bộ nhớ
 
 Việc cấp phát bộ nhớ lúc khởi động được thực hiện bằng cách gọi một trong các hàm sau:
 
-```
+```c
 ## include <linux/bootmem.h>
 void *alloc_bootmem(unsigned long size);
 void *alloc_bootmem_low(unsigned long size);
@@ -601,7 +603,7 @@ Nếu bạn buộc phải sử dụng việc cấp phát lúc khởi động, b�
 
 Các hàm và ký hiệu liên quan đến việc cấp phát bộ nhớ bao gồm:
 
-```
+```c
 ## include <linux/slab.h>
 void *kmalloc(size_t size, int flags);
 void kfree(void *obj);

@@ -1,9 +1,10 @@
-# Chương 1: LỊCH SỬ VÀ CÁC TIÊU CHUẨN
+# Chương 1: Lịch sử và Tiêu chuẩn (History and Standards)
 
 Linux là một thành viên trong dòng hệ điều hành (operating system) họ UNIX. Trong ngành khoa học máy tính, UNIX có lịch sử lâu đời. Phần đầu tiên của chương này cung cấp một bản tóm tắt ngắn gọn về lịch sử đó. Chúng ta bắt đầu với phần mô tả về nguồn gốc của hệ thống UNIX và ngôn ngữ lập trình C, sau đó xem xét hai dòng chảy chính dẫn đến hệ thống Linux như hiện nay: dự án GNU và quá trình phát triển nhân Linux (Linux kernel).
 
 Một trong những đặc điểm nổi bật của hệ thống UNIX là việc phát triển của nó không bị kiểm soát bởi một nhà cung cấp hay tổ chức đơn lẻ nào. Thay vào đó, rất nhiều nhóm, cả thương mại lẫn phi thương mại, đã đóng góp vào sự tiến hóa của nó. Lịch sử này dẫn đến việc có nhiều tính năng đổi mới được thêm vào UNIX, nhưng cũng mang lại hệ lụy tiêu cực là các bản cài đặt UNIX phân kỳ theo thời gian, khiến cho việc viết các ứng dụng chạy được trên mọi bản cài đặt UNIX trở nên ngày càng khó khăn. Điều này thúc đẩy nhu cầu chuẩn hóa các bản cài đặt UNIX, vấn đề mà chúng ta sẽ thảo luận ở phần thứ hai của chương này.
 
+> [!NOTE]
 > Có hai định nghĩa về thuật ngữ UNIX được sử dụng phổ biến. Một trong số đó chỉ các hệ điều hành đã vượt qua các bài kiểm tra sự tương thích chính thức cho Đặc tả UNIX Đơn (Single UNIX Specification) và do đó được chính thức cấp quyền mang nhãn hiệu "UNIX" bởi The Open Group (đơn vị nắm giữ thương hiệu UNIX). Tại thời điểm viết bài này, chưa có bản cài đặt UNIX miễn phí nào (ví dụ: Linux và FreeBSD) đạt được nhãn hiệu này.
 
 Ý nghĩa phổ biến thứ hai gắn liền với thuật ngữ UNIX chỉ các hệ thống trông và hành xử giống như các hệ thống UNIX cổ điển (tức là hệ thống UNIX gốc của Bell Laboratories và các nhánh chính sau đó của nó là System V và BSD). Theo định nghĩa này, Linux thường được coi là một hệ thống UNIX (giống như các hệ thống BSD hiện đại). Mặc dù chúng ta dành sự quan tâm sát sao đến Đặc tả UNIX Đơn (Single UNIX Specification) trong cuốn sách này, chúng ta sẽ tuân theo định nghĩa thứ hai về UNIX này, do đó chúng ta sẽ thường xuyên nói những câu như "Linux, giống như các bản cài đặt UNIX khác. . ."
@@ -14,7 +15,7 @@ Bản cài đặt UNIX đầu tiên được phát triển vào năm 1969 (cùng
 
 Vào năm 1970, UNIX được viết lại bằng hợp ngữ (assembly language) cho dòng máy tính mini Digital PDP-11 vừa mới được trang bị, lúc bấy giờ là một cỗ máy mới và mạnh mẽ.
 
-``` Dấu tích của di sản PDP-11 này có thể được tìm thấy ở nhiều cái tên khác nhau vẫn đang được sử dụng trên hầu hết các bản cài đặt UNIX, bao gồm cả Linux.
+Dấu tích của di sản PDP-11 này có thể được tìm thấy ở nhiều cái tên khác nhau vẫn đang được sử dụng trên hầu hết các bản cài đặt UNIX, bao gồm cả Linux.
 
 Một thời gian ngắn sau đó, Dennis Ritchie, một đồng nghiệp của Thompson tại Bell Laboratories đồng thời là cộng sự ban đầu trong dự án UNIX, đã thiết kế và cài đặt ngôn ngữ lập trình C. Đây là một quá trình tiến hóa; C kế thừa từ một ngôn ngữ thông dịch trước đó là B. Ngôn ngữ B ban đầu do Thompson cài đặt và đúc kết nhiều ý tưởng từ một ngôn ngữ lập trình còn cũ hơn nữa có tên là BCPL. Đến năm 1973, ngôn ngữ C đã trưởng thành đến mức nhân UNIX (UNIX kernel) có thể được viết lại hầu như hoàn toàn bằng ngôn ngữ mới này. Do đó, UNIX đã trở thành một trong những hệ điều hành đầu tiên được viết bằng ngôn ngữ bậc cao (high-level language), một thực tế giúp cho việc chuyển dịch (porting) sang các kiến trúc phần cứng khác trở nên khả thi sau này.
 
@@ -44,6 +45,7 @@ Tháng 1 năm 1979 chứng kiến sự ra mắt của phiên bản Seventh Editi
 Thompson đã dành năm học 1975/1976 làm giáo sư thỉnh giảng tại Đại học California tại Berkeley, trường đại học mà ông đã tốt nghiệp. Tại đây, ông đã làm việc với một số nghiên cứu sinh, bổ sung nhiều tính năng mới cho UNIX. (Một trong những sinh viên này, Bill Joy, sau đó đã đồng sáng lập Sun Microsystems, một đơn vị gia nhập sớm vào thị trường trạm làm việc UNIX). Theo thời gian, nhiều công cụ và tính năng mới đã được phát triển tại Berkeley, bao gồm C shell, trình soạn thảo vi, hệ thống tập tin được cải tiến (Berkeley Fast File System), sendmail, trình biên dịch Pascal và quản lý bộ nhớ ảo (virtual memory management) trên kiến trúc Digital VAX mới.
 
 Dưới tên gọi Berkeley Software Distribution (BSD), phiên bản UNIX này, bao gồm cả mã nguồn (source code), đã được phân phối rộng rãi. Bản phát hành đầy đủ đầu tiên là 3BSD vào tháng 12 năm 1979.
+
 ``` (Các bản phát hành trước đó từ Berkeley—BSD và 2BSD là các bản phân phối gồm các công cụ mới được sản xuất tại Berkeley, chứ không phải là các bản phân phối UNIX hoàn chỉnh).
 
 Năm 1983, Nhóm Nghiên cứu Hệ thống Máy tính (Computer Systems Research Group) tại Đại học California tại Berkeley đã phát hành 4.2BSD. Bản phát hành này rất quan trọng vì nó chứa một bản cài đặt TCP/IP hoàn chỉnh, bao gồm giao diện lập trình ứng dụng (API) socket và nhiều loại công cụ mạng khác nhau. 4.2BSD và phiên bản tiền nhiệm 4.1BSD đã được phân phối rộng rãi tại các trường đại học trên toàn thế giới. Chúng cũng tạo cơ sở cho SunOS (được phát hành lần đầu vào năm 1983), biến thể UNIX do Sun thương mại hóa. Các bản phát hành BSD quan trọng khác là 4.3BSD vào năm 1986 và bản phát hành cuối cùng, 4.4BSD, vào năm 1993.
@@ -68,15 +70,17 @@ Stallman đã đấu tranh chống lại các hạn chế pháp lý do các nhà
 
 ```, bao gồm một kernel (nhân) và tất cả các gói phần mềm liên quan, đồng thời khuyến khích những người khác tham gia cùng ông. Năm 1985, Stallman thành lập Quỹ Phần mềm Tự do (Free Software Foundation - FSF), một tổ chức phi lợi nhuận để hỗ trợ dự án GNU cũng như sự phát triển của phần mềm tự do nói chung.
 
+> [!NOTE]
 > Khi dự án GNU được khởi xướng, BSD không được tự do theo nghĩa mà Stallman muốn nói. Việc sử dụng BSD vẫn yêu cầu giấy phép từ AT&T, và người dùng không thể tự do sửa đổi và phân phối lại mã nguồn AT&T vốn là một phần của BSD.
 
 Một trong những kết quả quan trọng của dự án GNU là sự phát triển của Giấy phép Công cộng GNU (GNU General Public License - GPL), sự thể hiện về mặt pháp lý cho quan niệm của Stallman về phần mềm tự do. Phần lớn phần mềm trong một bản phân phối Linux (Linux distribution), bao gồm cả kernel, được cấp phép theo GPL hoặc một trong số các giấy phép tương tự. Phần mềm được cấp phép theo GPL phải được cung cấp ở dạng mã nguồn và phải được tự do phân phối lại theo các điều kiện của GPL. Các sửa đổi đối với phần mềm được cấp phép GPL được phép thực hiện tự do, nhưng bất kỳ việc phân phối nào đối với phần mềm đã sửa đổi đó cũng phải tuân theo các điều kiện của GPL. Nếu phần mềm đã sửa đổi được phân phối ở dạng thực thi (executable form), tác giả cũng phải cho phép bất kỳ người nhận nào tùy chọn nhận mã nguồn đã sửa đổi với chi phí không vượt quá chi phí phân phối. Phiên bản đầu tiên của GPL được phát hành vào năm 1989. Phiên bản hiện tại của giấy phép, phiên bản 3, được phát hành vào năm 2007. Phiên bản 2 của giấy phép, được phát hành vào năm 1991, vẫn được sử dụng rộng rãi và là giấy phép được sử dụng cho Linux kernel. (Các cuộc thảo luận về các giấy phép phần mềm tự do khác nhau có thể được tìm thấy trong [St. Laurent, 2004] và [Rosen, 2005].)
 
 Ban đầu, dự án GNU không tạo ra một UNIX kernel hoạt động được, nhưng lại tạo ra rất nhiều chương trình khác. Vì các chương trình này được thiết kế để chạy trên một hệ điều hành giống UNIX, nên chúng có thể (và thực tế đã) được sử dụng trên các bản triển khai UNIX hiện có, và trong một số trường hợp, thậm chí còn được port (chuyển mã) sang các hệ điều hành khác.
-``` Trong số các chương trình nổi tiếng hơn do dự án GNU tạo ra có trình soạn thảo văn bản Emacs, GCC (ban đầu là GNU C compiler, nhưng nay được đổi tên thành GNU compiler collection, bao gồm các trình biên dịch cho C, C++, và các ngôn ngữ khác), bash shell, và glibc (thư viện GNU C library).
+Trong số các chương trình nổi tiếng hơn do dự án GNU tạo ra có trình soạn thảo văn bản Emacs, GCC (ban đầu là GNU C compiler, nhưng nay được đổi tên thành GNU compiler collection, bao gồm các trình biên dịch cho C, C++, và các ngôn ngữ khác), bash shell, và glibc (thư viện GNU C library).
 
 Đến đầu những năm 1990, dự án GNU đã tạo ra một hệ thống gần như hoàn chỉnh, ngoại trừ một thành phần quan trọng: một UNIX kernel hoạt động được. Dự án GNU đã bắt đầu công việc thiết kế một kernel đầy tham vọng, được biết đến với tên gọi GNU/HURD, dựa trên microkernel Mach. Tuy nhiên, HURD còn lâu mới đạt được trạng thái có thể phát hành được. (Vào thời điểm viết bài này, công việc vẫn đang tiếp tục trên HURD, hiện chỉ chạy trên kiến trúc x86-32.)
 
+> [!NOTE]
 > Vì một phần đáng kể mã nguồn chương trình tạo nên cái thường được gọi là hệ thống Linux thực chất bắt nguồn từ dự án GNU, Stallman thích sử dụng thuật ngữ GNU/Linux để chỉ toàn bộ hệ thống. Vấn đề đặt tên (Linux thay vì GNU/Linux) là nguồn gốc của một số tranh luận trong cộng đồng phần mềm tự do. Vì cuốn sách này chủ yếu đề cập đến API của Linux kernel, chúng ta sẽ thường sử dụng thuật ngữ Linux.
 
 Mọi thứ đã sẵn sàng. Tất cả những gì cần thiết chỉ là một kernel hoạt động được đi kèm với hệ thống UNIX vốn đã hoàn chỉnh do dự án GNU sản xuất.
@@ -87,6 +91,7 @@ Năm 1991, Linus Torvalds, một sinh viên người Phần Lan tại Đại h�
 
 Do đó, Torvalds đã bắt đầu một dự án tạo ra một UNIX kernel hiệu quả, đầy đủ tính năng để chạy trên 386. Trong vài tháng, Torvalds đã phát triển một kernel cơ bản cho phép anh biên dịch và chạy các chương trình GNU khác nhau. Sau đó, vào ngày 5 tháng 10 năm 1991, Torvalds đã kêu gọi sự giúp đỡ từ các lập trình viên khác, đưa ra thông báo (được trích dẫn rất nhiều kể từ đó) về phiên bản 0.02 của kernel do anh viết trên nhóm tin Usenet `comp.os.minix`:
 
+> [!NOTE]
 > Bạn có khao khát những ngày tháng tuyệt đẹp của Minix-1.1, khi các trang nam nhi tự tay viết trình điều khiển thiết bị (device driver) của riêng họ không? Bạn đang không có dự án thú vị nào và rất muốn thử sức với một hệ điều hành mà bạn có thể cố gắng sửa đổi cho nhu cầu của mình? Bạn có cảm thấy bực bội khi mọi thứ đều hoạt động suôn sẻ trên Minix? Không còn những đêm thức trắng để làm cho một chương trình hay ho hoạt động nữa ư? Vậy thì bài viết này có thể là dành cho bạn. Như tôi đã đề cập cách đây một tháng, tôi đang làm việc trên một phiên bản miễn phí giống Minix dành cho máy tính AT-386. Cuối cùng nó đã đạt đến giai đoạn có thể sử dụng được (dù có thể không tùy thuộc vào những gì bạn muốn), và tôi sẵn sàng phát hành mã nguồn để phân phối rộng rãi hơn. Nó mới chỉ là phiên bản 0.02 . . . nhưng tôi đã chạy thành công bash, gcc, gnu-make, gnu-sed, compress, v.v. trên đó.
 
 Theo truyền thống lâu đời là đặt tên cho các bản sao UNIX kết thúc bằng chữ cái X, kernel (cuối cùng) đã được rửa tội bằng cái tên Linux. Ban đầu, Linux được đặt dưới một giấy phép hạn chế hơn, nhưng Torvalds nhanh chóng cung cấp nó dưới giấy phép GNU GPL.
@@ -99,7 +104,7 @@ Cũng cần lưu ý rằng một hệ điều hành UNIX tự do khác đã có 
 
 Sau làn sóng thành công và nổi tiếng ban đầu, công việc phát triển 386/BSD đã chậm lại vì nhiều lý do. Trước số lượng các bản vá (patch) tồn đọng ngày càng lớn, hai nhóm phát triển thay thế đã sớm xuất hiện, tạo ra các bản phát hành của riêng họ dựa trên 386/BSD: NetBSD, chú trọng tính khả chuyển (portability) trên nhiều nền tảng phần cứng rộng lớn, và FreeBSD, chú trọng hiệu năng và là hệ điều hành họ BSD phổ biến nhất hiện nay.
 
-``` Bản phát hành NetBSD đầu tiên là 0.8, vào tháng 4 năm 1993. Đĩa CD-ROM FreeBSD đầu tiên (phiên bản 1.0) xuất hiện vào tháng 12 năm 1993. Một hệ thống BSD khác, OpenBSD, xuất hiện vào năm 1996 (với phiên bản đầu tiên được đánh số 2.0) sau khi tách nhánh (fork) từ dự án NetBSD. OpenBSD nhấn mạnh tính bảo mật. Vào giữa năm 2003, một hệ thống BSD mới, DragonFly BSD, đã xuất hiện sau khi tách nhánh từ FreeBSD 4.x. DragonFly BSD áp dụng một cách tiếp cận khác với FreeBSD 5.x liên quan đến thiết kế cho các kiến trúc đa xử lý đối xứng (symmetric multiprocessing - SMP).
+Bản phát hành NetBSD đầu tiên là 0.8, vào tháng 4 năm 1993. Đĩa CD-ROM FreeBSD đầu tiên (phiên bản 1.0) xuất hiện vào tháng 12 năm 1993. Một hệ thống BSD khác, OpenBSD, xuất hiện vào năm 1996 (với phiên bản đầu tiên được đánh số 2.0) sau khi tách nhánh (fork) từ dự án NetBSD. OpenBSD nhấn mạnh tính bảo mật. Vào giữa năm 2003, một hệ thống BSD mới, DragonFly BSD, đã xuất hiện sau khi tách nhánh từ FreeBSD 4.x. DragonFly BSD áp dụng một cách tiếp cận khác với FreeBSD 5.x liên quan đến thiết kế cho các kiến trúc đa xử lý đối xứng (symmetric multiprocessing - SMP).
 
 Có lẽ không một cuộc thảo luận nào về các hệ thống BSD vào đầu những năm 1990 là trọn vẹn nếu không nhắc đến các vụ kiện tụng giữa UNIX System Laboratories (USL, công ty con của AT&T được tách ra để phát triển và thương mại hóa UNIX) và Đại học Berkeley. Đầu năm 1992, công ty Berkeley Software Design, Incorporated (BSDi, ngày nay là một phần của Wind River) bắt đầu phân phối một hệ thống BSD UNIX có sự hỗ trợ thương mại, mang tên BSD/OS, dựa trên bản phát hành Net/2 và các bổ sung 386/BSD của gia đình Jolitz. BSDi phân phối các bản dịch nhị phân (binary) và mã nguồn (source code) với giá 995 đô la Mỹ, đồng thời khuyên các khách hàng tiềm năng sử dụng số điện thoại 1-800-ITS-UNIX của họ.
 
@@ -123,12 +128,13 @@ Các chương sau đôi khi sẽ lưu ý về phiên bản nhân trong đó mộ
 
 Đối với các thay đổi xuất hiện trong chuỗi nhân 2.6.z, chúng tôi ghi chú chính xác phiên bản nhân. Khi chúng tôi nói rằng một tính năng là mới trong nhân 2.6, mà không có số hiệu phiên bản z, ý chúng tôi là một tính năng được triển khai trong chuỗi nhân phát triển 2.5 và lần đầu tiên xuất hiện trong nhân ổn định ở phiên bản 2.6.0.
 
+> [!NOTE]
 > Tại thời điểm viết bài này, nhân Linux ổn định 2.4 vẫn được hỗ trợ bởi các nhà bảo trì (maintainer), những người kết hợp các bản vá thiết yếu và sửa lỗi, đồng thời định kỳ phát hành các bản sửa đổi mới. Điều này cho phép các hệ thống đã cài đặt tiếp tục sử dụng nhân 2.4, thay vì bị buộc phải nâng cấp lên một chuỗi nhân mới (điều này có thể đòi hỏi khối lượng công việc đáng kể trong một số trường hợp).
 
 ### Các bản port sang các kiến trúc phần cứng khác (Ports to other hardware architectures)
 
 Trong quá trình phát triển ban đầu của Linux, việc triển khai hiệu quả trên Intel 80386 là mục tiêu hàng đầu, chứ không phải tính khả chuyển (portability) sang các kiến trúc bộ xử lý khác.
-``` Tuy nhiên, với sự phổ biến ngày càng tăng của Linux, các bản port sang các kiến trúc bộ xử lý khác bắt đầu xuất hiện, bắt đầu bằng một bản port sớm lên chip Digital Alpha. Danh sách các kiến trúc phần cứng mà Linux đã được port sang vẫn tiếp tục tăng lên và bao gồm x86-64, Motorola/IBM PowerPC và PowerPC64, Sun SPARC và SPARC64 (UltraSPARC), MIPS, ARM (Acorn), IBM zSeries (trước đây là System/390), Intel IA-64 (Itanium; xem [Mosberger & Eranian, 2002]), Hitachi SuperH, HP PA-RISC và Motorola 68000.
+Tuy nhiên, với sự phổ biến ngày càng tăng của Linux, các bản port sang các kiến trúc bộ xử lý khác bắt đầu xuất hiện, bắt đầu bằng một bản port sớm lên chip Digital Alpha. Danh sách các kiến trúc phần cứng mà Linux đã được port sang vẫn tiếp tục tăng lên và bao gồm x86-64, Motorola/IBM PowerPC và PowerPC64, Sun SPARC và SPARC64 (UltraSPARC), MIPS, ARM (Acorn), IBM zSeries (trước đây là System/390), Intel IA-64 (Itanium; xem [Mosberger & Eranian, 2002]), Hitachi SuperH, HP PA-RISC và Motorola 68000.
 
 ### Các bản phân phối Linux (Linux distributions)
 
@@ -140,7 +146,7 @@ Các bản phân phối sớm nhất xuất hiện vào năm 1992, bao gồm MCC
 
 Vào cuối những năm 1980, sự đa dạng của các phiên bản UNIX (UNIX implementations) cũng đi kèm với những nhược điểm của chúng. Một số phiên bản UNIX dựa trên BSD, một số khác dựa trên System V, và một số kết hợp các tính năng từ cả hai biến thể này. Hơn nữa, mỗi nhà cung cấp thương mại lại bổ sung thêm các tính năng riêng cho phiên bản của mình. Hậu quả là việc di chuyển phần mềm và nhân sự từ hệ thống UNIX này sang hệ thống UNIX khác ngày càng trở nên khó khăn hơn. Tình hình này tạo ra áp lực mạnh mẽ đối với việc tiêu chuẩn hóa ngôn ngữ lập trình C và hệ thống UNIX, để các ứng dụng có thể dễ dàng được port (chuyển đổi nền tảng) từ hệ thống này sang hệ thống khác.
 
-``` Bây giờ chúng ta sẽ xem xét các tiêu chuẩn xuất hiện từ nhu cầu đó.
+Bây giờ chúng ta sẽ xem xét các tiêu chuẩn xuất hiện từ nhu cầu đó.
 
 ### 1.3.1 Ngôn ngữ lập trình C
 
@@ -151,6 +157,7 @@ Những yếu tố này đã tạo ra động lực thúc đẩy tiêu chuẩn h
 Một bản sửa đổi của tiêu chuẩn C đã được ISO thông qua vào năm 1999 (ISO/IEC 9899:1999; xem http://www.open-std.org/jtc1/sc22/wg14/www/standards). Tiêu chuẩn này thường được gọi là C99 và bao gồm một loạt thay đổi đối với ngôn ngữ cũng như thư viện chuẩn của nó. Những thay đổi này bao gồm việc bổ sung các kiểu dữ liệu `long long` và Boolean, các chú thích kiểu C++ (`//`), con trỏ hạn chế (restricted pointers), và mảng có độ dài biến đổi (variable-length arrays). (Vào thời điểm viết bài này, công việc đang được tiến hành cho một bản sửa đổi tiếp theo của tiêu chuẩn C, có tên không chính thức là C1X. Tiêu chuẩn mới dự kiến sẽ được thông qua vào năm 2011.)
 
 Các tiêu chuẩn C độc lập với chi tiết của bất kỳ hệ điều hành nào; nghĩa là chúng không gắn liền với hệ thống UNIX. Điều này có nghĩa là các chương trình C được viết chỉ sử dụng thư viện chuẩn C sẽ có tính khả chuyển (portable) sang bất kỳ máy tính và hệ điều hành nào cung cấp một bản triển khai C (C implementation).
+
 ```
 
 > Về mặt lịch sử, C89 thường được gọi là ANSI C, và thuật ngữ này đôi khi vẫn được sử dụng với ý nghĩa đó. Ví dụ, `gcc` sử dụng ý nghĩa đó; bộ định danh `-ansi` của nó có nghĩa là "hỗ trợ tất cả các chương trình ISO C90." Tuy nhiên, chúng tôi tránh dùng thuật ngữ này vì hiện tại nó có phần mơ hồ. Kể từ khi ủy ban ANSI thông qua bản sửa đổi C99, nói một cách chính xác, ANSI C hiện tại chính là C99.
@@ -269,49 +276,51 @@ Tình hình liên quan đến các tiêu chuẩn mạng khá phức tạp. Các 
 Song song với sự phát triển của POSIX 1003.1g, X/Open cũng đang phát triển Đặc tả Mạng X/Open (X/Open Networking Specification - XNS). Phiên bản đầu tiên của đặc tả này, XNS Issue 4, là một phần của phiên bản Single UNIX Specification đầu tiên. Nó được kế thừa bởi XNS Issue 5, vốn tạo thành một phần của SUSv2. XNS Issue 5 về cơ bản giống với bản thảo hiện hành lúc bấy giờ (6.6) của POSIX.1g. Tiếp theo đó là XNS Issue 5.2, khác với XNS Issue 5 và tiêu chuẩn POSIX.1g đã được phê chuẩn ở chỗ nó đánh dấu API XTI là lỗi thời và bổ sung sự hỗ trợ cho Internet Protocol phiên bản 6 (IPv6) (vốn đang được thiết kế vào giữa những năm 1990). XNS Issue 5.2 đã tạo cơ sở cho nội dung phần mạng được đưa vào SUSv3, và do đó hiện tại đã bị thay thế. Vì các lý do tương tự, POSIX.1g đã bị rút lại dưới dạng một tiêu chuẩn ngay sau khi nó được phê chuẩn.
 
 ```mermaid
-flowchart TD
-    posix88["POSIX.1<br>(1988, IEEE)<br>[POSIX 1003.1]"]
-    ansic["ANSI C<br>(1989)<br>[C89, ISO C 90]"]
-    posix90["POSIX.1<br>(1990, ISO)"]
-    xpg3["XPG3<br>(1989)"]
-    posix2["POSIX.2<br>(1992)<br>Shell & Tiện ích"]
-    xpg4["XPG4<br>(1992)"]
-    posix1b["POSIX.1b<br>(1993)<br>Thời gian thực"]
-    posix1c["POSIX.1c<br>(1995)<br>Luồng (Threads)"]
-    posix1g["POSIX.1g<br>(2000)<br>Sockets"]
-    xns["XNS<br>(4, 5, 5.2)"]
-    xpg4v2["XPG4v2<br>(1994)<br>[SUS, UNIX<br>95, Spec 1170]"]
-    posix96["POSIX.1<br>(1996, ISO)"]
-    susv2["SUSv2<br>(1997)<br>[UNIX 98,<br>XPG5]"]
-    posix1d["POSIX.1d<br>(1999)<br>Các phần mở rộng<br>thời gian thực bổ sung"]
-    posix1j["POSIX.1j<br>(2000)<br>Các phần mở rộng<br>thời gian thực nâng cao"]
-    isoc99["ISO C 99<br>(1999)"]
-    susv3["POSIX.1-2001 / SUSv3<br>(2001, Austin CSRG)<br>[UNIX 03]"]
-    susv4["POSIX.1-2008 / SUSv4<br>(2008, Austin CSRG)"]
 
-    posix88 --> ansic
-    posix88 --> posix90
-    posix88 -.-> xpg3
-    ansic -.-> xpg3
-    xpg3 --> xpg4
-    posix90 --> posix1b
-    posix90 -.-> xpg4
-    posix2 -.-> xpg4
-    xpg4 --> xpg4v2
-    posix1b --> posix96
-    posix1c --> posix96
-    posix1g -.-> susv3
-    xns --> xpg4v2
-    xpg4v2 --> susv2
-    posix96 --> posix1d
-    posix96 --> posix1j
-    posix96 -.-> susv2
-    susv2 -.-> susv3
-    posix1d --> susv3
-    posix1j --> susv3
-    isoc99 -.-> susv3
-    posix96 -.-> susv3
-    susv3 --> susv4
+flowchart TD
+posix88["POSIX.1<br>(1988, IEEE)<br>[POSIX 1003.1]"]
+ansic["ANSI C<br>(1989)<br>[C89, ISO C 90]"]
+posix90["POSIX.1<br>(1990, ISO)"]
+xpg3["XPG3<br>(1989)"]
+posix2["POSIX.2<br>(1992)<br>Shell & Tiện ích"]
+xpg4["XPG4<br>(1992)"]
+posix1b["POSIX.1b<br>(1993)<br>Thời gian thực"]
+posix1c["POSIX.1c<br>(1995)<br>Luồng (Threads)"]
+posix1g["POSIX.1g<br>(2000)<br>Sockets"]
+xns["XNS<br>(4, 5, 5.2)"]
+xpg4v2["XPG4v2<br>(1994)<br>[SUS, UNIX<br>95, Spec 1170]"]
+posix96["POSIX.1<br>(1996, ISO)"]
+susv2["SUSv2<br>(1997)<br>[UNIX 98,<br>XPG5]"]
+posix1d["POSIX.1d<br>(1999)<br>Các phần mở rộng<br>thời gian thực bổ sung"]
+posix1j["POSIX.1j<br>(2000)<br>Các phần mở rộng<br>thời gian thực nâng cao"]
+isoc99["ISO C 99<br>(1999)"]
+susv3["POSIX.1-2001 / SUSv3<br>(2001, Austin CSRG)<br>[UNIX 03]"]
+susv4["POSIX.1-2008 / SUSv4<br>(2008, Austin CSRG)"]
+
+posix88 --> ansic
+posix88 --> posix90
+posix88 -.-> xpg3
+ansic -.-> xpg3
+xpg3 --> xpg4
+posix90 --> posix1b
+posix90 -.-> xpg4
+posix2 -.-> xpg4
+xpg4 --> xpg4v2
+posix1b --> posix96
+posix1c --> posix96
+posix1g -.-> susv3
+xns --> xpg4v2
+xpg4v2 --> susv2
+posix96 --> posix1d
+posix96 --> posix1j
+posix96 -.-> susv2
+susv2 -.-> susv3
+posix1d --> susv3
+posix1j --> susv3
+isoc99 -.-> susv3
+posix96 -.-> susv3
+susv3 --> susv4
+
 ```
 
 **Hình 1-1:** Mối quan hệ giữa các tiêu chuẩn UNIX và C khác nhau
@@ -320,9 +329,8 @@ flowchart TD
 
 Ngoài các tiêu chuẩn do các nhóm độc lập hoặc đa bên xây dựng, đôi khi người ta còn tham chiếu đến hai tiêu chuẩn triển khai được xác định bởi bản phát hành BSD cuối cùng (4.4BSD) và System V Release 4 (SVR4) của AT&T. Tiêu chuẩn triển khai sau được chính thức hóa thông qua việc AT&T công bố Tài liệu Định nghĩa Giao diện System V (System V Interface Definition - SVID). Vào năm 1989, AT&T đã xuất bản Phiên bản 3 (Issue 3) của SVID, trong đó xác định giao diện mà một hệ thống triển khai UNIX phải cung cấp để có thể tự nhận là System V Release 4. (SVID có sẵn trực tuyến tại http://www.sco.com/developers/devspecs/).
 
+> [!NOTE]
 > Do hành vi của một số system call và hàm thư viện có sự khác biệt giữa SVR4 và BSD, nhiều bản triển khai UNIX cung cấp các thư viện tương thích (compatibility libraries) và các tiện ích biên dịch có điều kiện (conditional-compilation facilities) nhằm mô phỏng hành vi của nhánh UNIX không được dùng làm nền tảng cho bản triển khai cụ thể đó (xem Mục 3.6.1). Điều này giúp giảm bớt gánh nặng khi port ứng dụng (porting an application) từ một bản triển khai UNIX khác sang.
-
-```
 
 ### 1.3.8 Linux, Các tiêu chuẩn và Linux Standard Base
 
@@ -332,6 +340,7 @@ Với hầu hết các hệ thống triển khai UNIX thương mại, cùng mộ
 
 Linus Torvalds không đóng góp hay chứng nhận cho một bản phân phối Linux cụ thể nào. Tuy nhiên, xét về các cá nhân thực hiện việc phát triển Linux, tình hình lại phức tạp hơn. Nhiều lập trình viên làm việc trên Linux Kernel và các dự án phần mềm tự do (free software) khác được tuyển dụng bởi các công ty phân phối Linux khác nhau hoặc làm việc cho các tập đoàn (như IBM và HP) có sự quan tâm mạnh mẽ đến Linux. Mặc dù các công ty này có thể gây ảnh hưởng đến định hướng phát triển của Linux thông qua việc phân bổ giờ làm việc của lập trình viên cho một số dự án nhất định, nhưng không có công ty nào kiểm soát hoàn toàn Linux theo đúng nghĩa đen. Và tất nhiên, nhiều cộng tác viên khác đóng góp cho Linux Kernel và các dự án GNU đều làm việc trên tinh thần tình nguyện.
 
+> [!NOTE]
 > Tại thời điểm viết bài này, Torvalds đang làm việc với tư cách là nghiên cứu viên (fellow) tại Linux Foundation (http://www.linux-foundation.org/; trước đây là Open Source Development Laboratory - OSDL), một tập đoàn phi lợi nhuận bao gồm các tổ chức thương mại và phi thương mại được thành lập với sứ mệnh thúc đẩy sự phát triển của Linux.
 
 Vì có nhiều nhà phân phối Linux khác nhau và các nhà phát triển Kernel không kiểm soát nội dung của các bản phân phối, nên không có hệ điều hành Linux thương mại "tiêu chuẩn" nào theo đúng nghĩa đen. Các gói Kernel của mỗi nhà phân phối Linux thường dựa trên một bản chụp (snapshot) của nhánh phát triển chính (mainline) (tức là Kernel của Torvalds) tại một thời điểm cụ thể, kèm theo một số bản vá (patches) được áp dụng.
@@ -340,12 +349,12 @@ Các bản vá này thường cung cấp các tính năng, tùy theo mức độ
 
 Hệ quả từ các điểm trên là có sự khác biệt (hầu hết là nhỏ) giữa các hệ thống được cung cấp bởi các công ty phân phối Linux khác nhau. Ở một quy mô nhỏ hơn nhiều, điều này gợi nhớ đến sự phân rã trong việc triển khai từng xảy ra vào những năm đầu của UNIX. Linux Standard Base (LSB) là nỗ lực nhằm đảm bảo tính tương thích giữa các bản phân phối Linux khác nhau. Để làm được điều này, LSB (http://www.linux-foundation.org/en/LSB) phát triển và thúc đẩy một tập hợp các tiêu chuẩn cho hệ thống Linux với mục tiêu đảm bảo rằng các ứng dụng nhị phân (binary applications) (tức là các chương trình đã được biên dịch) có thể chạy trên bất kỳ hệ thống nào tuân thủ LSB.
 
+> [!NOTE]
 > Khả năng di động nhị phân (binary portability) được thúc đẩy bởi LSB trái ngược với khả năng di động mã nguồn (source code portability) do POSIX thúc đẩy. Khả năng di động mã nguồn có nghĩa là chúng ta có thể viết một chương trình C sau đó biên dịch và chạy thành công trên bất kỳ hệ thống tuân thủ POSIX nào. Tính tương thích nhị phân (binary compatibility) đòi hỏi khắt khe hơn nhiều và thường không khả thi trên các nền tảng phần cứng khác nhau. Nó cho phép chúng ta biên dịch một chương trình một lần cho một nền tảng phần cứng nhất định, và sau đó chạy chương trình đã biên dịch đó trên bất kỳ bản triển khai tuân thủ nào chạy trên nền tảng phần cứng đó. Khả năng di động nhị phân là một yêu cầu thiết yếu đối với tính khả thi thương mại của các ứng dụng từ nhà cung cấp phần mềm độc lập (independent software vendor - ISV) được xây dựng cho Linux.
 
 ## 1.4 Tóm tắt
 
-Hệ thống UNIX lần đầu tiên được triển khai vào năm 1969 trên máy tính mini (minicomputer) Digital PDP-7 bởi Ken Thompson tại Bell Laboratories (thuộc AT&T). Hệ điều hành này đúc kết nhiều ý tưởng, cũng như cái tên chơi chữ của nó, từ hệ thống MULTICS trước đó. Đến năm 1973, UNIX đã được chuyển sang máy tính mini PDP-11
-``` và được viết lại bằng ngôn ngữ C — một ngôn ngữ lập trình được thiết kế và triển khai tại Bell Laboratories bởi Dennis Ritchie. Bị ràng buộc về mặt pháp lý không được phép bán UNIX, thay vào đó AT&T đã phân phối toàn bộ hệ thống cho các trường đại học với một khoản phí danh nghĩa. Việc phân phối này bao gồm cả mã nguồn (source code), và trở nên rất phổ biến trong môi trường đại học vì nó cung cấp một hệ điều hành giá rẻ, có mã nguồn mà các nhà nghiên cứu khoa học máy tính và sinh viên có thể nghiên cứu và sửa đổi.
+Hệ thống UNIX lần đầu tiên được triển khai vào năm 1969 trên máy tính mini (minicomputer) Digital PDP-7 bởi Ken Thompson tại Bell Laboratories (thuộc AT&T). Hệ điều hành này đúc kết nhiều ý tưởng, cũng như cái tên chơi chữ của nó, từ hệ thống MULTICS trước đó. Đến năm 1973, UNIX đã được chuyển sang máy tính mini PDP-11 và được viết lại bằng ngôn ngữ C — một ngôn ngữ lập trình được thiết kế và triển khai tại Bell Laboratories bởi Dennis Ritchie. Bị ràng buộc về mặt pháp lý không được phép bán UNIX, thay vào đó AT&T đã phân phối toàn bộ hệ thống cho các trường đại học với một khoản phí danh nghĩa. Việc phân phối này bao gồm cả mã nguồn (source code), và trở nên rất phổ biến trong môi trường đại học vì nó cung cấp một hệ điều hành giá rẻ, có mã nguồn mà các nhà nghiên cứu khoa học máy tính và sinh viên có thể nghiên cứu và sửa đổi.
 
 Đại học California tại Berkeley đóng vai trò then chốt trong quá trình phát triển hệ thống UNIX. Tại đây, Ken Thompson cùng một số nghiên cứu sinh đã mở rộng hệ điều hành này. Đến năm 1979, trường Đại học đã tự sản xuất bản phân phối UNIX của riêng mình, mang tên BSD. Bản phân phối này trở nên phổ biến rộng rãi trong giới học thuật và tạo nền tảng cho một số hệ thống triển khai thương mại.
 

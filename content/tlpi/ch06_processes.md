@@ -1,4 +1,4 @@
-# Chương 6: TIẾN TRÌNH (PROCESSES)
+# Chương 6: Tiến trình (Processes)
 
 Trong chương này, chúng ta sẽ tìm hiểu về cấu trúc của một tiến trình (process), đặc biệt chú ý đến bố cục (layout) và nội dung của bộ nhớ ảo (virtual memory) của tiến trình đó. Chúng ta cũng sẽ xem xét một số thuộc tính của tiến trình. Ở các chương sau, chúng ta sẽ đi sâu hơn vào các thuộc tính khác của tiến trình (ví dụ: thông tin xác thực tiến trình - process credentials trong Chương 9, và mức ưu tiên cũng như lập lịch tiến trình - process priorities and scheduling trong Chương 35). Từ Chương 24 đến Chương 27, chúng ta sẽ tìm hiểu cách các tiến trình được tạo ra, cách chúng kết thúc, và cách chúng thực thi các chương trình mới.
 
@@ -41,8 +41,10 @@ Ngoại trừ một số tiến trình hệ thống như `init` (PID 1), không 
 
 Kernel Linux giới hạn ID tiến trình nhỏ hơn hoặc bằng 32.767. Khi một tiến trình mới được tạo, nó được gán PID khả dụng tiếp theo theo thứ tự tuần tự. Mỗi khi đạt đến giới hạn 32.767, kernel sẽ thiết lập lại bộ đếm PID của nó để các PID được gán bắt đầu lại từ các giá trị số nguyên nhỏ.
 
+> [!NOTE]
 > Khi đạt đến 32.767, bộ đếm PID được đặt lại thành 300 thay vì 1. Điều này được thực hiện vì nhiều PID số nhỏ đang được sử dụng vĩnh viễn bởi các tiến trình hệ thống và tiến trình nền (daemons), do đó sẽ lãng phí thời gian nếu cứ phải tìm kiếm một PID chưa sử dụng trong khoảng này.
 
+> [!NOTE]
 > Trong Linux 2.4 và các phiên bản trước đó, giới hạn Process ID (PID) là 32.767 được định nghĩa bởi hằng số kernel `PID_MAX`. Sang Linux 2.6, mọi thứ đã thay đổi. Mặc dù giới hạn trên mặc định cho Process ID vẫn là 32.767, giới hạn này có thể điều chỉnh thông qua giá trị trong tệp chuyên biệt của Linux `/proc/sys/kernel/pid_max` (lớn hơn Process ID tối đa một đơn vị). Trên các nền tảng 32-bit, giá trị tối đa cho tệp này là 32.768, nhưng trên các nền tảng 64-bit, nó có thể được điều chỉnh lên bất kỳ giá trị nào đạt tới $2^{22}$ (khoảng 4 triệu), giúp đáp ứng số lượng lớn các process (tiến trình).
 
 Mỗi process đều có một parent (process cha) — chính là process đã tạo ra nó. Một process có thể tìm ra Process ID của process cha bằng cách sử dụng system call `getppid()`.
@@ -74,8 +76,10 @@ Các nhãn ít được sử dụng hơn nhưng mang tính mô tả cao hơn cho
 
 Lệnh `size(1)` hiển thị kích thước của các segment text, initialized data, và uninitialized data (bss) của một tệp nhị phân thực thi.
 
+> [!NOTE]
 > Thuật ngữ segment được sử dụng trong văn bản chính không được nhầm lẫn với hardware segmentation (phân đoạn phần cứng) được sử dụng trên một số kiến trúc phần cứng như x86-32. Thay vào đó, các segment là các phân chia logic của virtual memory (bộ nhớ ảo) của một process trên hệ thống UNIX. Đôi khi, thuật ngữ section được sử dụng thay cho segment, vì section nhất quán hơn với thuật ngữ được sử dụng trong đặc tả ELF hiện đã trở nên phổ biến đối với các định dạng tệp thực thi.
 
+> [!NOTE]
 > Ở nhiều nơi trong cuốn sách này, chúng tôi lưu ý rằng một thư viện hàm (library function) trả về một con trỏ trỏ đến vùng nhớ được cấp phát tĩnh. Ý của chúng tôi ở đây là bộ nhớ được cấp phát trong initialized data segment hoặc uninitialized data segment. (Trong một số trường hợp, thư viện hàm có thể thực hiện một lần cấp phát động duy nhất trên heap; tuy nhiên, chi tiết cài đặt này không liên quan đến ý nghĩa ngữ nghĩa mà chúng tôi mô tả ở đây). Điều quan trọng cần lưu ý là các trường hợp thư viện hàm trả về thông tin thông qua bộ nhớ được cấp phát tĩnh, vì vùng nhớ đó tồn tại độc lập với lời gọi hàm, và bộ nhớ đó có thể bị ghi đè bởi các lời gọi tiếp theo tới cùng một hàm (hoặc trong một số trường hợp, bởi các lời gọi tiếp theo tới các hàm có liên quan). Tác động của việc sử dụng bộ nhớ được cấp phát tĩnh là làm cho một hàm trở thành nonreentrant (không thể tái nhập). Chúng tôi sẽ nói nhiều hơn về tính tái nhập (reentrancy) trong Mục 21.1.2 và 31.1.
 
 Listing 6-1 hiển thị các loại biến C khác nhau cùng với các chú thích chỉ ra phân đoạn (segment) mà mỗi biến được đặt trong đó. Các chú thích này giả định một trình biên dịch không tối ưu hóa và một giao diện nhị phân ứng dụng (application binary interface - ABI) trong đó tất cả các đối số được truyền qua ngăn xếp (stack). Trên thực tế, một trình biên dịch tối ưu hóa có thể cấp phát các biến được sử dụng thường xuyên vào trong các thanh ghi (register), hoặc tối ưu hóa hoàn toàn một biến khỏi bộ nhớ. Hơn nữa, một số ABI yêu cầu các đối số của hàm và kết quả của hàm được truyền thông qua các thanh ghi thay vì qua ngăn xếp. Dù vậy, ví dụ này vẫn hữu ích trong việc minh họa sự tương ứng giữa các biến C và các phân đoạn của một tiến trình (process).
@@ -152,6 +156,7 @@ Hệ quả của tính cục bộ tham chiếu là chúng ta có thể thực th
 
 Một sơ đồ bộ nhớ ảo chia bộ nhớ được sử dụng bởi mỗi chương trình thành các đơn vị nhỏ, có kích thước cố định gọi là các trang (pages). Tương ứng, RAM được chia thành một chuỗi các khung trang (page frames) có cùng kích thước. Tại bất kỳ thời điểm nào, chỉ một số trang của chương trình cần phải thường trú trong các khung trang bộ nhớ vật lý; các trang này tạo thành cái gọi là tập thường trú (resident set). Các bản sao của các trang không được sử dụng của chương trình được duy trì trong vùng swap (swap area) — một vùng không gian đĩa được dành riêng để bổ sung cho RAM của máy tính — và chỉ được tải vào bộ nhớ vật lý khi cần thiết. Khi một tiến trình tham chiếu đến một trang hiện không thường trú trong bộ nhớ vật lý, một lỗi trang (page fault) sẽ xảy ra, tại thời điểm đó kernel tạm dừng việc thực thi tiến trình trong khi trang đó được tải từ đĩa vào bộ nhớ.
 
+> [!NOTE]
 > Trên kiến trúc x86-32, các trang có kích thước 4096 byte. Một số bản cài đặt Linux khác sử dụng kích thước trang lớn hơn. Ví dụ, kiến trúc Alpha sử dụng kích thước trang 8192 byte, và IA-64 có kích thước trang thay đổi, với mặc định thông thường là 16.384 byte. Một chương trình có thể xác định kích thước trang bộ nhớ ảo của hệ thống bằng cách sử dụng lệnh gọi `sysconf(_SC_PAGESIZE)`, như được mô tả trong Mục 11.2.
 
 ```mermaid
@@ -227,6 +232,7 @@ Một ưu điểm cuối cùng của quản lý bộ nhớ ảo là vì mỗi ti
 
 Stack phát triển và thu hẹp tuyến tính khi các hàm được gọi và trả về. Đối với Linux trên kiến trúc x86-32 (và trên hầu hết các bản cài đặt Linux và UNIX khác), stack nằm ở đầu trên của bộ nhớ và phát triển hướng xuống dưới (về phía heap). Một thanh ghi chuyên dụng, con trỏ stack (stack pointer), theo dõi đỉnh hiện tại của stack. Mỗi khi một hàm được gọi, một khung (frame) bổ sung được cấp phát trên stack và khung này bị xóa khi hàm trả về.
 
+> [!NOTE]
 > Mặc dù stack phát triển hướng xuống dưới, chúng ta vẫn gọi đầu phát triển của stack là đỉnh (top), bởi vì theo các thuật ngữ trừu tượng, đó là bản chất của nó. Hướng thực tế của sự phát triển stack là một chi tiết cài đặt (phần cứng). Một bản cài đặt Linux, HP PA-RISC, thực sự sử dụng stack phát triển hướng lên trên.
 
 Theo thuật ngữ bộ nhớ ảo (virtual memory), kích thước của đoạn stack (stack segment) tăng lên khi các stack frame được cấp phát, nhưng trên hầu hết các cài đặt (implementation), nó sẽ không giảm kích thước sau khi các frame này được giải phóng (vùng nhớ được tái sử dụng đơn giản khi các stack frame mới được cấp phát). Khi chúng ta nói về việc stack segment tăng và giảm, chúng ta đang xem xét vấn đề từ góc độ logic của việc các frame được thêm vào và gỡ bỏ khỏi stack.
@@ -324,6 +330,7 @@ Có một vài phương pháp không có tính di động (nonportable) để tr
 
 Như được hiển thị trong [Hình 6-1](#page-6-0), các mảng `argv` và `environ`, cũng như các chuỗi mà chúng ban đầu trỏ tới, nằm trong một vùng nhớ liên giáp (contiguous memory area) duy nhất nằm ngay phía trên stack của tiến trình (process stack). (Chúng ta sẽ mô tả `environ`, nơi lưu trữ danh sách môi trường của chương trình, ở phần tiếp theo). Có một giới hạn trên về tổng số byte có thể được lưu trữ trong vùng này. SUSv3 quy định việc sử dụng hằng số `ARG_MAX` (được định nghĩa trong `<limits.h>`) hoặc lệnh gọi `sysconf(_SC_ARG_MAX)` để xác định giới hạn này. (Chúng ta sẽ mô tả `sysconf()` trong Mục 11.2). SUSv3 yêu cầu `ARG_MAX` phải có ít nhất `_POSIX_ARG_MAX` (4096) byte. Hầu hết các bản cài đặt UNIX cho phép giới hạn cao hơn đáng kể so với mức này. SUSv3 không quy định việc một hệ thống có tính các byte chi phí quản lý (overhead bytes) (cho các byte null kết thúc, byte căn chỉnh - alignment bytes, và các mảng con trỏ `argv` và `environ`) vào giới hạn `ARG_MAX` hay không.
 
+> [!NOTE]
 > Trên Linux, `ARG_MAX` trước đây được cố định ở mức 32 trang (tức là 131.072 byte trên Linux/x86-32) và đã bao gồm dung lượng dành cho các byte chi phí quản lý (overhead bytes). Bắt đầu từ kernel phiên bản 2.6.23, giới hạn về tổng dung lượng được sử dụng cho `argv` và `environ` có thể được kiểm soát thông qua giới hạn tài nguyên `RLIMIT_STACK`, và một giới hạn lớn hơn nhiều được cho phép đối với `argv` và `environ`. Giới hạn này được tính bằng một phần tư giới hạn tài nguyên soft `RLIMIT_STACK` có hiệu lực vào thời điểm gọi hàm `execve()`. Để biết thêm chi tiết, hãy xem trang hướng dẫn (man page) `execve(2)`.
 
 Nhiều chương trình (bao gồm một số ví dụ trong cuốn sách này) phân tích cú pháp các tùy chọn dòng lệnh (command-line options) (tức là các tham số bắt đầu bằng dấu gạch ngang) bằng cách sử dụng hàm thư viện `getopt()`. Chúng tôi mô tả `getopt()` trong Phụ lục B.
@@ -492,6 +499,7 @@ Giống như `setenv()`, `name` không được chứa dấu bằng.
 
 Cả `setenv()` và `unsetenv()` đều có nguồn gốc từ BSD và ít phổ biến hơn `putenv()`. Mặc dù không được định nghĩa trong tiêu chuẩn POSIX.1 gốc hoặc trong SUSv2, chúng đã được bao gồm trong SUSv3.
 
+> [!NOTE]
 > Trong các phiên bản `glibc` trước 2.2.2, `unsetenv()` được định mẫu (prototyped) trả về kiểu `void`. Đây là cách mà `unsetenv()` được định mẫu trong bản cài đặt BSD gốc, và một số bản cài đặt UNIX vẫn tuân theo nguyên mẫu BSD này.
 
 Thỉnh thoảng, việc xóa toàn bộ môi trường và sau đó xây dựng lại nó với các giá trị được chọn là rất hữu ích. Ví dụ, chúng ta có thể làm điều này để thực thi các chương trình `set-user-ID` một cách an toàn (Mục 38.8). Chúng ta có thể xóa môi trường bằng cách gán `NULL` cho `environ`:
@@ -511,6 +519,7 @@ int clearenv(void);
 
 Trong một số trường hợp, việc sử dụng `setenv()` và `clearenv()` có thể dẫn đến rò rỉ bộ nhớ (memory leak) trong chương trình. Chúng ta đã lưu ý ở trên rằng `setenv()` cấp phát một bộ nhớ đệm và sau đó biến nó thành một phần của môi trường. Khi chúng ta gọi `clearenv()`, hàm này không giải phóng bộ nhớ đệm đó (nó không thể làm vậy vì nó không biết sự tồn tại của bộ nhớ đệm đó). Một chương trình liên tục sử dụng hai hàm này sẽ liên tục bị rò rỉ bộ nhớ. Trên thực tế, điều này ít khi trở thành vấn đề, bởi vì một chương trình thông thường chỉ gọi `clearenv()` một lần khi khởi động, nhằm mục đích xóa tất cả các mục nhập (entry) khỏi môi trường mà nó kế thừa từ tiến trình tiền nhiệm (tức là chương trình đã gọi `exec()` để khởi chạy chương trình này).
 
+> [!NOTE]
 > Nhiều cài đặt UNIX cung cấp hàm `clearenv()`, nhưng nó không được quy định trong SUSv3. SUSv3 quy định rằng nếu một ứng dụng sửa đổi trực tiếp biến `environ`, như cách mà `clearenv()` thực hiện, thì hành vi của `setenv()`, `unsetenv()` và `getenv()` sẽ không được xác định (undefined). (Lý do đằng sau việc này là việc ngăn cản một ứng dụng tuân thủ tiêu chuẩn sửa đổi trực tiếp môi trường sẽ giúp cho quá trình cài đặt có quyền kiểm soát hoàn toàn đối với các cấu trúc dữ liệu mà nó sử dụng để thực thi các biến môi trường - environment variables). Cách duy nhất mà SUSv3 cho phép một ứng dụng xóa môi trường của nó là lấy danh sách tất cả các biến môi trường (bằng cách lấy các tên từ `environ`), sau đó sử dụng `unsetenv()` để loại bỏ từng tên này.
 
 ### Chương trình ví dụ
@@ -568,6 +577,7 @@ Giống như nhiều ngôn ngữ lập trình, C bao gồm câu lệnh `goto`, v
 
 Một hạn chế của lệnh `goto` trong C là không thể nhảy ra khỏi hàm hiện tại sang một hàm khác. Tuy nhiên, tính năng này thỉnh thoảng lại rất hữu ích. Hãy xem xét kịch bản phổ biến sau đây trong việc xử lý lỗi (error handling): trong một lời gọi hàm lồng nhau sâu (deeply nested function call), chúng ta gặp phải một lỗi mà lẽ ra phải được xử lý bằng cách hủy bỏ tác vụ hiện tại, trả về qua nhiều lời gọi hàm, và sau đó tiếp tục thực thi ở một hàm cấp cao hơn nhiều (có thể là `main()`). Để làm điều này, chúng ta có thể yêu cầu mỗi hàm trả về một giá trị trạng thái (status value) mà giá trị này được kiểm tra và xử lý thích hợp bởi hàm gọi nó (caller). Điều này hoàn toàn hợp lệ, và trong nhiều trường hợp, là phương pháp mong muốn để xử lý loại kịch bản này. Tuy nhiên, trong một số trường hợp, việc viết mã sẽ đơn giản hơn nếu chúng ta có thể nhảy từ giữa lời gọi hàm lồng nhau quay trở lại một trong các hàm đã gọi nó (hàm gọi trực tiếp, hoặc hàm gọi của hàm gọi, v.v.). Đây chính là tính năng mà `setjmp()` và `longjmp()` cung cấp.
 
+> [!NOTE]
 > Hạn chế rằng `goto` không thể được sử dụng để nhảy giữa các hàm trong C tồn tại là vì tất cả các hàm C đều nằm ở cùng một mức phạm vi (scope level) (tức là không có việc lồng nhau giữa các khai báo hàm trong C chuẩn, mặc dù `gcc` có cho phép điều này như một phần mở rộng - extension). Do đó, với hai hàm X và Y, trình biên dịch (compiler) không có cách nào biết được liệu một khung ngăn xếp (stack frame) cho hàm X có thể nằm trên stack tại thời điểm hàm Y được gọi hay không, và do đó liệu lệnh `goto` từ hàm Y sang hàm X có khả thi hay không. Trong các ngôn ngữ như Pascal, nơi các khai báo hàm có thể được lồng nhau, và lệnh `goto` từ một hàm lồng nhau đến hàm bao quanh nó được cho phép, phạm vi tĩnh (static scope) của một hàm cho phép trình biên dịch xác định một số thông tin về phạm vi động (dynamic scope) của hàm đó. Do đó, nếu hàm Y nằm lồng nhau về mặt từ vựng (lexically nested) trong hàm X, thì trình biên dịch biết rằng khung ngăn xếp cho X chắc chắn đã phải nằm trên stack tại thời điểm Y được gọi, và có thể sinh mã (generate code) cho lệnh `goto` từ hàm Y đến một vị trí nào đó bên trong hàm X.
 
 ```c
@@ -673,6 +683,7 @@ Nếu bộ đệm `env` được khai báo là biến toàn cục (global) đố
 
 Đây là một lỗi nghiêm trọng. Chúng ta không thể thực hiện `longjmp()` nhảy vào một hàm đã trả về trước đó. Xét về những gì `longjmp()` cố gắng thực hiện đối với stack — nó cố gắng xả (unwind) stack trở về một khung stack frame không còn tồn tại — sẽ khiến chúng ta nhận ra rằng thảm họa sẽ xảy ra. Nếu may mắn, chương trình của chúng ta sẽ đơn giản là bị crash (lỗi phân đoạn/treo). Tuy nhiên, tùy thuộc vào trạng thái của stack, các hậu quả khác có thể xảy ra bao gồm vòng lặp gọi-trả về vô hạn (infinite call-return loops) và chương trình hoạt động cứ như thể nó thực sự vừa trả về từ một hàm không còn đang thực thi. (Trong một chương trình đa luồng - multithreaded program, một sự lạm dụng tương tự là gọi `longjmp()` ở một luồng khác với luồng đã gọi `setjmp()`.)
 
+> [!NOTE]
 > SUSv3 nêu rõ rằng nếu `longjmp()` được gọi từ bên trong một trình xử lý tín hiệu lồng nhau (nested signal handler, tức là một trình xử lý được gọi khi trình xử lý của một tín hiệu khác đang thực thi), thì hành vi của chương trình là không xác định (undefined).
 
 ### Các vấn đề với trình biên dịch tối ưu hóa (Optimizing Compilers)

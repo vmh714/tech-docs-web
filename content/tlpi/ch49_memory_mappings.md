@@ -1,4 +1,4 @@
-# Chương 49: ÁNH XẠ BỘ NHỚ (MEMORY MAPPINGS)
+# Chương 49: Ánh xạ bộ nhớ (Memory Mappings)
 
 Chương này thảo luận về việc sử dụng system call `mmap()` để tạo ra các ánh xạ bộ nhớ (memory mappings). Ánh xạ bộ nhớ có thể được sử dụng cho tiến trình liên lạc (IPC - Interprocess Communication), cũng như cho nhiều mục đích khác. Chúng ta bắt đầu với tổng quan về một số khái niệm cơ bản trước khi đi sâu xem xét `mmap()`.
 
@@ -45,6 +45,7 @@ Các ánh xạ sẽ bị mất khi một tiến trình thực hiện hàm `exec(
 
 Thông tin về tất cả các ánh xạ của một tiến trình có thể xem được trong tệp cụ thể của Linux `/proc/PID/maps`, mà chúng ta đã mô tả ở Mục [48.5.](#page-129-0)
 
+> [!NOTE]
 > Một công dụng khác của `mmap()` là dùng với các đối tượng bộ nhớ chia sẻ POSIX (POSIX shared memory objects), cho phép một vùng bộ nhớ được chia sẻ giữa các tiến trình không có quan hệ họ hàng mà không cần phải tạo một tệp đĩa liên kết (như yêu cầu đối với ánh xạ tệp chia sẻ). Chúng ta sẽ mô tả các đối tượng bộ nhớ chia sẻ POSIX trong Chương 54.
 
 ## 49.2 Tạo một ánh xạ: mmap()
@@ -61,6 +62,7 @@ Tham số `addr` chỉ định địa chỉ ảo nơi ánh xạ sẽ được đ
 
 Khi thành công, `mmap()` trả về địa chỉ bắt đầu của ánh xạ mới. Khi xảy ra lỗi, `mmap()` trả về `MAP_FAILED`.
 
+> [!NOTE]
 > Trên Linux (và trên hầu hết các bản cài đặt UNIX khác), hằng số `MAP_FAILED` tương đương với `((void *) –1)`. Tuy nhiên, SUSv3 quy định cụ thể hằng số này vì các chuẩn C không thể đảm bảo rằng `((void *) –1)` khác biệt với giá trị trả về của một lần gọi `mmap()` thành công.
 
 Tham số `length` chỉ định kích thước của ánh xạ tính bằng byte. Mặc dù `length` không bắt buộc phải là một bội số của kích thước trang hệ thống (được trả về bởi `sysconf(_SC_PAGESIZE)`), kernel vẫn tạo các ánh xạ theo đơn vị kích thước này, do đó `length` trên thực tế sẽ được làm tròn lên thành bội số tiếp theo của kích thước trang.
@@ -96,6 +98,7 @@ Các tham số còn lại, `fd` và `offset`, được sử dụng với các á
 
 Như đã lưu ý ở trên, tham số `prot` của `mmap()` chỉ định quyền bảo vệ trên một memory mapping mới. Nó có thể chứa giá trị `PROT_NONE`, hoặc một mặt nạ (mask) gồm một hoặc nhiều cờ `PROT_READ`, `PROT_WRITE`, và `PROT_EXEC`. Nếu một tiến trình cố gắng truy cập vào một vùng nhớ theo cách vi phạm quyền bảo vệ của vùng đó, kernel sẽ gửi tín hiệu `SIGSEGV` tới tiến trình đó.
 
+> [!NOTE]
 > Mặc dù SUSv3 quy định rằng `SIGSEGV` nên được sử dụng để báo hiệu các trường hợp vi phạm bảo vệ bộ nhớ, nhưng trên một số tiến trình thực thi (implementation), `SIGBUS` lại được sử dụng thay thế.
 
 Một trường hợp sử dụng các trang nhớ được đánh dấu `PROT_NONE` là làm các trang bảo vệ (guard pages) ở đầu hoặc cuối của một vùng nhớ mà tiến trình đã cấp phát. Nếu tiến trình vô tình bước vào một trong các trang được đánh dấu `PROT_NONE`, kernel sẽ thông báo cho tiến trình biết thực tế đó bằng cách tạo ra một tín hiệu `SIGSEGV`.
@@ -162,10 +165,11 @@ main(int argc, char *argv[])
 
 System Call munmap() thực hiện thao tác ngược lại với mmap(), gỡ bỏ một ánh xạ khỏi không gian địa chỉ ảo (virtual address space) của tiến trình gọi (calling process).
 
-```
 ## include <sys/mman.h>
+
 int munmap(void *addr, size_t length);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Đối số `addr` là địa chỉ bắt đầu của dải địa chỉ cần hủy ánh xạ. Nó phải được căn chỉnh theo biên trang (page boundary). (SUSv3 quy định rằng `addr` phải được căn chỉnh theo trang. SUSv4 nêu rằng bản triển khai có thể yêu cầu đối số này phải được căn chỉnh theo trang).
@@ -175,12 +179,14 @@ int munmap(void *addr, size_t length);
 Thông thường, chúng ta hủy ánh xạ toàn bộ một vùng ánh xạ. Do đó, chúng ta chỉ định `addr` là địa chỉ được trả về bởi lời gọi mmap() trước đó, và chỉ định giá trị `length` giống như đã dùng trong lời gọi mmap(). Dưới đây là một ví dụ:
 
 ```
+
 addr = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 if (addr == MAP_FAILED)
- errExit("mmap");
+errExit("mmap");
 /* Mã nguồn làm việc với vùng được ánh xạ */
 if (munmap(addr, length) == -1)
- errExit("munmap");
+errExit("munmap");
+
 ```
 
 Ngoài ra, chúng ta có thể hủy ánh xạ một phần của vùng ánh xạ, trong trường hợp đó vùng ánh xạ sẽ bị thu nhỏ lại hoặc bị cắt đôi, tùy thuộc vào vị trí xảy ra việc hủy ánh xạ. Cũng có thể chỉ định một dải địa chỉ trải dài qua nhiều vùng ánh xạ, trong trường hợp đó tất cả các vùng ánh xạ đó sẽ bị hủy ánh xạ.
@@ -225,27 +231,29 @@ Cả hai cách sử dụng `mmap()` này thông thường đều vô hình đố
 Một mục đích ít phổ biến hơn của ánh xạ tệp riêng tư là để đơn giản hóa logic đầu vào tệp (file input logic) của một chương trình. Điều này tương tự như việc sử dụng ánh xạ tệp chia sẻ cho cơ chế I/O ánh xạ bộ nhớ (memory-mapped I/O) (được mô tả ở phần tiếp theo), nhưng chỉ hỗ trợ cho phần đầu vào của tệp (file input).
 
 ```text
+
 Process virtual
-                    memory
-                  ┌─────────┐
-        ▲         │         │
-        │         ├─────────┤─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ -┐
-    increasing    │         │                             
-   memory address │ mapped  │                             │
-        │         │ region  │                             
-        │         │         │                             
-   address ──────>├─────────┤─ ─ ─ ─ ─ ─ -┐               
-   returned       │         │             │               │
-   by mmap()      │         │             │               
-                  └─────────┘             │               │
-                                          │               
-                             ◄── offset ──┘ ◄── length ───┤│
-                                          │               
-                          ┌───────────────┴───────────────┘
-                          │         │  mapped   │         │
-                          │         │  region   │         │
-                          └─────────┴───────────┴─────────┘
-                              Open file (fd)
+memory
+┌─────────┐
+▲         │         │
+│         ├─────────┤─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ -┐
+increasing    │         │
+memory address │ mapped  │                             │
+│         │ region  │
+│         │         │
+address ──────>├─────────┤─ ─ ─ ─ ─ ─ -┐
+returned       │         │             │               │
+by mmap()      │         │             │
+└─────────┘             │               │
+│
+◄── offset ──┘ ◄── length ───┤│
+│
+┌───────────────┴───────────────┘
+│         │  mapped   │         │
+│         │  region   │         │
+└─────────┴───────────┴─────────┘
+Open file (fd)
+
 ```
 
 **Hình 49-1:** Tổng quan về tệp ánh xạ bộ nhớ (memory-mapped file)
@@ -257,35 +265,37 @@ Khi nhiều tiến trình (process) tạo các ánh xạ chia sẻ (shared mappi
 Các vùng nhớ ánh xạ file chia sẻ phục vụ hai mục đích chính: I/O ánh xạ bộ nhớ (memory-mapped I/O) và IPC (Inter-Process Communication - Giao tiếp giữa các tiến trình). Chúng ta sẽ xem xét từng mục đích này dưới đây.
 
 ```mermaid
+
 graph LR
-    subgraph PA["Bảng trang<br/>Tiến trình A<br/>(Process A page table)"]
-        PA1[" "]
-        PA2["Các mục PT<br/>cho vùng<br/>được ánh xạ"]
-        PA3[" "]
-    end
-    
-    subgraph PM["Bộ nhớ<br/>vật lý<br/>(Physical memory)"]
-        PM1[" "]
-        PM2["Các trang<br/>được ánh xạ"]
-        PM3[" "]
-    end
-    
-    subgraph PB["Bảng trang<br/>Tiến trình B<br/>(Process B page table)"]
-        PB1[" "]
-        PB2["Các mục PT<br/>cho vùng<br/>được ánh xạ"]
-        PB3[" "]
-    end
-    
-    subgraph OF["File mở<br/>(Open file)"]
-        OF1[" "]
-        OF2["Vùng của file<br/>được ánh xạ"]
-        OF3[" "]
-    end
-    
-    PA2 --> PM2
-    PB2 --> PM2
-    
-    PM2 <-->|"I/O được quản lý<br/>bởi kernel"| OF2
+subgraph PA["Bảng trang<br/>Tiến trình A<br/>(Process A page table)"]
+PA1[" "]
+PA2["Các mục PT<br/>cho vùng<br/>được ánh xạ"]
+PA3[" "]
+end
+
+subgraph PM["Bộ nhớ<br/>vật lý<br/>(Physical memory)"]
+PM1[" "]
+PM2["Các trang<br/>được ánh xạ"]
+PM3[" "]
+end
+
+subgraph PB["Bảng trang<br/>Tiến trình B<br/>(Process B page table)"]
+PB1[" "]
+PB2["Các mục PT<br/>cho vùng<br/>được ánh xạ"]
+PB3[" "]
+end
+
+subgraph OF["File mở<br/>(Open file)"]
+OF1[" "]
+OF2["Vùng của file<br/>được ánh xạ"]
+OF3[" "]
+end
+
+PA2 --> PM2
+PB2 --> PM2
+
+PM2 <-->|"I/O được quản lý<br/>bởi kernel"| OF2
+
 ```
 
 **Hình 49-2:** Hai tiến trình với một vùng ánh xạ chia sẻ của cùng một vùng file
@@ -306,7 +316,7 @@ Lý do tại sao memory-mapped I/O có thể mang lại lợi ích về hiệu n
 
 Lợi ích hiệu năng từ memory-mapped I/O có nhiều khả năng đạt được nhất khi thực hiện các thao tác truy cập ngẫu nhiên lặp đi lặp lại trên một file lớn. Nếu chúng ta thực hiện truy cập tuần tự (sequential access) vào một file, thì `mmap()` có lẽ sẽ mang lại ít hoặc không có sự cải thiện nào so với `read()` và `write()`, giả sử rằng chúng ta thực hiện I/O bằng các kích thước bộ đệm đủ lớn để tránh việc phải gọi một số lượng lớn các System Call I/O. Lý do có ít lợi ích về hiệu năng là bất kể chúng ta sử dụng kỹ thuật nào, toàn bộ nội dung của file sẽ được chuyển giữa đĩa và bộ nhớ đúng một lần, và hiệu quả đạt được từ việc loại bỏ một lần chuyển dữ liệu giữa user space và kernel space cũng như giảm việc sử dụng bộ nhớ thường không đáng kể so với thời gian cần thiết cho disk I/O.
 
-> Memory-mapped I/O cũng có thể có các nhược điểm. Đối với các thao tác I/O nhỏ, chi phí của memory-mapped I/O (ví dụ: ánh xạ, lỗi trang - page fault, hủy ánh xạ, và cập nhật bộ đệm dịch chuyển đổi TLB - Translation Look-aside Buffer của وحدة quản lý bộ nhớ phần cứng - hardware memory management unit) thực tế có thể cao hơn so với một lệnh `read()` hoặc `write()` đơn giản. Thêm vào đó, đôi khi kernel có thể gặp khó khăn trong việc xử lý hiệu quả quá trình ghi lại (write-back) đối với các vùng ánh xạ có quyền ghi (writable mapping) (việc sử dụng `msync()` hoặc `sync_file_range()` có thể giúp cải thiện hiệu quả trong trường hợp này).
+> Memory-mapped I/O cũng có thể có các nhược điểm. Đối với các thao tác I/O nhỏ, chi phí của memory-mapped I/O (ví dụ: khởi tạo ánh xạ, xử lý lỗi trang - page fault, hủy ánh xạ, và cập nhật bộ đệm chuyển đổi địa chỉ TLB - Translation Lookaside Buffer của đơn vị quản lý bộ nhớ phần cứng - MMU) thực tế có thể cao hơn so với một lệnh `read()` hoặc `write()` đơn giản. Thêm vào đó, đôi khi kernel có thể gặp khó khăn trong việc xử lý hiệu quả quá trình ghi lùi (write-back) đối với các vùng ánh xạ có quyền ghi (writable mapping) (việc sử dụng `msync()` hoặc `sync_file_range()` có thể giúp cải thiện hiệu quả trong trường hợp này).
 
 ## IPC sử dụng ánh xạ tệp chia sẻ (shared file mapping)
 
@@ -319,17 +329,21 @@ Vì tất cả các process (tiến trình) có chung một ánh xạ tới cùn
 Nhật ký phiên shell sau đây minh họa việc sử dụng chương trình này. Chúng ta bắt đầu bằng cách tạo một tệp 1024 byte được điền các giá trị không (zeros):
 
 ```
+
 $ dd if=/dev/zero of=s.txt bs=1 count=1024
 1024+0 records in
 1024+0 records out
+
 ```
 
 Sau đó, chúng ta sử dụng chương trình của mình để ánh xạ tệp và sao chép một chuỗi vào vùng được ánh xạ:
 
 ```
+
 $ ./t_mmap s.txt hello
 Current string=
 Copied "hello" to shared memory
+
 ```
 
 Chương trình không hiển thị gì cho chuỗi hiện tại vì giá trị ban đầu của tệp được ánh xạ bắt đầu bằng một byte null (tức là chuỗi có độ dài bằng không).
@@ -337,19 +351,23 @@ Chương trình không hiển thị gì cho chuỗi hiện tại vì giá trị 
 Tiếp theo, chúng ta sử dụng lại chương trình để ánh xạ tệp và sao chép một chuỗi mới vào vùng được ánh xạ:
 
 ```
+
 $ ./t_mmap s.txt goodbye
 Current string=hello
 Copied "goodbye" to shared memory
+
 ```
 
 Cuối cùng, chúng ta kết xuất (dump) nội dung của tệp, 8 ký tự trên mỗi dòng, để xác minh nội dung của nó:
 
 ```
+
 $ od -c -w8 s.txt
 0000000 g o o d b y e nul
 0000010 nul nul nul nul nul nul nul nul
 *
 0002000
+
 ```
 
 Chương trình đơn giản của chúng ta không sử dụng bất kỳ cơ chế nào để đồng bộ hóa việc truy cập vào tệp được ánh xạ bởi nhiều process. Tuy nhiên, các ứng dụng thực tế thường cần đồng bộ hóa quyền truy cập vào các ánh xạ chia sẻ. Việc này có thể được thực hiện bằng nhiều kỹ thuật khác nhau, bao gồm semaphore (Chương [47](#page-88-0) và 53) và khóa tệp (file locking) (Chương 55).
@@ -359,43 +377,52 @@ Chúng tôi giải thích về system call (lời hệ thống) `msync()` đư�
 **Listing 49-2:** Sử dụng mmap() để tạo một ánh xạ tệp chia sẻ
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– mmap/t_mmap.c
+
 ## include <sys/mman.h>
+
 ## include <fcntl.h>
+
 ## include "tlpi_hdr.h"
+
 ## define MEM_SIZE 10
+
 int
 main(int argc, char *argv[])
 {
- char *addr;
- int fd;
- if (argc < 2 || strcmp(argv[1], "--help") == 0)
- usageErr("%s file [new-value]\n", argv[0]);
- fd = open(argv[1], O_RDWR);
- if (fd == -1)
- errExit("open");
+char *addr;
+int fd;
+if (argc < 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s file [new-value]\n", argv[0]);
+fd = open(argv[1], O_RDWR);
+if (fd == -1)
+errExit("open");
+
 ```
 
 ```
- addr = mmap(NULL, MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
- if (addr == MAP_FAILED)
- errExit("mmap");
- if (close(fd) == -1) /* Không cần dùng 'fd' nữa */
- errExit("close");
- printf("Current string=%.*s\n", MEM_SIZE, addr);
- /* Thực hành bảo mật: xuất tối đa MEM_SIZE byte */
- if (argc > 2) { /* Cập nhật nội dung của vùng nhớ */
- if (strlen(argv[2]) >= MEM_SIZE)
- cmdLineErr("'new-value' quá lớn\n");
- memset(addr, 0, MEM_SIZE); /* Xóa sạch vùng nhớ về 0 */
- strncpy(addr, argv[2], MEM_SIZE - 1);
- if (msync(addr, MEM_SIZE, MS_SYNC) == -1)
- errExit("msync");
- printf("Đã sao chép \"%s\" vào bộ nhớ chia sẻ\n", argv[2]);
- }
- exit(EXIT_SUCCESS);
+
+addr = mmap(NULL, MEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+if (addr == MAP_FAILED)
+errExit("mmap");
+if (close(fd) == -1) /* Không cần dùng 'fd' nữa */
+errExit("close");
+printf("Current string=%.*s\n", MEM_SIZE, addr);
+/* Thực hành bảo mật: xuất tối đa MEM_SIZE byte */
+if (argc > 2) { /* Cập nhật nội dung của vùng nhớ */
+if (strlen(argv[2]) >= MEM_SIZE)
+cmdLineErr("'new-value' quá lớn\n");
+memset(addr, 0, MEM_SIZE); /* Xóa sạch vùng nhớ về 0 */
+strncpy(addr, argv[2], MEM_SIZE - 1);
+if (msync(addr, MEM_SIZE, MS_SYNC) == -1)
+errExit("msync");
+printf("Đã sao chép \"%s\" vào bộ nhớ chia sẻ\n", argv[2]);
+}
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– mmap/t_mmap.c
+
 ```
 
 ### 49.4.3 Các Trường Hợp Biên (Boundary Cases)
@@ -405,22 +432,24 @@ Trong nhiều trường hợp, kích thước của một vùng ánh xạ (mappi
 Hình 49-3 mô tả trường hợp vùng ánh xạ nằm hoàn toàn trong giới hạn của tệp, nhưng kích thước của vùng này không phải là bội số của kích thước trang hệ thống (mà chúng ta giả định là 4096 byte cho mục đích thảo luận này).
 
 ```text
-   mmap(0, 6000, prot, MAP_SHARED, fd, 0);
+
+mmap(0, 6000, prot, MAP_SHARED, fd, 0);
 
 byte offset:  0                           5999 6000    8191 8192
-           ┌─────────────────────────────────┬────────────┐
+┌─────────────────────────────────┬────────────┐
 Memory     │  requested size of mapping      │ remainder  │
 region     │                                 │  of page   │
-           └─────────────────────────────────┴────────────┘
-           ◄─────────────────────────────────►◄────────────────────►
-           │  accessible, mapped to file     │   references
-           │                                 │   yield SIGSEGV
-           │                                 │
-           ┌─────────────────────────────────┬────────┐
+└─────────────────────────────────┴────────────┘
+◄─────────────────────────────────►◄────────────────────►
+│  accessible, mapped to file     │   references
+│                                 │   yield SIGSEGV
+│                                 │
+┌─────────────────────────────────┬────────┐
 Mapped file│   actual mapped region of file  │unmapped│
 (9500 bytes)│                                 │        │
-           └─────────────────────────────────┴────────┘
+└─────────────────────────────────┴────────┘
 file offset: 0                           8191 8192    9499
+
 ```
 
 **Hình 49-3:** Ánh xạ bộ nhớ có chiều dài không phải là bội số của kích thước trang hệ thống
@@ -436,23 +465,25 @@ Nếu vùng ánh xạ bao gồm các trang vượt ra ngoài vùng được làm
 Từ mô tả trên, có vẻ như việc tạo ra một vùng ánh xạ có kích thước vượt quá kích thước của tệp cơ sở là vô nghĩa. Tuy nhiên, bằng cách mở rộng kích thước của tệp (ví dụ: sử dụng `ftruncate()` hoặc `write()`), chúng ta có thể làm cho các phần trước đây không thể truy cập được của một vùng ánh xạ như vậy trở nên khả dụng.
 
 ```text
+
 mmap(0, 8192, prot, MAP_SHARED, fd, 0);
 
 byte offset:  0      2199 2200    4095 4096              8191 8192
-           ┌─────────┬────────────┬─────────────────────────┐
+┌─────────┬────────────┬─────────────────────────┐
 Memory     │         │ remainder  │                         │
 region     │         │of page (0s)│                         │
-           └─────────┴────────────┴─────────────────────────┘
-           ◄─────────►◄───────────►◄────────────────────────►◄──────►
-           │accessible│ accessible,│    references           references
-           │ mapped   │ not mapped │    yield SIGBUS         yield SIGSEGV
-           │ to file  │  to file   │
-           │          │            │
-           ┌──────────┐
+└─────────┴────────────┴─────────────────────────┘
+◄─────────►◄───────────►◄────────────────────────►◄──────►
+│accessible│ accessible,│    references           references
+│ mapped   │ not mapped │    yield SIGBUS         yield SIGSEGV
+│ to file  │  to file   │
+│          │            │
+┌──────────┐
 Mapped file│          │
 (2200 bytes)│          │
-           └──────────┘
+└──────────┘
 file offset: 0      2199
+
 ```
 
 **Hình 49-4:** Ánh xạ bộ nhớ kéo dài vượt quá phần cuối của tệp được ánh xạ
@@ -474,9 +505,12 @@ Kernel tự động chuyển các sửa đổi nội dung của một ánh xạ 
 System call `msync()` cung cấp cho ứng dụng khả năng kiểm soát tường minh (explicit control) về thời điểm một ánh xạ chia sẻ (shared mapping) được đồng bộ hóa với file được ánh xạ. Việc đồng bộ hóa một ánh xạ với file cơ sở rất hữu ích trong các kịch bản khác nhau. Ví dụ, để đảm bảo tính toàn vẹn dữ liệu (data integrity), một ứng dụng cơ sở dữ liệu có thể gọi `msync()` để ép dữ liệu phải được ghi xuống ổ đĩa. Việc gọi `msync()` cũng cho phép ứng dụng đảm bảo rằng các cập nhật đối với một vùng nhớ ánh xạ có thể ghi được sẽ hiển thị đối với một tiến trình (process) khác thực hiện thao tác `read()` trên file đó.
 
 ```c
+
 ## include <sys/mman.h>
+
 int msync(void *addr, size_t length, int flags);
-                                             Trả về 0 khi thành công, hoặc –1 nếu lỗi
+Trả về 0 khi thành công, hoặc –1 nếu lỗi
+
 ```
 
 Các tham số `addr` và `length` trong `msync()` chỉ định địa chỉ bắt đầu và kích thước của vùng nhớ cần đồng bộ hóa. Địa chỉ được chỉ định trong `addr` phải căn chỉnh theo trang (page-aligned), và `len` được làm tròn lên thành bội số tiếp theo của kích thước trang hệ thống (system page size). (SUSv3 quy định rằng `addr` phải được căn chỉnh theo trang. SUSv4 nêu rằng một bản cài đặt có thể yêu cầu tham số này phải được căn chỉnh theo trang).
@@ -578,12 +612,14 @@ Với cả hai kỹ thuật `MAP_ANONYMOUS` và `/dev/zero`, các byte của vù
 Vùng nhớ ánh xạ vô danh `MAP_PRIVATE` được sử dụng để cấp phát các khối bộ nhớ riêng tư của tiến trình (process-private memory) được khởi tạo bằng 0. Chúng ta có thể sử dụng kỹ thuật `/dev/zero` để tạo một vùng nhớ ánh xạ vô danh `MAP_PRIVATE` như sau:
 
 ```c
+
 fd = open("/dev/zero", O_RDWR);
 if (fd == -1)
- errExit("open");
+errExit("open");
 addr = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 if (addr == MAP_FAILED)
- errExit("mmap");
+errExit("mmap");
+
 ```
 
 Thư viện glibc triển khai hàm `malloc()` sử dụng các vùng nhớ ánh xạ vô danh `MAP_PRIVATE` để cấp phát các khối bộ nhớ lớn hơn `MMAP_THRESHOLD` byte. Điều này giúp cho việc giải phóng các khối bộ nhớ đó trở nên hiệu quả hơn (thông qua `munmap()`) nếu sau đó chúng được chuyển cho `free()`. (Nó cũng làm giảm khả năng phân mảnh bộ nhớ (memory fragmentation) khi liên tục cấp phát và giải phóng các khối bộ nhớ lớn.) `MMAP_THRESHOLD` mặc định là 128 kB, nhưng tham số này có thể điều chỉnh thông qua hàm thư viện `mallopt()`.
@@ -597,10 +633,12 @@ Một ánh xạ ẩn danh `MAP\_SHARED` cho phép các tiến trình có liên q
 Chúng ta có thể sử dụng kỹ thuật `MAP\_ANONYMOUS` để tạo một ánh xạ ẩn danh `MAP\_SHARED` như sau:
 
 ```c
+
 addr = mmap(NULL, length, PROT_READ | PROT_WRITE,
- MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 if (addr == MAP_FAILED)
- errExit("mmap");
+errExit("mmap");
+
 ```
 
 Nếu đoạn mã trên được tiếp nối bằng một lời gọi hàm `fork()`, thì do tiến trình con được tạo ra bởi `fork()` kế thừa ánh xạ này, cả hai tiến trình sẽ cùng chia sẻ vùng nhớ đó.
@@ -610,77 +648,101 @@ Nếu đoạn mã trên được tiếp nối bằng một lời gọi hàm `for
 Chương trình trong [Liệt kê 49-3](#page-167-2) minh họa việc sử dụng `MAP\_ANONYMOUS` hoặc `/dev/zero` để chia sẻ một vùng được ánh xạ giữa tiến trình cha và tiến trình con. Việc lựa chọn kỹ thuật nào được quyết định bởi việc `USE\_MAP\_ANON` có được định nghĩa (define) khi biên dịch chương trình hay không. Tiến trình cha khởi tạo một số nguyên (integer) trong vùng được chia sẻ thành giá trị 1 trước khi gọi `fork()`. Tiến trình con sau đó tăng giá trị của số nguyên được chia sẻ lên và thoát, trong khi tiến trình cha chờ tiến trình con kết thúc và sau đó in ra giá trị của số nguyên đó. Khi chúng ta chạy chương trình này, kết quả thu được như sau:
 
 ```bash
+
 $ ./anon_mmap
 Child started, value = 1
 In parent, value = 2
+
 ```
 
 **Liệt kê 49-3:** Chia sẻ một ánh xạ ẩn danh giữa tiến trình cha và tiến trình con
 
 ```c
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––– mmap/anon_mmap.c
+
 ## ifdef USE_MAP_ANON
+
 ## define _BSD_SOURCE /* Get MAP_ANONYMOUS definition */
+
 ## endif
+
 ## include <sys/wait.h>
+
 ## include <sys/mman.h>
+
 ## include <fcntl.h>
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- int *addr; /* Pointer to shared memory region */
+int *addr; /* Pointer to shared memory region */
+
 ## ifdef USE_MAP_ANON /* Use MAP_ANONYMOUS */
- addr = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE,
- MAP_SHARED | MAP_ANONYMOUS, -1, 0);
- if (addr == MAP_FAILED)
- errExit("mmap");
+
+addr = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE,
+MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+if (addr == MAP_FAILED)
+errExit("mmap");
+
 ## else /* Map /dev/zero */
- int fd;
- fd = open("/dev/zero", O_RDWR);
- if (fd == -1)
- errExit("open");
- addr = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
- if (addr == MAP_FAILED)
- errExit("mmap");
- if (close(fd) == -1) /* No longer needed */
- errExit("close");
+
+int fd;
+fd = open("/dev/zero", O_RDWR);
+if (fd == -1)
+errExit("open");
+addr = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+if (addr == MAP_FAILED)
+errExit("mmap");
+if (close(fd) == -1) /* No longer needed */
+errExit("close");
+
 ## endif
- *addr = 1; /* Initialize integer in mapped region */
- switch (fork()) { /* Parent and child share mapping */
- case -1:
- errExit("fork");
- case 0: /* Child: increment shared integer and exit */
- printf("Child started, value = %d\n", *addr);
- (*addr)++;
- if (munmap(addr, sizeof(int)) == -1)
- errExit("munmap");
- exit(EXIT_SUCCESS);
- default: /* Parent: wait for child to terminate */
- if (wait(NULL) == -1)
- errExit("wait");
- printf("In parent, value = %d\n", *addr);
+
+*addr = 1; /* Initialize integer in mapped region */
+switch (fork()) { /* Parent and child share mapping */
+case -1:
+errExit("fork");
+case 0: /* Child: increment shared integer and exit */
+printf("Child started, value = %d\n", *addr);
+(*addr)++;
+if (munmap(addr, sizeof(int)) == -1)
+errExit("munmap");
+exit(EXIT_SUCCESS);
+default: /* Parent: wait for child to terminate */
+if (wait(NULL) == -1)
+errExit("wait");
+printf("In parent, value = %d\n", *addr);
+
 ```
 
 ```c
- if (munmap(addr, sizeof(int)) == -1)
- errExit("munmap");
- exit(EXIT_SUCCESS);
- }
+
+if (munmap(addr, sizeof(int)) == -1)
+errExit("munmap");
+exit(EXIT_SUCCESS);
+}
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––– mmap/anon_mmap.c
+
 ```
 
 ## 49.8 Ánh xạ lại một vùng đã ánh xạ: mremap()
 
-Trên hầu hết các cài đặt UNIX, một khi ánh xạ đã được tạo, vị trí và kích thước của nó không thể thay đổi được nữa. Tuy nhiên, Linux cung cấp system call `mremap()` (không diش động - nonportable), cho phép thực hiện các thay đổi này.
+Trên hầu hết các hệ thống UNIX, một khi ánh xạ đã được tạo, vị trí và kích thước của nó không thể thay đổi. Tuy nhiên, Linux cung cấp system call `mremap()` (không di động / phi chuẩn - nonportable), cho phép thực hiện các thay đổi này.
 
 ```c
+
 ## define _GNU_SOURCE
+
 ## include <sys/mman.h>
+
 void *mremap(void *old_address, size_t old_size, size_t new_size, int flags, ...);
-                        Trả về địa chỉ bắt đầu của vùng được ánh xạ lại khi thành công,
-                                                            hoặc MAP_FAILED khi có lỗi
+Trả về địa chỉ bắt đầu của vùng được ánh xạ lại khi thành công,
+hoặc MAP_FAILED khi có lỗi
+
 ```
 
 Các tham số `old\_address` và `old\_size` chỉ định vị trí và kích thước của một ánh xạ hiện có mà chúng ta muốn mở rộng hoặc thu nhỏ. Địa chỉ được chỉ định trong `old\_address` phải được căn chỉnh theo trang (page-aligned), và thông thường là giá trị được trả về từ lời gọi `mmap()` trước đó. Kích thước mới mong muốn của ánh xạ được chỉ định trong `new\_size`. Các giá trị được chỉ định trong `old\_size` và `new\_size` đều được làm tròn lên thành bội số tiếp theo của kích thước trang hệ thống (system page size).
@@ -692,7 +754,9 @@ Trong quá trình thực hiện ánh xạ lại, kernel có thể di dời ánh 
 Nếu cờ này được chỉ định, thì tùy theo yêu cầu về không gian bộ nhớ, kernel có thể di dời ánh xạ trong không gian địa chỉ ảo của tiến trình. Nếu cờ này không được chỉ định và không có đủ không gian để mở rộng ánh xạ tại vị trí hiện tại, thì lỗi `ENOMEM` sẽ xảy ra.
 
 ```c
+
 MREMAP_FIXED (kể từ Linux 2.4)
+
 ```
 
 Cờ này chỉ có thể được sử dụng kết hợp với `MREMAP\_MAYMOVE`. Nó phục vụ cho `mremap()` một mục đích tương tự như mục đích mà `MAP_FIXED` phục vụ cho `mmap()` (Mục [49.10](#page-163-0)). Nếu cờ này được chỉ định, `mremap()` sẽ nhận thêm một tham số `void \*new_address`, chỉ định một địa chỉ đã căn chỉnh theo trang mà ánh xạ nên được chuyển đến. Bất kỳ ánh xạ trước đó nào nằm trong dải địa chỉ được chỉ định bởi `new_address` và `new_size` sẽ bị hủy ánh xạ (unmapped).
@@ -727,7 +791,9 @@ Từ chối các trường hợp cấp phát vượt mức rõ ràng có nghĩa 
 Kể từ Linux 2.6, giá trị 1 có ý nghĩa tương tự như giá trị dương ở các phiên bản kernel trước đó, nhưng giá trị 2 (hoặc lớn hơn) khiến hệ thống áp dụng chế độ cấp phát vượt mức nghiêm ngặt (strict overcommitting). Trong trường hợp này, kernel thực hiện việc kiểm toán nghiêm ngặt trên tất cả các vùng cấp phát `mmap()` và giới hạn tổng dung lượng trên toàn hệ thống của tất cả các vùng cấp phát đó phải nhỏ hơn hoặc bằng:
 
 ```
+
 [swap size] + [RAM size] * overcommit_ratio / 100
+
 ```
 
 Giá trị `overcommit_ratio` là một số nguyên — thể hiện tỷ lệ phần trăm — nằm trong tệp `/proc/sys/vm/overcommit_ratio` đặc trưng của Linux. Giá trị mặc định trong tệp này là 50, có nghĩa là kernel có thể cấp phát vượt mức lên đến 50% kích thước RAM của hệ thống và việc này sẽ thành công, miễn là không phải tất cả các tiến trình đều cố gắng sử dụng toàn bộ phần bộ nhớ được cấp phát của chúng.
@@ -771,7 +837,7 @@ Tuy nhiên, có một tình huống mà một ứng dụng tính di động cao 
 
 Mặc dù chúng ta có thể bỏ qua bước đầu tiên và sử dụng một chuỗi các thao tác `mmap()` với `MAP_FIXED` để tạo một tập hợp các vùng nhớ ánh xạ liền kề tại một dải địa chỉ do ứng dụng lựa chọn, nhưng cách tiếp cận này ít mang tính di động hơn so với việc thực hiện cả hai bước. Như đã lưu ý ở trên, một ứng dụng tính di động cao nên tránh cố gắng tạo một vùng nhớ ánh xạ mới tại một địa chỉ cố định. Bước đầu tiên giúp tránh được vấn đề về tính di động, bởi vì chúng ta để Kernel chọn một dải địa chỉ liền kề, và sau đó tạo các vùng nhớ ánh xạ mới nằm trong dải địa chỉ đó.
 
-Từ Linux 2.6 trở đi, system call `remap_file_pages()`, mà chúng ta sẽ mô tả trong phần tiếp theo, cũng có thể được sử dụng để đạt được hiệu quả tương tự. Tuy nhiên, việc sử dụng `MAP_FIXED` có tính di port (portable) cao hơn so với `remap_file_pages()`, vốn là tính năng đặc thù của riêng Linux (Linux-specific).
+Từ Linux 2.6 trở đi, system call `remap_file_pages()` (được mô tả trong phần tiếp theo) cũng có thể được sử dụng để đạt được hiệu quả tương tự. Tuy nhiên, việc sử dụng `MAP_FIXED` có khả năng di động (portable) cao hơn so với `remap_file_pages()`, vốn là hàm đặc thù riêng của Linux (Linux-specific).
 
 ## 49.11 Ánh xạ phi tuyến tính (Nonlinear Mappings): remap\_file\_pages()
 
@@ -788,7 +854,6 @@ Từ kernel 2.6 trở đi, Linux cung cấp system call `remap_file_pages()` đ�
 
 Có thể sử dụng `remap_file_pages()` để ánh xạ cùng một trang của tệp vào nhiều vị trí khác nhau trong vùng được ánh xạ.
 
-```
 ## define _GNU_SOURCE
 ## include <sys/mman.h>
 int remap_file_pages(void *addr, size_t size, int prot, size_t pgoff, int flags);
@@ -864,6 +929,7 @@ Có hai tham số khác của `remap_file_pages()` mà chúng ta chưa mô tả:
 
 Tham số `prot` bị bỏ qua và bắt buộc phải được đặt giá trị là 0. Trong tương lai, có thể tham số này sẽ được sử dụng để thay đổi quyền bảo vệ (protection) của vùng nhớ chịu ảnh hưởng bởi `remap_file_pages()`. Trong cài đặt hiện tại, quyền bảo vệ vẫn giữ nguyên như trên toàn bộ VMA (Virtual Memory Area).
 
+> [!NOTE]
 > Các máy ảo (Virtual machines) và bộ thu gom rác (garbage collectors) là những ứng dụng khác sử dụng nhiều VMA. Một số ứng dụng trong số này cần có khả năng bảo vệ ghi (write-protect)
 
 các trang (page) riêng lẻ. Mục đích ban đầu của `remap_file_pages()` là cho phép thay đổi quyền hạn trên các trang riêng lẻ bên trong một VMA, nhưng tính năng này cho đến nay vẫn chưa được hiện thực hóa.

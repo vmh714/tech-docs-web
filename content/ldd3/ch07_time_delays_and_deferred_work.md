@@ -1,4 +1,4 @@
-# Chương 7: Thời gian, Độ trễ và Công việc Hoãn lại (Deferred Work)
+# Chương 7: Thời gian, Độ trễ và Công việc trì hoãn (Time Delays and Deferred Work)
 
 Đến thời điểm này, chúng ta đã nắm được những kiến thức cơ bản về cách viết một module ký tự (char module) đầy đủ tính năng. Tuy nhiên, các driver trong thế giới thực cần phải làm nhiều việc hơn là chỉ triển khai các thao tác điều khiển thiết bị; chúng phải đối phó với các vấn đề như thời gian (timing), quản lý bộ nhớ, truy cập phần cứng, và nhiều thứ khác. May mắn thay, kernel cung cấp (exports) một số cơ sở hạ tầng để giảm bớt gánh nặng cho người viết driver. Trong các chương tiếp theo, chúng ta sẽ mô tả một số tài nguyên kernel mà bạn có thể sử dụng. Chương này mở đường bằng cách mô tả cách các vấn đề về thời gian được giải quyết. Việc xử lý thời gian bao gồm các tác vụ sau, sắp xếp theo thứ tự độ phức tạp tăng dần:
 
@@ -27,7 +27,7 @@ Bộ đếm và các hàm tiện ích để đọc nó nằm trong *<linux/jiffi
 
 Bất cứ khi nào mã nguồn của bạn cần ghi nhớ giá trị hiện tại của `jiffies`, nó có thể truy cập trực tiếp vào biến `unsigned long` này (biến được khai báo là `volatile` để yêu cầu trình biên dịch không tối ưu hóa các thao tác đọc bộ nhớ). Bạn cần đọc bộ đếm hiện tại bất cứ khi nào mã nguồn của bạn cần tính toán một mốc thời gian trong tương lai, như được thể hiện trong ví dụ sau:
 
-```
+```c
 ## include <linux/jiffies.h>
 unsigned long j, stamp_1, stamp_half, stamp_n;
 j = jiffies; /* đọc giá trị hiện tại */
@@ -38,12 +38,9 @@ stamp_n = j + n * HZ / 1000; /* n mili-giây */
 
 Đoạn mã này không gặp vấn đề gì với việc `jiffies` bị tràn (wrap around), miễn là các giá trị khác nhau được so sánh theo đúng cách. Mặc dù trên các kiến trúc nền tảng 32-bit (32-bit platforms), bộ đếm chỉ tràn một lần sau mỗi 50 ngày khi `HZ` là 1000, mã nguồn của bạn vẫn nên được chuẩn bị để đối phó với sự kiện đó. Để so sánh giá trị đã lưu trong bộ đệm (như `stamp_1` ở trên) và giá trị hiện tại, bạn nên sử dụng một trong các macro sau:
 
-```
+```c
 ## include <linux/jiffies.h>
 int time_after(unsigned long a, unsigned long b);
-```
-
-```
 int time_before(unsigned long a, unsigned long b);
 int time_after_eq(unsigned long a, unsigned long b);
 int time_before_eq(unsigned long a, unsigned long b);
@@ -59,7 +56,7 @@ msec = diff * 1000 / HZ;
 
 Tuy nhiên, đôi khi bạn cần trao đổi các biểu diễn thời gian với các chương trình ở không gian người dùng (user space programs) vốn có xu hướng biểu diễn giá trị thời gian bằng cấu trúc `struct timeval` và `struct timespec`. Hai cấu trúc này biểu diễn một đại lượng thời gian chính xác bằng hai con số: giây và micro-giây được sử dụng trong cấu trúc `struct timeval` cũ và phổ biến, còn giây và nano-giây được sử dụng trong cấu trúc `struct timespec` mới hơn. Kernel xuất ra (export) bốn hàm hỗ trợ để chuyển đổi các giá trị thời gian biểu diễn dưới dạng `jiffies` sang và từ các cấu trúc đó:
 
-```
+```c
 ## include <linux/time.h>
 unsigned long timespec_to_jiffies(struct timespec *value);
 void jiffies_to_timespec(unsigned long jiffies, struct timespec *value);
@@ -69,7 +66,7 @@ void jiffies_to_timeval(unsigned long jiffies, struct timeval *value);
 
 Việc truy cập bộ đếm jiffy 64-bit không đơn giản như truy cập `jiffies`. Trong khi trên các kiến trúc máy tính 64-bit, hai biến này thực chất chỉ là một, thì việc truy cập giá trị lại không mang tính nguyên tử (atomic) đối với các bộ vi xử lý 32-bit. Điều này có nghĩa là bạn có thể đọc phải giá trị sai nếu cả hai nửa của biến bị cập nhật trong lúc bạn đang đọc chúng. Rất khó có khả năng bạn cần phải đọc bộ đếm 64-bit này, nhưng nếu có, bạn sẽ thấy vui khi biết rằng kernel xuất ra một hàm hỗ trợ cụ thể thực hiện việc khóa (locking) thích hợp cho bạn:
 
-```
+```c
 ## include <linux/jiffies.h>
 u64 get_jiffies_64(void);
 ```
@@ -116,7 +113,7 @@ Một số nền tảng khác cung cấp chức năng tương tự, và các t�
 
 ```c
 ## include <linux/timex.h>
- cycles_t get_cycles(void);
+cycles_t get_cycles(void);
 ```
 
 Hàm này được định nghĩa cho mọi nền tảng, và nó luôn trả về 0 trên các nền tảng không có thanh ghi đếm chu kỳ. Kiểu dữ liệu `cycles_t` là một kiểu dữ liệu không dấu (unsigned type) thích hợp để lưu trữ giá trị đọc được.
@@ -161,7 +158,7 @@ con trỏ `struct timeval`—cùng loại được sử dụng trong system call
 
 ```c
 ## include <linux/time.h>
- void do_gettimeofday(struct timeval *tv);
+void do_gettimeofday(struct timeval *tv);
 ```
 
 Mã nguồn nêu rõ rằng `do_gettimeofday` có "độ phân giải gần bằng micro giây", bởi vì nó hỏi phần cứng thời gian xem phần nào của `jiffy` hiện tại đã trôi qua. Tuy nhiên, độ chính xác thay đổi từ kiến trúc này sang kiến trúc khác, vì nó phụ thuộc vào các cơ chế phần cứng thực tế đang được sử dụng. Ví dụ, một số bộ xử lý `m68knommu`, hệ thống Sun3, và các hệ thống `m68k` khác không thể cung cấp độ phân giải cao hơn một `jiffy`. Ngược lại, các hệ thống Pentium cung cấp các phép đo dưới mức chu kỳ (subtick) rất nhanh và chính xác bằng cách đọc bộ đếm thời gian đã được mô tả trước đó trong chương này.
@@ -309,7 +306,7 @@ Các vòng lặp trễ dưới mức tối ưu (suboptimal delay loops) được
 
 Nếu driver của bạn sử dụng một hàng đợi chờ (wait queue) để đợi một sự kiện nào đó, nhưng bạn cũng muốn đảm bảo rằng nó chạy trong một khoảng thời gian nhất định, nó có thể sử dụng `wait_event_timeout` hoặc `wait_event_interruptible_timeout`:
 
-```
+```c
 
 ## include <linux/wait.h>
 
@@ -348,7 +345,7 @@ Vì tiến trình đọc (tiến trình `dd` ở trên) không nằm trong hàng
 
 `wait_event_timeout` và `wait_event_interruptible_timeout` được thiết kế với một hardware driver trong tâm trí, nơi việc thực thi có thể được tiếp tục theo một trong hai cách: hoặc ai đó gọi `wake_up` trên wait queue, hoặc timeout hết hạn. Điều này không áp dụng cho `jitqueue`, vì không ai gọi `wake_up` trên wait queue cả (xốt cho cùng, không có đoạn mã nào khác biết về nó), do đó tiến trình luôn thức dậy khi timeout hết hạn. Để đáp ứng tình huống này, khi bạn muốn trì hoãn việc thực thi mà không chờ đợi một sự kiện cụ thể nào, kernel cung cấp hàm `schedule_timeout` để bạn có thể tránh việc phải khai báo và sử dụng một `wait_queue_head` thừa thãi:
 
-```
+```c
 
 ## include <linux/sched.h>
 
@@ -374,7 +371,7 @@ Nếu bạn muốn thử nghiệm với bốn tệp `jit` dưới các tình hu�
 ### Khoảng Trễ Ngắn (Short Delays)
 Khi một device driver (trình điều khiển thiết bị) cần xử lý các độ trễ (latency) trong phần cứng của nó, các khoảng trễ liên quan thường tối đa chỉ vài chục microsecond. Trong trường hợp này, việc dựa vào xung nhịp hệ thống (clock tick) chắc chắn không phải là giải pháp phù hợp.
 
-Các hàm trong kernel là *ndelay*, *udelay* và *mdelay* hỗ trợ rất tốt cho các khoảng trễ ngắn, làm chậm quá trình thực thi (execution) tương ứng theo số lượng nanosecond, microsecond hoặc millisecond được chỉ định.\* Nguyên mẫu (prototype) của chúng là:
+Các hàm trong kernel là *ndelay*, *udelay* và *mdelay* hỗ trợ rất tốt cho các khoảng trễ ngắn, làm chậm quá trình thực thi (execution) tương ứng theo số lượng nanosecond, microsecond hoặc millisecond được chỉ định.* Nguyên mẫu (prototype) của chúng là:
 
 ```c
 
@@ -386,11 +383,9 @@ void mdelay(unsigned long msecs);
 
 ```
 
-Việc hiện thực thực tế của các hàm này nằm trong *<asm/delay.h>*, mang tính phụ thuộc kiến trúc (architecture-specific) và đôi khi dựa trên một hàm bên ngoài. Mọi kiến trúc đều hiện thực *udelay*, nhưng các hàm khác có thể được định nghĩa hoặc không; nếu chúng không được định nghĩa, *<linux/delay.h>* sẽ cung cấp một phiên bản mặc định dựa trên *udelay*. Trong mọi trường hợp, khoảng trễ đạt được ít nhất bằng giá trị được yêu cầu nhưng có thể lớn hơn; trên thực tế, hiện tại không có nền tảng nào đạt được độ chính xác đến mức nanosecond, mặc dù một số nền tảng cung cấp độ chính xác dưới mức microsecond.
+Việc triển khai thực tế của các hàm này nằm trong *<asm/delay.h>*, mang tính phụ thuộc kiến trúc (architecture-specific) và đôi khi dựa trên một hàm bên ngoài. Mọi kiến trúc đều triển khai *udelay*, nhưng các hàm khác có thể được định nghĩa hoặc không; nếu chúng không được định nghĩa, *<linux/delay.h>* sẽ cung cấp một phiên bản mặc định dựa trên *udelay*. Trong mọi trường hợp, khoảng trễ đạt được ít nhất bằng giá trị được yêu cầu nhưng có thể lớn hơn; trên thực tế, hiện tại không có nền tảng nào đạt được độ chính xác đến mức nanosecond, mặc dù một số nền tảng cung cấp độ chính xác dưới mức microsecond.
 
-\*** Chữ u trong *udelay* đại diện cho chữ cái Hy Lạp mu và viết tắt của *micro*.
-
-độ chính xác. Việc tạo độ trễ lớn hơn giá trị được yêu cầu thường không phải là vấn đề, vì các khoảng trễ ngắn trong một driver thường cần thiết để chờ phần cứng, và các yêu cầu là phải chờ *ít nhất* một khoảng thời gian cho trước.
+\* Ký tự *u* trong *udelay* đại diện cho chữ cái Hy Lạp *µ* (mu) và là viết tắt của *micro*. Việc tạo độ trễ lớn hơn giá trị được yêu cầu thường không phải là vấn đề, vì các khoảng trễ ngắn trong một driver thường cần thiết để chờ phần cứng, và các yêu cầu là phải chờ *ít nhất* một khoảng thời gian cho trước.
 
 Việc hiện thực *udelay* (và có thể cả *ndelay*) sử dụng một vòng lặp phần mềm (software loop) dựa trên tốc độ bộ vi xử lý (processor speed) được tính toán tại thời điểm khởi động (boot time), sử dụng biến số nguyên `loops_per_jiffy`. Tuy nhiên, nếu bạn muốn xem mã nguồn thực tế, hãy lưu ý rằng việc hiện thực trên *x86* khá phức tạp do các nguồn tính thời gian (timing source) khác nhau mà nó sử dụng, dựa trên loại CPU đang chạy mã nguồn đó.
 
@@ -442,7 +437,7 @@ Tuy nhiên, một tính năng quan trọng của timer không nên quên đó l�
 ### API Bộ định thời (Timer API)
 Kernel cung cấp cho các trình điều khiển (drivers) một số hàm để khai báo, đăng ký và gỡ bỏ các bộ định thời nhân (kernel timers). Đoạn mã trích dẫn sau đây thể hiện các thành phần xây dựng cơ bản:
 
-```
+```c
 
 ## include <linux/timer.h>
 
@@ -491,7 +486,7 @@ data->prevjiffies = j;
 
 ```
 
-```
+```c
 
 data->buf = buf2;
 data->loops = JIT_ASYNC_LOOPS;
@@ -502,7 +497,13 @@ data->timer.expires = j + tdelay; /* tham số */
 add_timer(&data->timer);
 /* chờ cho bộ đệm được lấp đầy */
 wait_event_interruptible(data->wait, !data->loops);
+
+```
+
 Hàm bộ định thời thực tế trông như sau:
+
+```c
+
 void jit_timer_fn(unsigned long arg)
 {
 struct jit_data *data = (struct jit_data *)arg;
@@ -549,7 +550,7 @@ Giải pháp được các nhà phát triển kernel nghĩ ra dựa trên cấu 
 
 Bất cứ khi nào mã nguồn kernel đăng ký một timer (thông qua *add\_timer* hoặc *mod\_timer*), thao tác này cuối cùng được thực hiện bởi *internal\_add\_timer* (trong `kernel/timer.c`), hàm này sẽ thêm timer mới vào danh sách liên kết đôi (double-linked list) các timer nằm trong một "bảng phân tầng" (cascading table) liên kết với CPU hiện tại.
 
-Bảng phân tầng hoạt động như sau: nếu timer hết hạn trong khoảng từ 0 đến 255 jiffies tiếp theo, nó được thêm vào một trong 256 danh sách dành cho các timer tầm ngắn sử dụng các bit ít quan trọng nhất (least significant bits) của trường `expires`. Nếu nó hết hạn xa hơn trong tương lai (nhưng trước 16.384 jiffies), nó được thêm vào một trong 64 danh sách dựa trên các bit 9–14 của trường `expires`. Đối với các timer hết hạn ở xa hơn nữa, thủ thuật tương tự được sử dụng cho các bit 15–20, 21–26 và 27–31. Các timer có trường `expires` trỏ xa hơn nữa trong tương lai (điều chỉ có thể xảy ra trên các nền tảng 64-bit) được băm (hash) với giá trị độ trễ là `0xffffffff`, và các timer có thời gian hết hạn trong quá khứ sẽ được lên lịch chạy ở ngắt thời gian (timer tick) tiếp theo. (Một timer đã hết hạn đôi khi có thể được đăng ký trong các tình huống tải cao, đặc biệt là nếu bạn chạy một kernel có thể ngắt quyền - preemptible kernel).
+Bảng phân tầng hoạt động như sau: nếu timer hết hạn trong khoảng từ 0 đến 255 jiffies tiếp theo, nó được thêm vào một trong 256 danh sách dành cho các timer tầm ngắn sử dụng các bit ít quan trọng nhất (least significant bits) của trường `expires`. Nếu nó hết hạn xa hơn trong tương lai (nhưng trước 16.384 jiffies), nó được thêm vào một trong 64 danh sách dựa trên các bit 9–14 của trường `expires`. Đối với các timer hết hạn ở xa hơn nữa, thủ thuật tương tự được sử dụng cho các bit 15–20, 21–26 và 27–31. Các timer có trường `expires` trỏ xa hơn nữa trong tương lai (điều chỉ có thể xảy ra trên các nền tảng 64-bit) được băm (hash) với giá trị độ trễ là `0xffffffff`, và các timer có thời gian hết hạn trong quá khứ sẽ được lên lịch chạy ở ngắt thời gian (timer tick) tiếp theo. (Một timer đã hết hạn đôi khi có thể được đăng ký trong các tình huống tải cao, đặc biệt là nếu bạn chạy một kernel hỗ trợ tiền chiếm quyền - preemptible kernel).
 
 Khi *\_\_run\_timers* được kích hoạt, nó thực thi tất cả các timer đang chờ xử lý cho ngắt thời gian hiện tại. Nếu `jiffies` hiện tại là bội số của 256, hàm này cũng sẽ băm lại (rehash) một trong các danh sách timer cấp tiếp theo vào 256 danh sách ngắn hạn, có thể phân tầng một hoặc nhiều cấp độ khác theo biểu diễn bit của `jiffies`.
 
@@ -567,17 +568,12 @@ Tasklets có một số điểm tương đồng với bộ định thời của 
 
 Một tasklet tồn tại dưới dạng một cấu trúc dữ liệu (data structure) cần được khởi tạo trước khi sử dụng. Việc khởi tạo có thể được thực hiện bằng cách gọi một hàm cụ thể hoặc bằng cách khai báo cấu trúc sử dụng một số macro nhất định:
 
-```
+```c
 
 ## include <linux/interrupt.h>
 
 struct tasklet_struct {
 /* ... */
-
-```
-
-```
-
 void (*func)(unsigned long);
 unsigned long data;
 };
@@ -806,7 +802,7 @@ Vì bạn không biết ai khác có thể đang sử dụng hàng đợi này, 
 Chương này đã giới thiệu các ký hiệu sau đây.
 
 ### Quản lý thời gian (Timekeeping)
-```
+```c
 
 ## include <linux/param.h>
 
@@ -814,14 +810,14 @@ HZ
 
 ```
 
-Ký hiệu `HZ` chỉ định số lượng ngắt nhịp đồng hồ (clock tick) được tạo ra trong một giây.
+Macro `HZ` chỉ định số lượng ngắt nhịp đồng hồ (clock tick) được tạo ra trong một giây.
 
-```
+```c
 
 ## include <linux/jiffies.h>
 
-volatile unsigned long jiffies
-u64 jiffies_64
+volatile unsigned long jiffies;
+u64 jiffies_64;
 
 ```
 

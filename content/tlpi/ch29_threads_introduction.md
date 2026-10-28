@@ -1,4 +1,4 @@
-# Chương 29: LUỒNG (THREADS): GIỚI THIỆU
+# Chương 29: Luồng: Giới thiệu (Threads: Introduction)
 
 Trong chương này và một vài chương tiếp theo, chúng ta sẽ mô tả các luồng POSIX (POSIX threads), thường được gọi là Pthreads. Chúng ta sẽ không cố gắng bao quát toàn bộ API Pthreads vì nó khá lớn. Các nguồn tài liệu khác nhau để tìm hiểu thêm về luồng được liệt kê ở cuối chương này.
 
@@ -137,6 +137,7 @@ Trong UNIX API truyền thống, `errno` là một biến số nguyên toàn c�
 
 Tóm lại, cơ chế `errno` đã được điều chỉnh cho các luồng theo cách giúp cho việc báo cáo lỗi không thay đổi so với UNIX API truyền thống.
 
+> [!NOTE]
 > Tiêu chuẩn POSIX.1 gốc tuân theo cách sử dụng của K&R C khi cho phép chương trình khai báo `errno` dưới dạng `extern int errno`. SUSv3 không cho phép cách sử dụng này (sự thay đổi thực sự diễn ra vào năm 1995 trong POSIX.1c). Ngày nay, chương trình bắt buộc phải khai báo `errno` bằng cách bao gồm tệp tiêu đề `<errno.h>`, điều này cho phép việc hiện thực hóa `errno` cho từng luồng (per-thread errno).
 
 ### Giá trị trả về từ các hàm Pthreads
@@ -183,15 +184,17 @@ Luồng mới bắt đầu thực thi bằng cách gọi hàm được chỉ đ�
 
 Đối số `arg` được khai báo dưới dạng `void *`, nghĩa là chúng ta có thể truyền một con trỏ tới bất kỳ kiểu đối tượng nào cho hàm `start`. Thông thường, `arg` trỏ tới một biến toàn cục (global variable) hoặc biến trên vùng nhớ heap, nhưng nó cũng có thể được chỉ định là `NULL`. Nếu chúng ta cần truyền nhiều đối số cho `start`, thì `arg` có thể được chỉ định là một con trỏ tới một cấu trúc (structure) chứa các đối số dưới dạng các trường (field) riêng biệt. Với việc ép kiểu (casting) khôn ngoan, chúng ta thậm chí có thể chỉ định `arg` như một `int`.
 
+> [!NOTE]
 > Nói một cách chính xác, các chuẩn C không định nghĩa kết quả của việc ép kiểu từ `int` sang `void *` và ngược lại. Tuy nhiên, hầu hết các trình biên dịch C đều cho phép các thao tác này và chúng tạo ra kết quả mong muốn; nghĩa là, `int j == (int) ((void *) j)`.
 
 Giá trị trả về của `start` cũng có kiểu `void *`, và nó có thể được sử dụng theo cách tương tự như đối số `arg`. Chúng ta sẽ thấy giá trị này được sử dụng như thế nào khi mô tả hàm `pthread_join()` dưới đây.
 
+> [!NOTE]
 > Cần cẩn trọng khi sử dụng một số nguyên được ép kiểu làm giá trị trả về của hàm `start` của một luồng. Lý do là `PTHREAD_CANCELED`—giá trị trả về khi một luồng bị hủy (xem Chương [32](#page-54-0))—thường là một giá trị số nguyên do bản triển khai định nghĩa được ép kiểu thành `void *`. Nếu hàm `start` của một luồng trả về đúng giá trị số nguyên đó, thì đối với một luồng khác đang thực hiện `pthread_join()`, nó sẽ bị hiểu nhầm rằng luồng đó đã bị hủy. Trong một ứng dụng sử dụng cơ chế hủy luồng và chọn trả về các giá trị số nguyên được ép kiểu từ hàm `start`, chúng ta phải đảm bảo rằng một luồng kết thúc bình thường không trả về giá trị số nguyên trùng với `PTHREAD_CANCELED` trên bản triển khai Pthreads đó.
 
 ```
 
-``` Một ứng dụng khả chuyển (portable application) cần đảm bảo rằng các luồng kết thúc bình thường không trả về các giá trị số nguyên trùng với `PTHREAD_CANCELED` trên bất kỳ bản cài đặt nào mà ứng dụng đó sẽ chạy.
+Một ứng dụng khả chuyển (portable application) cần đảm bảo rằng các luồng kết thúc bình thường không trả về các giá trị số nguyên trùng với `PTHREAD_CANCELED` trên bất kỳ bản cài đặt nào mà ứng dụng đó sẽ chạy.
 
 Đối số `thread` trỏ tới một bộ đệm (buffer) kiểu `pthread_t` mà định danh duy nhất (unique identifier) cho luồng này được sao chép vào trước khi `pthread_create()` trả về. Định danh này có thể được sử dụng trong các lời gọi Pthreads sau đó để tham chiếu đến luồng.
 
@@ -214,8 +217,11 @@ Việc thực thi của một luồng kết thúc theo một trong các cách sa
 Hàm `pthread_exit()` chấm dứt luồng gọi nó, đồng thời chỉ định một giá trị trả về (return value) mà luồng khác có thể lấy được bằng cách gọi hàm `pthread_join()`.
 
 ```c
+
 ## include <pthread.h>
+
 void pthread_exit(void *retval);
+
 ```
 
 ```
@@ -233,9 +239,12 @@ Nếu luồng chính gọi hàm `pthread_exit()` thay vì gọi `exit()` hoặc 
 Mỗi luồng trong một tiến trình được định danh duy nhất bởi một ID luồng (thread ID). ID này được trả về cho bên gọi hàm `pthread_create()`, và một luồng có thể lấy ID của chính nó bằng cách sử dụng hàm `pthread_self()`.
 
 ```c
+
 ## include <pthread.h>
+
 pthread_t pthread_self(void);
-                                      /* Trả về ID luồng của luồng gọi hàm */
+/* Trả về ID luồng của luồng gọi hàm */
+
 ```
 
 ```
@@ -250,9 +259,12 @@ Các ID luồng rất hữu ích trong các ứng dụng vì những lý do sau:
 Hàm `pthread_equal()` cho phép chúng ta kiểm tra xem hai ID luồng có giống nhau hay không.
 
 ```c
+
 ## include <pthread.h>
+
 int pthread_equal(pthread_t t1, pthread_t t2);
-                        /* Trả về giá trị khác 0 nếu t1 và t2 bằng nhau, ngược lại trả về 0 */
+/* Trả về giá trị khác 0 nếu t1 và t2 bằng nhau, ngược lại trả về 0 */
+
 ```
 
 ```
@@ -262,21 +274,27 @@ int pthread_equal(pthread_t t1, pthread_t t2);
 Ví dụ, để kiểm tra xem ID của luồng gọi có khớp với ID luồng được lưu trong biến `tid` hay không, chúng ta có thể viết mã như sau:
 
 ```c
+
 if (pthread_equal(tid, pthread_self()))
-    printf("tid trùng khớp với chính nó\n");
+printf("tid trùng khớp với chính nó\n");
+
 ```
 
 Hàm `pthread_equal()` là cần thiết vì kiểu dữ liệu `pthread_t` phải được xử lý như một dữ liệu mờ (opaque data). Trên Linux, `pthread_t` thực tế được định nghĩa là một số nguyên không dấu (unsigned long), nhưng trên các hệ thống thực thi (implementation) khác, nó có thể là một con trỏ (pointer) hoặc một cấu trúc (structure).
 
 ```c
+
 Trong NPTL, pthread_t thực chất là một con trỏ đã được ép kiểu (cast) thành unsigned long.
+
 ```
 
 Tiêu chuẩn SUSv3 không yêu cầu `pthread_t` phải được triển khai như một kiểu dữ liệu vô hướng (scalar type); nó có thể là một cấu trúc. Do đó, chúng ta không thể sử dụng mã nguồn có tính di động (portable) như sau để hiển thị ID luồng (mặc dù nó hoạt động trên nhiều hệ thống thực thi, bao gồm cả Linux, và đôi khi hữu ích cho mục đích gỡ lỗi - debugging):
 
 ```c
+
 pthread_t thr;
 printf("Thread ID = %ld\n", (long) thr); /* SAI! */
+
 ```
 
 Trong các cơ chế thực thi luồng của Linux, các ID luồng là duy nhất trên toàn bộ các tiến trình (across processes). Tuy nhiên, điều này không nhất thiết đúng trên các hệ thống thực thi khác, và SUSv3 lưu ý rõ ràng rằng một ứng dụng không thể sử dụng ID luồng một cách có tính di động để định danh một luồng ở tiến trình khác. SUSv3 cũng lưu ý rằng một hệ thống thực thi được phép tái sử dụng ID luồng sau khi một luồng đã chấm dứt được thu gom bằng `pthread_join()` hoặc sau khi một luồng tách biệt (detached thread) đã chấm dứt. (Chúng ta sẽ giải thích về `pthread_join()` ở phần tiếp theo, và luồng tách biệt trong Mục [29.7](#page-10-0)).
@@ -288,9 +306,12 @@ Trong các cơ chế thực thi luồng của Linux, các ID luồng là duy nh�
 Hàm `pthread_join()` đợi thread được định dạng bởi `thread` kết thúc. (Nếu thread đó đã kết thúc từ trước, `pthread_join()` sẽ trả về ngay lập tức). Thao tác này được gọi là thu gom hay kết nối (`joining`).
 
 ```c
+
 ## include <pthread.h>
+
 int pthread_join(pthread_t thread, void **retval);
-                      /* Thành công trả về 0, thất bại trả về một số nguyên dương biểu thị mã lỗi */
+/* Thành công trả về 0, thất bại trả về một số nguyên dương biểu thị mã lỗi */
+
 ```
 
 ```
@@ -317,41 +338,45 @@ Chương trình trong Listing 29-1 tạo ra một luồng khác và sau đó th�
 **Listing 29-1:** Một chương trình đơn giản sử dụng Pthreads
 
 ```c
+
 // ––––––––––––––––––––––––––––––––––––––––––––––––––– threads/simple_thread.c
+
 ## include <pthread.h>
+
 ## include "tlpi_hdr.h"
 
 static void *
 threadFunc(void *arg)
 {
-    char *s = (char *) arg;
+char *s = (char *) arg;
 
-    printf("%s", s);
+printf("%s", s);
 
-    return (void *) strlen(s);
+return (void *) strlen(s);
 }
 
 int
 main(int argc, char *argv[])
 {
-    pthread_t t1;
-    void *res;
-    int s;
+pthread_t t1;
+void *res;
+int s;
 
-    s = pthread_create(&t1, NULL, threadFunc, "Hello world\n");
-    if (s != 0)
-        errExitEN(s, "pthread_create");
+s = pthread_create(&t1, NULL, threadFunc, "Hello world\n");
+if (s != 0)
+errExitEN(s, "pthread_create");
 
-    printf("Message from main()\n");
-    s = pthread_join(t1, &res);
-    if (s != 0)
-        errExitEN(s, "pthread_join");
+printf("Message from main()\n");
+s = pthread_join(t1, &res);
+if (s != 0)
+errExitEN(s, "pthread_join");
 
-    printf("Thread returned %ld\n", (long) res);
+printf("Thread returned %ld\n", (long) res);
 
-    exit(EXIT_SUCCESS);
+exit(EXIT_SUCCESS);
 }
 // ––––––––––––––––––––––––––––––––––––––––––––––––––– threads/simple_thread.c
+
 ```
 
 Khi chạy chương trình trong Listing 29-1, chúng ta thấy kết quả sau:
@@ -361,10 +386,12 @@ Khi chạy chương trình trong Listing 29-1, chúng ta thấy kết quả sau:
 ```
 
 ```
+
 $ ./simple_thread
 Message from main()
 Hello world
 Thread returned 12
+
 ```
 
 Tùy thuộc vào cách hai Thread (luồng) được lập lịch (scheduled), thứ tự của hai dòng đầu tiên trong kết quả đầu ra có thể bị đảo ngược.
@@ -374,9 +401,12 @@ Tùy thuộc vào cách hai Thread (luồng) được lập lịch (scheduled), 
 Theo mặc định, một Thread (luồng) có thể thu hồi được (joinable), nghĩa là khi nó kết thúc, một Thread (luồng) khác có thể lấy trạng thái trả về của nó bằng cách sử dụng `pthread_join()`. Đôi khi, chúng ta không quan tâm đến trạng thái trả về của Thread (luồng); chúng ta đơn giản chỉ muốn hệ thống tự động dọn dẹp và xóa Thread (luồng) đó khi nó kết thúc. Trong trường hợp này, chúng ta có thể đánh dấu Thread (luồng) là đã tách rời (detached) bằng cách gọi hàm `pthread_detach()` và chỉ định định danh (identifier) của Thread (luồng) trong tham số `thread`.
 
 ```c
+
 ## include <pthread.h>
+
 int pthread_detach(pthread_t thread);
-                      /* Trả về 0 nếu thành công, hoặc một số nguyên dương biểu thị mã lỗi nếu thất bại */
+/* Trả về 0 nếu thành công, hoặc một số nguyên dương biểu thị mã lỗi nếu thất bại */
+
 ```
 
 ```
@@ -386,7 +416,9 @@ int pthread_detach(pthread_t thread);
 Như một ví dụ về việc sử dụng `pthread_detach()`, một Thread (luồng) có thể tự tách rời chính nó bằng lời gọi sau:
 
 ```
+
 pthread_detach(pthread_self());
+
 ```
 
 Một khi một Thread (luồng) đã bị tách rời (detached), sẽ không thể sử dụng `pthread_join()` để lấy trạng thái trả về của nó nữa, và Thread (luồng) đó không thể được chuyển lại thành trạng thái có thể thu hồi (joinable).
@@ -402,6 +434,7 @@ Như một ví dụ về việc sử dụng thuộc tính luồng, đoạn mã �
 **Listing 29-2:** Tạo một luồng với thuộc tính tách rời (detached attribute)
 
 ```c
+
 // ––––––––––––––––––––––––––––––––––––––––––– từ threads/detached_attrib.c
 pthread_t thr;
 pthread_attr_t attr;
@@ -409,20 +442,21 @@ int s;
 
 s = pthread_attr_init(&attr); /* Gán các giá trị mặc định */
 if (s != 0)
-    errExitEN(s, "pthread_attr_init");
+errExitEN(s, "pthread_attr_init");
 
 s = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 if (s != 0)
-    errExitEN(s, "pthread_attr_setdetachstate");
+errExitEN(s, "pthread_attr_setdetachstate");
 
 s = pthread_create(&thr, &attr, threadFunc, (void *) 1);
 if (s != 0)
-    errExitEN(s, "pthread_create");
+errExitEN(s, "pthread_create");
 
 s = pthread_attr_destroy(&attr); /* Không còn cần thiết nữa */
 if (s != 0)
-    errExitEN(s, "pthread_attr_destroy");
+errExitEN(s, "pthread_attr_destroy");
 // ––––––––––––––––––––––––––––––––––––––––––– từ threads/detached_attrib.c
+
 ```
 
 ```
@@ -444,7 +478,7 @@ Sử dụng luồng có thể mang lại một số bất lợi so với sử d�
 
 ```
 
-``` Ngược lại, các tiến trình riêng biệt có thể tận dụng toàn bộ dải bộ nhớ ảo khả dụng (chịu giới hạn bởi RAM và không gian swap).
+Ngược lại, các tiến trình riêng biệt có thể tận dụng toàn bộ dải bộ nhớ ảo khả dụng (chịu giới hạn bởi RAM và không gian swap).
 
 Dưới đây là một số điểm khác có thể ảnh hưởng đến lựa chọn giữa luồng và tiến trình của chúng ta:
 

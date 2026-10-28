@@ -1,6 +1,4 @@
-## Chapter 63
-
-## CÁC MÔ HÌNH I/O THAY THẾ (ALTERNATIVE I/O MODELS)
+# Chương 63: Các mô hình I/O thay thế (Alternative I/O Models)
 
 Chương này thảo luận về ba phương án thay thế cho mô hình I/O tệp thông thường mà chúng ta đã sử dụng trong phần lớn các chương trình được trình bày trong cuốn sách này:
 
@@ -25,6 +23,7 @@ Chúng ta đã mô tả nonblocking I/O khá chi tiết trong Mục 5.9 và 44.9
 
 Nonblocking I/O cho phép chúng ta định kỳ kiểm tra ("poll") xem I/O có khả thi trên một file descriptor hay không. Ví dụ, chúng ta có thể làm cho một file descriptor đầu vào trở thành phi block, và sau đó định kỳ thực hiện các thao tác đọc phi block. Nếu chúng ta cần giám sát nhiều file descriptor, chúng ta sẽ đánh dấu tất cả chúng là phi block, và lần lượt poll từng cái một. Tuy nhiên, việc polling theo cách này thường không được mong muốn. Nếu việc polling chỉ được thực hiện thỉnh thoảng, thì độ trễ (latency) trước khi ứng dụng phản hồi lại một sự kiện I/O có thể dài một cách không thể chấp nhận được; mặt khác, việc polling trong một vòng lặp chặt (tight loop) sẽ lãng phí thời gian CPU.
 
+> [!NOTE]
 > Trong chương này, chúng ta sử dụng từ poll theo hai nghĩa khác nhau. Một nghĩa là tên của system call đa kênh I/O, `poll()`. Nghĩa còn lại, chúng ta hiểu là "thực hiện một kiểm tra phi block về trạng thái của một file descriptor".
 
 Nếu chúng ta không muốn một tiến trình bị block khi thực hiện I/O trên một file descriptor, thay vào đó, chúng ta có thể tạo một tiến trình mới để thực hiện I/O đó. Tiến trình cha (parent process) sau đó có thể tiếp tục thực hiện các tác vụ khác, trong khi tiến trình con (child process) bị block cho đến khi I/O hoàn tất. Nếu chúng ta cần xử lý I/O trên nhiều file descriptor, chúng ta có thể tạo một tiến trình con cho mỗi descriptor. Vấn đề với cách tiếp cận này là chi phí và độ phức tạp. Việc tạo và duy trì các tiến trình gây ra gánh nặng cho hệ thống, và thông thường, các tiến trình con sẽ cần sử dụng một hình thức IPC (Inter-Process Communication) nào đó để thông báo cho tiến trình cha về trạng thái của các thao tác I/O.
@@ -44,6 +43,7 @@ Về cơ bản, I/O multiplexing, signal-driven I/O và `epoll` đều là các 
 
 Lưu ý rằng không kỹ thuật nào trong số này thực hiện thao tác I/O. Chúng chỉ đơn thuần thông báo cho chúng ta biết rằng một bộ mô tả tệp đã sẵn sàng. Sau đó, một lời gọi hệ thống khác phải được sử dụng để thực sự thực hiện I/O.
 
+> [!NOTE]
 > Một mô hình I/O mà chúng ta không mô tả trong chương này là POSIX asynchronous I/O (AIO). POSIX AIO cho phép một tiến trình xếp hàng (queue) một thao tác I/O vào một tệp và sau đó nhận thông báo khi thao tác hoàn tất. Ưu điểm của POSIX AIO là lời gọi I/O ban đầu trả về ngay lập tức, do đó tiến trình không bị treo để chờ dữ liệu được truyền đến kernel hoặc chờ thao tác hoàn tất. Điều này cho phép tiến trình thực hiện các tác vụ khác song song với I/O (có thể bao gồm việc xếp hàng các yêu cầu I/O tiếp theo). Đối với một số loại ứng dụng nhất định, POSIX AIO có thể mang lại những lợi ích hiệu năng hữu ích. Hiện tại, Linux cung cấp một bản triển khai POSIX AIO dựa trên luồng (threads-based) bên trong glibc. Tại thời điểm viết bài này, công việc đang được tiến hành để cung cấp một bản triển khai POSIX AIO ngay trong kernel, điều này sẽ mang lại hiệu năng mở rộng (scaling performance) tốt hơn. POSIX AIO được mô tả trong [Gallmeister, 1995] và [Robbins & Robbins, 2003].
 
 ### Nên chọn kỹ thuật nào?
@@ -64,6 +64,7 @@ Hơn nữa, việc tận dụng tối đa signal-driven I/O đòi hỏi phải s
 
 Vì một mặt, `select()` và `poll()` có tính di động cao hơn, trong khi signal-driven I/O và `epoll` mang lại hiệu năng tốt hơn, nên đối với một số ứng dụng, việc viết một lớp phần mềm trừu tượng để giám sát các sự kiện bộ mô tả tệp có thể rất đáng giá. Với một lớp như vậy, các chương trình có tính di động có thể sử dụng `epoll` (hoặc một API tương tự) trên các hệ thống hỗ trợ nó, và quay lại sử dụng `select()` hoặc `poll()` trên các hệ thống khác.
 
+> [!NOTE]
 > Thư viện `libevent` là một lớp phần mềm cung cấp sự trừu tượng hóa để giám sát các sự kiện bộ mô tả tệp. Nó đã được chuyển đổi (port) sang một số hệ thống UNIX. Là cơ chế nền tảng, `libevent` có thể (một cách trong suốt) sử dụng bất kỳ kỹ thuật nào được mô tả trong chương này: `select()`, `poll()`, signal-driven I/O, hoặc `epoll`, cũng như giao diện `/dev/poll` đặc thù của Solaris hoặc giao diện `kqueue` của BSD. (Do đó, `libevent` cũng đóng vai trò là một ví dụ về cách sử dụng từng kỹ thuật này.) Được viết bởi Niels Provos, `libevent` có sẵn tại http://monkey.org/~provos/libevent/.
 
 ### 63.1.1 Thông báo theo mức (Level-Triggered) và theo cạnh (Edge-Triggered)
@@ -115,12 +116,14 @@ Chúng ta có thể sử dụng `select()` và `poll()` để theo dõi các b�
 
 System call select() thực hiện block (chặn) tiến trình cho đến khi một hoặc nhiều file descriptor (mô tả tệp) trong tập hợp trở nên sẵn sàng.
 
-```
 ## include <sys/time.h> /* For portability */
+
 ## include <sys/select.h>
+
 int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
- struct timeval *timeout);
-         Trả về số lượng file descriptor sẵn sàng, 0 nếu hết thời gian (timeout), hoặc –1 khi có lỗi
+struct timeval *timeout);
+Trả về số lượng file descriptor sẵn sàng, 0 nếu hết thời gian (timeout), hoặc –1 khi có lỗi
+
 ```
 
 Các tham số nfds, readfds, writefds, và exceptfds chỉ định các file descriptor mà select() cần theo dõi. Tham số timeout có thể được sử dụng để thiết lập giới hạn thời gian tối đa mà select() sẽ block. Chúng ta sẽ mô tả chi tiết từng tham số này dưới đây.
@@ -142,7 +145,6 @@ Thuật ngữ điều kiện ngoại lệ (exceptional condition) thường bị
 
 Thông thường, kiểu dữ liệu fd\_set được cài đặt dưới dạng một mặt nạ bit (bit mask). Tuy nhiên, chúng ta không cần phải nắm rõ các chi tiết này, vì mọi thao tác trên tập hợp file descriptor đều được thực hiện thông qua bốn macro: FD\_ZERO(), FD\_SET(), FD\_CLR(), và FD\_ISSET().
 
-```
 ## include <sys/select.h>
 void FD_ZERO(fd_set *fdset);
 void FD_SET(int fd, fd_set *fdset);
@@ -160,6 +162,7 @@ Các macro này hoạt động như sau:
 
 Một tập hợp file descriptor có kích thước tối đa, được xác định bởi hằng số FD\_SETSIZE. Trên Linux, hằng số này có giá trị là 1024. (Các hệ thống UNIX khác có các giá trị tương tự cho giới hạn này.)
 
+> [!NOTE]
 > Mặc dù các macro FD\_\* đang thao tác trên các cấu trúc dữ liệu ở user-space (không gian người dùng), và việc cài đặt select() trong kernel (nhân) có thể xử lý các tập hợp mô tả có kích thước lớn hơn, nhưng glibc không cung cấp cách thức đơn giản nào để sửa đổi định nghĩa của FD\_SETSIZE. Nếu muốn thay đổi giới hạn này, chúng ta phải sửa đổi định nghĩa trong các tệp header của glibc. Tuy nhiên, vì những lý do mà chúng ta sẽ mô tả sau trong chương này, nếu cần theo dõi số lượng lớn các descriptor, việc sử dụng epoll có lẽ sẽ ưu việt hơn so với việc dùng select().
 
 Các tham số readfds, writefds, và exceptfds đều mang tính chất giá trị-kết quả (value-result). Trước khi gọi hàm select(), các cấu trúc fd\_set được trỏ bởi các tham số này phải được khởi tạo (sử dụng FD\_ZERO() và FD\_SET()) để chứa tập hợp các file descriptor cần quan tâm. Lệnh gọi select() sẽ sửa đổi từng cấu trúc này sao cho, khi trả về, chúng chứa tập hợp các file descriptor đã sẵn sàng. (Vì các cấu trúc này bị thay đổi sau lời gọi hàm, chúng ta phải đảm bảo khởi tạo lại chúng nếu gọi select() lặp đi lặp lại bên trong một vòng lặp.) Sau đó, các cấu trúc này có thể được kiểm tra bằng hàm FD\_ISSET().
@@ -183,6 +186,7 @@ Nếu cả hai trường của timeout đều là 0, thì select() không block 
 
 Mặc dù cấu trúc timeval cung cấp độ chính xác đến cấp độ microsecond (micro-giây), độ chính xác của lời gọi hàm bị giới hạn bởi độ phân giải (granularity) của đồng hồ phần mềm (Phần 10.6). SUSv3 quy định rằng khoảng thời gian timeout được làm tròn lên nếu nó không phải là bội số chính xác của độ phân giải này.
 
+> [!NOTE]
 > SUSv3 yêu cầu khoảng thời gian timeout tối đa cho phép phải ít nhất là 31 ngày. Hầu hết các cài đặt trên UNIX cho phép giới hạn cao hơn đáng kể. Vì Linux/x86-32 sử dụng một số nguyên 32-bit cho kiểu `time_t`, giới hạn trên có thể kéo dài nhiều năm.
 
 Khi timeout là NULL, hoặc trỏ đến một cấu trúc chứa các trường khác không, select() sẽ block (chặn) cho đến khi một trong các điều kiện sau xảy ra:
@@ -326,10 +330,11 @@ Lời gọi hàm `select()` trả về ngay lập tức, thông báo cho chúng 
 
 Lời gọi hệ thống (`System Call`) `poll()` thực hiện một tác vụ tương tự như `select()`. Sự khác biệt lớn nhất giữa hai lời gọi hệ thống này nằm ở cách chúng ta chỉ định các tệp mô tả (`File Descriptor`) cần theo dõi. Với `select()`, chúng ta cung cấp ba tập hợp (sets), mỗi tập hợp được đánh dấu để chỉ định các tệp mô tả quan tâm. Với `poll()`, chúng ta cung cấp một danh sách các tệp mô tả, mỗi tệp được đánh dấu bằng tập hợp các sự kiện quan tâm.
 
-```
 ## include <poll.h>
+
 int poll(struct pollfd fds[], nfds_t nfds, int timeout);
-          Trả về số lượng tệp mô tả sẵn sàng, 0 khi hết thời gian (timeout), hoặc –1 khi lỗi
+Trả về số lượng tệp mô tả sẵn sàng, 0 khi hết thời gian (timeout), hoặc –1 khi lỗi
+
 ```
 
 Đối số `fds` và mảng `pollfd` (`nfds`) chỉ định các tệp mô tả mà `poll()` sẽ theo dõi. Đối số `timeout` có thể được sử dụng để thiết lập giới hạn trên cho thời gian mà `poll()` sẽ chặn (`block`). Chúng ta mô tả chi tiết từng đối số này dưới đây.
@@ -339,11 +344,13 @@ int poll(struct pollfd fds[], nfds_t nfds, int timeout);
 Đối số `fds` liệt kê các tệp mô tả sẽ được theo dõi bởi `poll()`. Đối số này là một mảng các cấu trúc `pollfd`, được định nghĩa như sau:
 
 ```
+
 struct pollfd {
- int fd; /* Tệp mô tả (File descriptor) */
- short events; /* Mặt nạ bit sự kiện yêu cầu (Requested events bit mask) */
- short revents; /* Mặt nạ bit sự kiện trả về (Returned events bit mask) */
+int fd; /* Tệp mô tả (File descriptor) */
+short events; /* Mặt nạ bit sự kiện yêu cầu (Requested events bit mask) */
+short revents; /* Mặt nạ bit sự kiện trả về (Returned events bit mask) */
 };
+
 ```
 
 Đối số `nfds` chỉ định số lượng phần tử trong mảng `fds`. Kiểu dữ liệu `nfds_t` được sử dụng cho đối số `nfds` là một kiểu số nguyên không dấu (`unsigned integer type`).
@@ -420,6 +427,7 @@ Danh sách 63-2 cung cấp một minh họa đơn giản về việc sử dụng
 Phiên dòng lệnh (shell session) sau đây cho thấy một ví dụ về những gì chúng ta thấy khi chạy chương trình này. Các tham số dòng lệnh truyền vào chương trình chỉ định rằng mười pipe nên được tạo, và các thao tác ghi sẽ được thực hiện trên ba pipe được chọn ngẫu nhiên.
 
 ```
+
 $ ./poll_pipes 10 3
 Writing to fd: 4 (read fd: 3)
 Writing to fd: 14 (read fd: 13)
@@ -427,6 +435,7 @@ Writing to fd: 14 (read fd: 13)
 poll() returned: 2
 Readable: 3
 Readable: 13
+
 ```
 
 Từ kết quả đầu ra trên, chúng ta có thể thấy rằng `poll()` đã tìm thấy hai pipe có sẵn dữ liệu để đọc.
@@ -434,62 +443,70 @@ Từ kết quả đầu ra trên, chúng ta có thể thấy rằng `poll()` đ�
 **Danh sách 63-2:** Sử dụng `poll()` để giám sát nhiều mô tả tệp (file descriptor)
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– altio/poll_pipes.c
+
 ## include <time.h>
+
 ## include <poll.h>
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- int numPipes, j, ready, randPipe, numWrites;
- int (*pfds)[2]; /* File descriptors cho tất cả các pipe */
- struct pollfd *pollFd;
- if (argc < 2 || strcmp(argv[1], "--help") == 0)
- usageErr("%s num-pipes [num-writes]\n", argv[0]);
- /* Cấp phát các mảng mà chúng ta sử dụng. Kích thước các mảng được xác định
- dựa trên số lượng pipe được chỉ định trên dòng lệnh */
- numPipes = getInt(argv[1], GN_GT_0, "num-pipes");
- pfds = calloc(numPipes, sizeof(int [2]));
- if (pfds == NULL)
- errExit("malloc");
- pollFd = calloc(numPipes, sizeof(struct pollfd));
- if (pollFd == NULL)
- errExit("malloc");
- /* Tạo số lượng pipe được chỉ định trên dòng lệnh */
- for (j = 0; j < numPipes; j++)
- if (pipe(pfds[j]) == -1)
- errExit("pipe %d", j);
- /* Thực hiện số lần ghi được chỉ định vào các pipe ngẫu nhiên */
- numWrites = (argc > 2) ? getInt(argv[2], GN_GT_0, "num-writes") : 1;
+int numPipes, j, ready, randPipe, numWrites;
+int (*pfds)[2]; /* File descriptors cho tất cả các pipe */
+struct pollfd *pollFd;
+if (argc < 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s num-pipes [num-writes]\n", argv[0]);
+/* Cấp phát các mảng mà chúng ta sử dụng. Kích thước các mảng được xác định
+dựa trên số lượng pipe được chỉ định trên dòng lệnh */
+numPipes = getInt(argv[1], GN_GT_0, "num-pipes");
+pfds = calloc(numPipes, sizeof(int [2]));
+if (pfds == NULL)
+errExit("malloc");
+pollFd = calloc(numPipes, sizeof(struct pollfd));
+if (pollFd == NULL)
+errExit("malloc");
+/* Tạo số lượng pipe được chỉ định trên dòng lệnh */
+for (j = 0; j < numPipes; j++)
+if (pipe(pfds[j]) == -1)
+errExit("pipe %d", j);
+/* Thực hiện số lần ghi được chỉ định vào các pipe ngẫu nhiên */
+numWrites = (argc > 2) ? getInt(argv[2], GN_GT_0, "num-writes") : 1;
+
 ```
 
 ```
- srandom((int) time(NULL));
- for (j = 0; j < numWrites; j++) {
- randPipe = random() % numPipes;
- printf("Writing to fd: %3d (read fd: %3d)\n",
- pfds[randPipe][1], pfds[randPipe][0]);
- if (write(pfds[randPipe][1], "a", 1) == -1)
- errExit("write %d", pfds[randPipe][1]);
- }
- /* Xây dựng danh sách mô tả tệp để cung cấp cho poll(). Danh sách này
- được thiết lập để chứa các mô tả tệp cho đầu đọc của tất cả
- các pipe. */
- for (j = 0; j < numPipes; j++) {
- pollFd[j].fd = pfds[j][0];
- pollFd[j].events = POLLIN;
- }
- ready = poll(pollFd, numPipes, -1); /* Không chặn (Nonblocking) */
- if (ready == -1)
- errExit("poll");
- printf("poll() returned: %d\n", ready);
- /* Kiểm tra xem pipe nào có dữ liệu sẵn sàng để đọc */
- for (j = 0; j < numPipes; j++)
- if (pollFd[j].revents & POLLIN)
- printf("Readable: %d %3d\n", j, pollFd[j].fd);
- exit(EXIT_SUCCESS);
+
+srandom((int) time(NULL));
+for (j = 0; j < numWrites; j++) {
+randPipe = random() % numPipes;
+printf("Writing to fd: %3d (read fd: %3d)\n",
+pfds[randPipe][1], pfds[randPipe][0]);
+if (write(pfds[randPipe][1], "a", 1) == -1)
+errExit("write %d", pfds[randPipe][1]);
+}
+/* Xây dựng danh sách mô tả tệp để cung cấp cho poll(). Danh sách này
+được thiết lập để chứa các mô tả tệp cho đầu đọc của tất cả
+các pipe. */
+for (j = 0; j < numPipes; j++) {
+pollFd[j].fd = pfds[j][0];
+pollFd[j].events = POLLIN;
+}
+ready = poll(pollFd, numPipes, -1); /* Không chặn (Nonblocking) */
+if (ready == -1)
+errExit("poll");
+printf("poll() returned: %d\n", ready);
+/* Kiểm tra xem pipe nào có dữ liệu sẵn sàng để đọc */
+for (j = 0; j < numPipes; j++)
+if (pollFd[j].revents & POLLIN)
+printf("Readable: %d %3d\n", j, pollFd[j].fd);
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– altio/poll_pipes.c
+
 ```
 
 ### 63.2.3 Khi nào một File Descriptor sẵn sàng?
@@ -579,12 +596,18 @@ Bên trong Linux kernel, cả `select()` và `poll()` đều sử dụng cùng m
 
 Để cài đặt `select()`, một tập hợp các macro được sử dụng để chuyển đổi thông tin do các hàm poll của kernel trả về thành các loại sự kiện tương ứng do `select()` trả về:
 
-```
+```c
+
 ## define POLLIN_SET (POLLRDNORM | POLLRDBAND | POLLIN | POLLHUP | POLLERR)
- /* Sẵn sàng đọc */
+
+/* Sẵn sàng đọc */
+
 ## define POLLOUT_SET (POLLWRBAND | POLLWRNORM | POLLOUT | POLLERR)
- /* Sẵn sàng ghi */
+
+/* Sẵn sàng ghi */
+
 ## define POLLEX_SET (POLLPRI) /* Điều kiện ngoại lệ */
+
 ```
 
 Các định nghĩa macro này cho thấy mối tương quan ngữ nghĩa giữa thông tin do `select()` và `poll()` trả về. (Nếu chúng ta nhìn vào các cột `select()` và `poll()` trong các bảng ở Mục [63.2.3,](#page-52-0) chúng ta thấy rằng các chỉ báo được cung cấp bởi mỗi System Call là nhất quán với các macro trên). Thông tin bổ sung duy nhất chúng ta cần để hoàn thiện bức tranh là `poll()` trả về `POLLNVAL` trong trường `revents` nếu một trong các File Descriptor được giám sát đã bị đóng tại thời điểm gọi, trong khi `select()` trả về –1 với `errno` được thiết lập thành `EBADF`.
@@ -638,15 +661,19 @@ Với đa hợp I/O (I/O multiplexing), một tiến trình (process) thực hi�
 - 2. Đặt chủ sở hữu (owner) của mô tả tệp — nghĩa là tiến trình hoặc nhóm tiến trình (process group) sẽ nhận tín hiệu khi I/O khả thi trên mô tả tệp đó. Thông thường, chúng ta biến tiến trình gọi (calling process) thành chủ sở hữu. Chủ sở hữu được thiết lập bằng cách sử dụng thao tác `fcntl()` với `F_SETOWN` có dạng sau:
 
 ```
+
 fcntl(fd, F_SETOWN, pid);
+
 ```
 
 - 3. Bật I/O không chặn (nonblocking I/O) bằng cách thiết lập cờ trạng thái tệp mở `O_NONBLOCK`.
 - 4. Bật signal-driven I/O bằng cách bật cờ trạng thái tệp mở `O_ASYNC`. Bước này có thể được kết hợp với bước trước, vì cả hai đều yêu cầu sử dụng thao tác `fcntl()` với `F_SETFL` (Mục 5.3), như trong ví dụ sau:
 
 ```
+
 flags = fcntl(fd, F_GETFL); /* Lấy các cờ hiện tại */
 fcntl(fd, F_SETFL, flags | O_ASYNC | O_NONBLOCK);
+
 ```
 
 - 5. Tiến trình gọi giờ đây có thể thực hiện các tác vụ khác. Khi I/O trở nên khả thi, kernel tạo ra một tín hiệu cho tiến trình và gọi hàm xử lý tín hiệu đã được thiết lập ở bước 1.
@@ -669,6 +696,7 @@ Trong các trang tiếp theo, trước tiên chúng ta trình bày một ví d�
 Dưới đây là một ví dụ về những gì chúng ta thấy khi chạy chương trình này và gõ ký tự `x` một số lần, theo sau là ký tự thăng (`#`):
 
 ```
+
 $ ./demo_sigio
 cnt=37; read x
 cnt=100; read x
@@ -676,73 +704,85 @@ cnt=159; read x
 cnt=223; read x
 cnt=288; read x
 cnt=333; read #
+
 ```
 
 **Liệt kê 63-3:** Sử dụng signal-driven I/O trên terminal
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– altio/demo_sigio.c
+
 ## include <signal.h>
+
 ## include <ctype.h>
+
 ## include <fcntl.h>
+
 ## include <termios.h>
+
 ## include "tty_functions.h" /* Khai báo của ttySetCbreak() */
+
 ## include "tlpi_hdr.h"
+
 static volatile sig_atomic_t gotSigio = 0;
- /* Đặt thành khác 0 khi nhận được SIGIO */
+/* Đặt thành khác 0 khi nhận được SIGIO */
 static void
 sigioHandler(int sig)
 {
- gotSigio = 1;
+gotSigio = 1;
 }
 int
 main(int argc, char *argv[])
 {
- int flags, j, cnt;
- struct termios origTermios;
- char ch;
- struct sigaction sa;
- Boolean done;
+int flags, j, cnt;
+struct termios origTermios;
+char ch;
+struct sigaction sa;
+Boolean done;
+
 ```
 
 ```
- /* Thiết lập trình xử lý (handler) cho tín hiệu "I/O possible" */
- sigemptyset(&sa.sa_mask);
- sa.sa_flags = SA_RESTART;
- sa.sa_handler = sigioHandler;
- if (sigaction(SIGIO, &sa, NULL) == -1)
- errExit("sigaction");
- /* Đặt tiến trình sở hữu (owner process) sẽ nhận tín hiệu "I/O possible" */
- if (fcntl(STDIN_FILENO, F_SETOWN, getpid()) == -1)
- errExit("fcntl(F_SETOWN)");
- /* Bật cơ chế phát tín hiệu "I/O possible" và chuyển I/O sang chế độ không chặn (nonblocking)
- cho file descriptor */
- flags = fcntl(STDIN_FILENO, F_GETFL);
- if (fcntl(STDIN_FILENO, F_SETFL, flags | O_ASYNC | O_NONBLOCK) == -1)
- errExit("fcntl(F_SETFL)");
- /* Đưa terminal về chế độ cbreak */
- if (ttySetCbreak(STDIN_FILENO, &origTermios) == -1)
- errExit("ttySetCbreak");
- for (done = FALSE, cnt = 0; !done ; cnt++) {
- for (j = 0; j < 100000000; j++)
- continue; /* Làm chậm vòng lặp chính lại một chút */
- if (gotSigio) { /* Dữ liệu đầu vào đã sẵn sàng chưa? */
- /* Đọc toàn bộ dữ liệu đầu vào có sẵn cho đến khi gặp lỗi (có thể là EAGAIN)
- hoặc EOF (thực tế không xảy ra ở chế độ cbreak) hoặc ký tự
- thăng (#) được đọc */
- while (read(STDIN_FILENO, &ch, 1) > 0 && !done) {
- printf("cnt=%d; read %c\n", cnt, ch);
- done = ch == '#';
- }
- gotSigio = 0;
- }
- }
- /* Khôi phục các thiết lập ban đầu của terminal */
- if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &origTermios) == -1)
- errExit("tcsetattr");
- exit(EXIT_SUCCESS);
+
+/* Thiết lập trình xử lý (handler) cho tín hiệu "I/O possible" */
+sigemptyset(&sa.sa_mask);
+sa.sa_flags = SA_RESTART;
+sa.sa_handler = sigioHandler;
+if (sigaction(SIGIO, &sa, NULL) == -1)
+errExit("sigaction");
+/* Đặt tiến trình sở hữu (owner process) sẽ nhận tín hiệu "I/O possible" */
+if (fcntl(STDIN_FILENO, F_SETOWN, getpid()) == -1)
+errExit("fcntl(F_SETOWN)");
+/* Bật cơ chế phát tín hiệu "I/O possible" và chuyển I/O sang chế độ không chặn (nonblocking)
+cho file descriptor */
+flags = fcntl(STDIN_FILENO, F_GETFL);
+if (fcntl(STDIN_FILENO, F_SETFL, flags | O_ASYNC | O_NONBLOCK) == -1)
+errExit("fcntl(F_SETFL)");
+/* Đưa terminal về chế độ cbreak */
+if (ttySetCbreak(STDIN_FILENO, &origTermios) == -1)
+errExit("ttySetCbreak");
+for (done = FALSE, cnt = 0; !done ; cnt++) {
+for (j = 0; j < 100000000; j++)
+continue; /* Làm chậm vòng lặp chính lại một chút */
+if (gotSigio) { /* Dữ liệu đầu vào đã sẵn sàng chưa? */
+/* Đọc toàn bộ dữ liệu đầu vào có sẵn cho đến khi gặp lỗi (có thể là EAGAIN)
+hoặc EOF (thực tế không xảy ra ở chế độ cbreak) hoặc ký tự
+thăng (#) được đọc */
+while (read(STDIN_FILENO, &ch, 1) > 0 && !done) {
+printf("cnt=%d; read %c\n", cnt, ch);
+done = ch == '#';
+}
+gotSigio = 0;
+}
+}
+/* Khôi phục các thiết lập ban đầu của terminal */
+if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &origTermios) == -1)
+errExit("tcsetattr");
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– altio/demo_sigio.c
+
 ```
 
 ### Thiết lập trình xử lý tín hiệu trước khi bật I/O điều khiển theo tín hiệu (Signal-driven I/O)
@@ -756,7 +796,9 @@ Trên một số hệ thống UNIX, SIGIO bị bỏ qua theo mặc định.
 Chúng ta thiết lập chủ sở hữu của `file descriptor` bằng một thao tác `fcntl()` có dạng sau:
 
 ```
+
 fcntl(fd, F_SETOWN, pid);
+
 ```
 
 Chúng ta có thể chỉ định rằng một tiến trình đơn lẻ hoặc tất cả các tiến trình trong một nhóm tiến trình (process group) sẽ nhận được tín hiệu khi I/O khả dụng trên `file descriptor`. Nếu `pid` là số dương, nó được hiểu là ID tiến trình (Process ID). Nếu `pid` là số âm, giá trị tuyệt đối của nó chỉ định ID nhóm tiến trình (Process Group ID).
@@ -768,9 +810,11 @@ Thông thường, `pid` được chỉ định là ID tiến trình của tiến
 Thao tác `fcntl()` với cờ `F_GETOWN` trả về ID của tiến trình hoặc nhóm tiến trình sẽ nhận tín hiệu khi I/O khả dụng trên một `file descriptor` được chỉ định:
 
 ```
+
 id = fcntl(fd, F_GETOWN);
 if (id == -1)
- errExit("fcntl");
+errExit("fcntl");
+
 ```
 
 ID của nhóm tiến trình được trả về dưới dạng một số âm bởi lời gọi này.
@@ -837,16 +881,20 @@ Trong các ứng dụng cần đồng thời giám sát một số lượng rấ
 Thao tác `fcntl()` với `F_SETSIG` chỉ định một tín hiệu thay thế sẽ được gửi đi thay cho `SIGIO` khi I/O khả dụng trên một mô tả tệp:
 
 ```c
+
 if (fcntl(fd, F_SETSIG, sig) == -1)
- errExit("fcntl");
+errExit("fcntl");
+
 ```
 
 Thao tác `F_GETSIG` thực hiện chức năng ngược lại với `F_SETSIG`, truy xuất tín hiệu hiện đang được thiết lập cho một mô tả tệp:
 
 ```c
+
 sig = fcntl(fd, F_GETSIG);
 if (sig == -1)
- errExit("fcntl");
+errExit("fcntl");
+
 ```
 
 (Để lấy các định nghĩa của hằng số `F_SETSIG` và `F_GETSIG` từ `<fcntl.h>`, chúng ta phải định nghĩa macro kiểm tra tính năng `_GNU_SOURCE`.)
@@ -893,10 +941,12 @@ Bắt đầu từ kernel 2.6.32, Linux cung cấp hai thao tác `fcntl()` mới,
 Thao tác `F_SETOWN_EX` giống như `F_SETOWN`, nhưng bên cạnh việc cho phép chỉ định đích đến là một tiến trình (process) hoặc nhóm tiến trình (process group), nó còn cho phép chỉ định một luồng (thread) làm đích cho các tín hiệu "I/O khả dụng". Đối với thao tác này, đối số thứ ba của `fcntl()` là một con trỏ trỏ đến một cấu trúc có dạng sau:
 
 ```c
+
 struct f_owner_ex {
- int type;
- pid_t pid;
+int type;
+pid_t pid;
 };
+
 ```
 
 Trường `type` xác định ý nghĩa của trường `pid`, và nhận một trong các giá trị sau:
@@ -952,9 +1002,12 @@ Giao diện `epoll` bao gồm ba System Call:
 System Call `epoll_create()` tạo một thể hiện `epoll` mới với danh sách quan tâm ban đầu ở trạng thái rỗng.
 
 ```c
+
 ## include <sys/epoll.h>
+
 int epoll_create(int size);
-                                Trả về file descriptor nếu thành công, hoặc –1 nếu lỗi
+Trả về file descriptor nếu thành công, hoặc –1 nếu lỗi
+
 ```
 
 Tham số `size` chỉ định số lượng File Descriptor mà chúng ta dự kiến sẽ giám sát thông qua thể hiện `epoll` này. Tham số này không phải là giới hạn trên, mà đúng hơn là một gợi ý (hint) cho kernel về cách phân bổ kích thước ban đầu cho các cấu trúc dữ liệu nội bộ. (Kể từ Linux 2.6.8, tham số `size` bị bỏ qua, bởi vì các thay đổi trong cài đặt đồng nghĩa với việc thông tin mà nó cung cấp không còn cần thiết nữa).
@@ -967,7 +1020,6 @@ Là kết quả trả về của hàm, `epoll_create()` trả về một File De
 
 System Call (lời gọi hệ thống) `epoll_ctl()` dùng để sửa đổi danh sách quan tâm (interest list) của đối tượng (instance) `epoll` được trỏ đến bởi File Descriptor (mô tả tệp) `epfd`.
 
-```
 ## include <sys/epoll.h>
 int epoll_ctl(int epfd, int op, int fd, struct epoll_event *ev);
                                              Trả về 0 khi thành công, hoặc –1 nếu có lỗi
@@ -1038,16 +1090,17 @@ typedef union epoll_data {
 
 ### Giới hạn max\_user\_watches
 
-Vì mỗi File Descriptor (mô tả tệp) được đăng ký trong danh sách quan tâm (interest list) của epoll yêu cầu một lượng nhỏ bộ nhớ nhân (kernel memory) không thể hoán đổi (nonswappable), nhân hệ điều hành cung cấp một giao diện xác định giới hạn về tổng số File Descriptor mà mỗi người dùng có thể đăng ký trong tất cả các danh sách quan tâm của epoll. Giá trị của giới hạn này có thể được xem và sửa đổi thông qua `max\_user\_watches`, một tệp đặc trưng của Linux nằm trong thư mục `/proc/sys/fs/epoll`. Giá trị mặc định của giới hạn này được tính toán dựa trên bộ nhớ hệ thống khả dụng (xem trang hướng dẫn thủ công `epoll(7)`).
+Vì mỗi File Descriptor (mô tả tệp) được đăng ký trong danh sách quan tâm (interest list) của epoll yêu cầu một lượng nhỏ bộ nhớ nhân (kernel memory) không thể hoán đổi (nonswappable), nhân hệ điều hành cung cấp một giao diện xác định giới hạn về tổng số File Descriptor mà mỗi người dùng có thể đăng ký trong tất cả các danh sách quan tâm của epoll. Giá trị của giới hạn này có thể được xem và sửa đổi thông qua `max_user_watches`, một tệp đặc trưng của Linux nằm trong thư mục `/proc/sys/fs/epoll`. Giá trị mặc định của giới hạn này được tính toán dựa trên bộ nhớ hệ thống khả dụng (xem trang hướng dẫn thủ công `epoll(7)`).
 
 ### 63.4.3 Chờ sự kiện: epoll\_wait()
 
 System Call (lời gọi hệ thống) `epoll_wait()` trả về thông tin về các File Descriptor đã sẵn sàng từ epoll instance (thể hiện epoll) được tham chiếu bởi File Descriptor `epfd`. Một lời gọi `epoll_wait()` đơn lẻ có thể trả về thông tin cho nhiều File Descriptor sẵn sàng cùng lúc.
 
-```
 ## include <sys/epoll.h>
+
 int epoll_wait(int epfd, struct epoll_event *evlist, int maxevents, int timeout);
-          Trả về số lượng File Descriptor sẵn sàng, 0 nếu hết thời gian chờ (timeout), hoặc –1 nếu có lỗi
+Trả về số lượng File Descriptor sẵn sàng, 0 nếu hết thời gian chờ (timeout), hoặc –1 nếu có lỗi
+
 ```
 
 Thông tin về các File Descriptor sẵn sàng được trả về trong mảng các cấu trúc `epoll_event` được trỏ tới bởi `evlist`. (Cấu trúc `epoll_event` đã được mô tả ở phần trước). Mảng `evlist` được cấp phát bởi tiến trình gọi, và số lượng phần tử mà nó chứa được chỉ định trong `maxevents`.
@@ -1100,43 +1153,49 @@ Theo mặc định, một khi File Descriptor (file descriptor) đã được th
 Các nhật ký phiên shell sau đây minh họa việc sử dụng chương trình trong [Liệt kê 63-5.](#page-73-0) Chúng ta sử dụng hai cửa sổ terminal. Trong một cửa sổ, chúng ta sử dụng chương trình trong [Liệt kê 63-5](#page-73-0) để giám sát hai FIFO cho dữ liệu đầu vào. (Mỗi lần mở FIFO để đọc bởi chương trình này sẽ chỉ hoàn tất sau khi một tiến trình khác đã mở FIFO để ghi, như được mô tả trong Mục 44.7.) Trong cửa sổ kia, chúng ta chạy các instance của `cat(1)` để ghi dữ liệu vào các FIFO này.
 
 ```
+
 Terminal window 1 Terminal window 2
 $ mkfifo p q
 $ ./epoll_input p q
- $ cat > p
+$ cat > p
 Opened "p" on fd 4
- Type Control-Z to suspend cat
- [1]+ Stopped cat >p
- $ cat > q
+Type Control-Z to suspend cat
+[1]+ Stopped cat >p
+$ cat > q
 Opened "q" on fd 5
 About to epoll_wait()
 Type Control-Z to suspend the epoll_input program
 [1]+ Stopped ./epoll_input p q
+
 ```
 
 Ở trên, chúng ta đã tạm dừng chương trình giám sát của mình để giờ đây chúng ta có thể tạo dữ liệu đầu vào trên cả hai FIFO và đóng đầu ghi của một trong số chúng:
 
 ```
- qqq
-            Type Control-D to terminate "cat > q"
- $ fg %1
- cat >p
- ppp
+
+qqq
+Type Control-D to terminate "cat > q"
+$ fg %1
+cat >p
+ppp
+
 ```
 
 Bây giờ chúng ta tiếp tục chương trình giám sát của mình bằng cách đưa nó lên chạy ở foreground (tiền cảnh), tại thời điểm đó `epoll_wait()` trả về hai sự kiện:
 
 ```
+
 $ fg
 ./epoll_input p q
 About to epoll_wait()
 Ready: 2
- fd=4; events: EPOLLIN
- read 4 bytes: ppp
- fd=5; events: EPOLLIN EPOLLHUP
- read 4 bytes: qqq
- closing fd 5
+fd=4; events: EPOLLIN
+read 4 bytes: ppp
+fd=5; events: EPOLLIN EPOLLHUP
+read 4 bytes: qqq
+closing fd 5
 About to epoll_wait()
+
 ```
 
 Hai dòng trống trong kết quả đầu ra ở trên là các ký tự xuống dòng (newlines) được đọc bởi các instance của cat, được ghi vào các FIFO, sau đó được đọc và lặp lại (echoed) bởi chương trình giám sát của chúng ta.
@@ -1144,87 +1203,99 @@ Hai dòng trống trong kết quả đầu ra ở trên là các ký tự xuốn
 Bây giờ chúng ta gõ Control-D ở cửa sổ terminal thứ hai để chấm dứt instance còn lại của cat, việc này khiến `epoll_wait()` một lần nữa trả về kết quả, lần này chỉ với một sự kiện duy nhất:
 
 ```
- Nhấn Control-D để kết thúc "cat >p"
+
+Nhấn Control-D để kết thúc "cat >p"
 Ready: 1
- fd=4; events: EPOLLHUP
- đang đóng fd 4
+fd=4; events: EPOLLHUP
+đang đóng fd 4
 Tất cả các file descriptor đã được đóng; tạm biệt
+
 ```
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– altio/epoll_input.c
+
 ## include <sys/epoll.h>
+
 ## include <fcntl.h>
+
 ## include "tlpi_hdr.h"
+
 ## define MAX_BUF 1000 /* Số byte tối đa được lấy bởi một lời gọi read() đơn lẻ */
+
 ## define MAX_EVENTS 5 /* Số lượng sự kiện tối đa được trả về từ
-   một lời gọi epoll_wait() đơn lẻ */
-  int
-  main(int argc, char *argv[])
-  {
-   int epfd, ready, fd, s, j, numOpenFds;
-   struct epoll_event ev;
-   struct epoll_event evlist[MAX_EVENTS];
-   char buf[MAX_BUF];
-   if (argc < 2 || strcmp(argv[1], "--help") == 0)
-   usageErr("%s file...\n", argv[0]);
+
+một lời gọi epoll_wait() đơn lẻ */
+int
+main(int argc, char *argv[])
+{
+int epfd, ready, fd, s, j, numOpenFds;
+struct epoll_event ev;
+struct epoll_event evlist[MAX_EVENTS];
+char buf[MAX_BUF];
+if (argc < 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s file...\n", argv[0]);
 q epfd = epoll_create(argc - 1);
-   if (epfd == -1)
-   errExit("epoll_create");
-   /* Mở từng file trên dòng lệnh, và thêm nó vào "interest list"
-   cho instance epoll */
+if (epfd == -1)
+errExit("epoll_create");
+/* Mở từng file trên dòng lệnh, và thêm nó vào "interest list"
+cho instance epoll */
 w for (j = 1; j < argc; j++) {
-   fd = open(argv[j], O_RDONLY);
-   if (fd == -1)
-   errExit("open");
-   printf("Opened \"%s\" on fd %d\n", argv[j], fd);
-   ev.events = EPOLLIN; /* Chỉ quan tâm đến các sự kiện đầu vào */
-   ev.data.fd = fd;
+fd = open(argv[j], O_RDONLY);
+if (fd == -1)
+errExit("open");
+printf("Opened \"%s\" on fd %d\n", argv[j], fd);
+ev.events = EPOLLIN; /* Chỉ quan tâm đến các sự kiện đầu vào */
+ev.data.fd = fd;
 e if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
-   errExit("epoll_ctl");
-   }
-   numOpenFds = argc - 1;
+errExit("epoll_ctl");
+}
+numOpenFds = argc - 1;
 r while (numOpenFds > 0) {
-   /* Lấy tối đa MAX_EVENTS mục từ danh sách sẵn sàng (ready list) */
-   printf("About to epoll_wait()\n");
+/* Lấy tối đa MAX_EVENTS mục từ danh sách sẵn sàng (ready list) */
+printf("About to epoll_wait()\n");
 t ready = epoll_wait(epfd, evlist, MAX_EVENTS, -1);
-   if (ready == -1) {
+if (ready == -1) {
 y if (errno == EINTR)
-   continue; /* Khởi động lại nếu bị ngắt bởi tín hiệu (signal) */
-   else
-   errExit("epoll_wait");
-   }
+continue; /* Khởi động lại nếu bị ngắt bởi tín hiệu (signal) */
+else
+errExit("epoll_wait");
+}
+
 ```
 
 ```
- printf("Ready: %d\n", ready);
-   /* Xử lý danh sách các sự kiện được trả về */
+
+printf("Ready: %d\n", ready);
+/* Xử lý danh sách các sự kiện được trả về */
 u for (j = 0; j < ready; j++) {
-   printf(" fd=%d; events: %s%s%s\n", evlist[j].data.fd,
-   (evlist[j].events & EPOLLIN) ? "EPOLLIN " : "",
-   (evlist[j].events & EPOLLHUP) ? "EPOLLHUP " : "",
-   (evlist[j].events & EPOLLERR) ? "EPOLLERR " : "");
+printf(" fd=%d; events: %s%s%s\n", evlist[j].data.fd,
+(evlist[j].events & EPOLLIN) ? "EPOLLIN " : "",
+(evlist[j].events & EPOLLHUP) ? "EPOLLHUP " : "",
+(evlist[j].events & EPOLLERR) ? "EPOLLERR " : "");
 i if (evlist[j].events & EPOLLIN) {
-   s = read(evlist[j].data.fd, buf, MAX_BUF);
-   if (s == -1)
-   errExit("read");
-   printf(" read %d bytes: %.*s\n", s, s, buf);
+s = read(evlist[j].data.fd, buf, MAX_BUF);
+if (s == -1)
+errExit("read");
+printf(" read %d bytes: %.*s\n", s, s, buf);
 o } else if (evlist[j].events & (EPOLLHUP | EPOLLERR)) {
-   /* Nếu cả EPOLLIN và EPOLLHUP đều được thiết lập, thì có thể
-   có nhiều hơn MAX_BUF byte cần đọc. Do đó, chúng ta đóng
-   file descriptor chỉ khi EPOLLIN không được thiết lập.
-   Chúng ta sẽ đọc các byte tiếp theo sau lời gọi epoll_wait() kế tiếp. */
-   printf(" closing fd %d\n", evlist[j].data.fd);
+/* Nếu cả EPOLLIN và EPOLLHUP đều được thiết lập, thì có thể
+có nhiều hơn MAX_BUF byte cần đọc. Do đó, chúng ta đóng
+file descriptor chỉ khi EPOLLIN không được thiết lập.
+Chúng ta sẽ đọc các byte tiếp theo sau lời gọi epoll_wait() kế tiếp. */
+printf(" closing fd %d\n", evlist[j].data.fd);
 a if (close(evlist[j].data.fd) == -1)
-   errExit("close");
-   numOpenFds--;
-   }
-   }
-   }
-   printf("All file descriptors closed; bye\n");
-   exit(EXIT_SUCCESS);
-  }
-  ––––––––––––––––––––––––––––––––––––––––––––––––––––––– altio/epoll_input.c
+errExit("close");
+numOpenFds--;
+}
+}
+}
+printf("All file descriptors closed; bye\n");
+exit(EXIT_SUCCESS);
+}
+––––––––––––––––––––––––––––––––––––––––––––––––––––––– altio/epoll_input.c
+
 ```
 
 ### 63.4.4 Tìm hiểu kỹ hơn về Ngữ nghĩa của epoll
@@ -1245,20 +1316,22 @@ Những ngữ nghĩa này có thể dẫn đến một số hành vi thoạt đ�
 **Liệt kê 63-6:** Ngữ nghĩa của epoll với các File Descriptor được nhân bản
 
 ```
- int epfd, fd1, fd2;
- struct epoll_event ev;
- struct epoll_event evlist[MAX_EVENTS];
- /* Đã lược bỏ: mã nguồn mở 'fd1' và tạo File Descriptor epoll 'epfd' ... */
- ev.data.fd = fd1
- ev.events = EPOLLIN;
- if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd1, ev) == -1)
- errExit("epoll_ctl");
- /* Giả sử rằng 'fd1' lúc này trở nên sẵn sàng để đọc dữ liệu */
- fd2 = dup(fd1);
- close(fd1);
- ready = epoll_wait(epfd, evlist, MAX_EVENTS, -1);
- if (ready == -1)
- errExit("epoll_wait");
+
+int epfd, fd1, fd2;
+struct epoll_event ev;
+struct epoll_event evlist[MAX_EVENTS];
+/* Đã lược bỏ: mã nguồn mở 'fd1' và tạo File Descriptor epoll 'epfd' ... */
+ev.data.fd = fd1
+ev.events = EPOLLIN;
+if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd1, ev) == -1)
+errExit("epoll_ctl");
+/* Giả sử rằng 'fd1' lúc này trở nên sẵn sàng để đọc dữ liệu */
+fd2 = dup(fd1);
+close(fd1);
+ready = epoll_wait(epfd, evlist, MAX_EVENTS, -1);
+if (ready == -1)
+errExit("epoll_wait");
+
 ```
 
 ### 63.4.5 Hiệu năng của epoll so với I/O Multiplexing
@@ -1296,11 +1369,13 @@ API `epoll` cũng cho phép thông báo kích hoạt theo cạnh (edge-triggered
 Để sử dụng thông báo kích hoạt theo cạnh, chúng ta chỉ định cờ `EPOLLET` trong `ev.events` khi gọi `epoll_ctl()`:
 
 ```c
+
 struct epoll_event ev;
 ev.data.fd = fd;
 ev.events = EPOLLIN | EPOLLET;
 if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
- errExit("epoll_ctl");
+errExit("epoll_ctl");
+
 ```
 
 Chúng ta minh họa sự khác biệt giữa thông báo `epoll` kích hoạt theo mức và kích hoạt theo cạnh bằng một ví dụ. Giả sử rằng chúng ta đang sử dụng `epoll` để theo dõi một socket nhận dữ liệu đầu vào (`EPOLLIN`), và các bước sau đây diễn ra:
@@ -1337,34 +1412,36 @@ Các cân nhắc về tình trạng đói (starvation) cũng có thể áp dụn
 **Liệt kê 63-7:** Phương pháp sai khi bỏ chặn tín hiệu và gọi hàm `select()`
 
 ```
+
 sig_atomic_t gotSig = 0;
 void
 handler(int sig)
 {
- gotSig = 1;
+gotSig = 1;
 }
 int
 main(int argc, char *argv[])
 {
- struct sigaction sa;
- ...
- sa.sa_sigaction = handler;
- sigemptyset(&sa.sa_mask);
- sa.sa_flags = 0;
- if (sigaction(SIGUSR1, &sa, NULL) == -1)
- errExit("sigaction");
- /* Chuyện gì xảy ra nếu tín hiệu được gửi đến ngay lúc này? */
- ready = select(nfds, &readfds, NULL, NULL, NULL);
- if (ready > 0) {
- printf("%d file descriptors ready\n", ready);
- } else if (ready == -1 && errno == EINTR) {
- if (gotSig)
- printf("Got signal\n");
- } else {
- /* Một số lỗi khác */
- }
- ...
+struct sigaction sa;
+...
+sa.sa_sigaction = handler;
+sigemptyset(&sa.sa_mask);
+sa.sa_flags = 0;
+if (sigaction(SIGUSR1, &sa, NULL) == -1)
+errExit("sigaction");
+/* Chuyện gì xảy ra nếu tín hiệu được gửi đến ngay lúc này? */
+ready = select(nfds, &readfds, NULL, NULL, NULL);
+if (ready > 0) {
+printf("%d file descriptors ready\n", ready);
+} else if (ready == -1 && errno == EINTR) {
+if (gotSig)
+printf("Got signal\n");
+} else {
+/* Một số lỗi khác */
 }
+...
+}
+
 ```
 
 Vấn đề với đoạn mã này là nếu tín hiệu (`SIGUSR1` trong ví dụ này) đến sau khi thiết lập hàm xử lý (handler) nhưng trước khi `select()` được gọi, thì lời gọi `select()` vẫn sẽ bị chặn (block). (Đây là một dạng của điều kiện tranh chấp - race condition). Bây giờ chúng ta sẽ xem xét một số giải pháp cho vấn đề này.
@@ -1375,7 +1452,6 @@ Vấn đề với đoạn mã này là nếu tín hiệu (`SIGUSR1` trong ví d�
 
 Lời gọi hệ thống (System Call) `pselect()` thực hiện một tác vụ tương tự như `select()`. Sự khác biệt chính về mặt ngữ nghĩa là một tham số bổ sung, `sigmask`, xác định tập hợp các tín hiệu sẽ được bỏ chặn trong khi lời gọi bị chặn.
 
-```
 ## define _XOPEN_SOURCE 600
 ## include <sys/select.h>
 int pselect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
@@ -1409,6 +1485,7 @@ Nếu chúng ta chỉ định tham số `sigmask` của `pselect()` là `NULL`, 
 
 Giao diện `pselect()` là một phát minh của POSIX.1g, và ngày nay đã được tích hợp vào SUSv3. Nó không có sẵn trên tất cả các cài đặt UNIX, và chỉ được thêm vào Linux từ phiên bản kernel 2.6.16.
 
+> [!NOTE]
 > Trước đây, một hàm thư viện `pselect()` được cung cấp bởi glibc, nhưng cách cài đặt này không cung cấp các đảm bảo tính nguyên tử (atomicity guarantees) cần thiết cho hoạt động chính xác của lời gọi. Các đảm bảo này chỉ có thể được cung cấp bởi việc cài đặt `pselect()` trong kernel (kernel implementation).
 
 ```

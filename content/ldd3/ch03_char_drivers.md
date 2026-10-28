@@ -1,10 +1,10 @@
-# Chương 3: Char Drivers (Trình điều khiển thiết bị ký tự)
+# Chương 3: Driver ký tự (Char Drivers)
 
 Mục tiêu của chương này là viết một char device driver hoàn chỉnh. Chúng ta phát triển một trình điều khiển thiết bị ký tự (character driver) bởi vì lớp này phù hợp với hầu hết các thiết bị phần cứng đơn giản. Char driver cũng dễ hiểu hơn so với block driver hoặc network driver (những nội dung sẽ được đề cập ở các chương sau). Mục đích cuối cùng của chúng ta là viết một char driver có tính *mô-đun hóa* (*modularized*), nhưng chúng ta sẽ chưa bàn về các vấn đề mô-đun hóa trong chương này.
 
 xuyên suốt chương này, chúng ta sẽ trình bày các đoạn mã được trích từ một trình điều khiển thiết bị thực tế: *scull* (Simple Character Utility for Loading Localities - Tiện ích ký tự đơn giản để nạp các vùng nhớ cục bộ). *scull* là một char driver hoạt động trên một vùng nhớ như thể nó là một thiết bị. Trong chương này, do đặc thù đó của *scull*, chúng ta sẽ sử dụng từ *thiết bị* (*device*) thay thế cho nhau với cụm từ "vùng nhớ được sử dụng bởi *scull*."
 
-Ưu điểm của *scull* là nó không phụ thuộc vào phần cứng. *scull* chỉ tác động lên một số vùng nhớ được cấp phát từ kernel (nhân hệ điều hành). Bất kỳ ai cũng có thể biên dịch và chạy *scull*, và *scull* có tính diشiễu (portable) trên các kiến trúc máy tính mà Linux chạy trên đó. Mặt khác, thiết bị này không làm bất kỳ điều gì "hữu ích" ngoài việc minh họa giao diện giữa kernel và char driver, đồng thời cho phép người dùng chạy một số bài kiểm tra.
+Ưu điểm của *scull* là nó không phụ thuộc vào phần cứng. *scull* chỉ tác động lên một số vùng nhớ được cấp phát từ kernel (nhân hệ điều hành). Bất kỳ ai cũng có thể biên dịch và chạy *scull*, và *scull* có tính di động (portable) trên các kiến trúc máy tính mà Linux chạy trên đó. Mặt khác, thiết bị này không làm bất kỳ điều gì "hữu ích" ngoài việc minh họa giao diện giữa kernel và char driver, đồng thời cho phép người dùng chạy một số bài kiểm tra.
 
 ## Thiết kế của scull
 
@@ -24,6 +24,7 @@ Bốn thiết bị FIFO (vào trước ra trước - first-in-first-out), hoạt
 
 *scullsingle scullpriv sculluid scullwuid*
 
+> [!NOTE]
 > Các thiết bị này tương tự như *scull0* nhưng có một số giới hạn về thời điểm cho phép thao tác *open* (mở). Thiết bị đầu tiên (*scullsingle*) chỉ cho phép một tiến trình sử dụng driver tại một thời điểm, trong khi *scullpriv* mang tính riêng tư đối với mỗi virtual console (bảng điều khiển ảo) hoặc phiên terminal X, bởi vì các tiến trình trên mỗi console/terminal sẽ nhận được các vùng nhớ khác nhau. *sculluid* và *scullwuid* có thể được mở nhiều lần, nhưng chỉ bởi một người dùng tại một thời điểm; thiết bị trước trả về lỗi "Device Busy" (Thiết bị bận) nếu người dùng khác đang khóa thiết bị, trong khi thiết bị sau triển khai cơ chế *open* có tính chất chặn (blocking *open*). Những biến thể này của *scull* có vẻ làm lẫn lộn giữa chính sách (policy) và cơ chế (mechanism), nhưng chúng rất đáng để xem xét vì một số thiết bị thực tế đòi hỏi kiểu quản lý này.
 
 Mỗi thiết bị *scull* minh họa các tính năng khác nhau của một driver và đặt ra các khó khăn khác nhau. Chương này bao gồm các hoạt động bên trong của *scull0* đến *scull3*; các thiết bị nâng cao hơn được trình bày trong Chương 6. *scullpipe* được mô tả trong phần "A Blocking I/O Example" (Ví dụ về I/O chặn), và các thiết bị còn lại được mô tả trong phần "Access Control on a Device File" (Kiểm soát truy cập trên tệp thiết bị).
@@ -140,7 +141,7 @@ Do đó, tập lệnh để nạp một module đã được gán số động c
 
 Tập lệnh sau đây, *scull\_load*, là một phần của bản phân phối *scull*. Người dùng của một driver được phân phối dưới dạng module có thể gọi một tập lệnh như vậy từ tệp *rc.local* của hệ thống hoặc gọi nó thủ công bất cứ khi nào cần module đó.
 
-```
+```sh
 ## !/bin/sh
 module="scull"
 device="scull"
@@ -150,7 +151,7 @@ mode="664"
 /sbin/insmod ./$module.ko $* || exit 1
 ## xóa các nút cũ/tồn đọng
 rm -f /dev/${device}[0-3]
-major=$(awk "\\$2= =\"$module\" {print \\$1}" /proc/devices)
+major=$(awk "\\$2==\"$module\" {print \\$1}" /proc/devices)
 mknod /dev/${device}0 c $major 0
 mknod /dev/${device}1 c $major 1
 mknod /dev/${device}2 c $major 2
@@ -353,7 +354,7 @@ dev_t i_rdev;
 
 `struct cdev` là cấu trúc nội bộ của kernel đại diện cho thiết bị ký tự (char device); trường này chứa một con trỏ trỏ đến cấu trúc đó khi inode tham chiếu đến một file thiết bị ký tự.
 
-Kiểu dữ liệu của `i_rdev` đã thay đổi trong suốt quá trình phát triển của dòng 2.5, làm hỏng rất nhiều driver. Như một cách để khuyến khích lập trình tính di portability (di động) cao hơn, các nhà phát triển kernel đã bổ sung hai macro có thể được sử dụng để lấy số major và minor từ một inode:
+Kiểu dữ liệu của `i_rdev` đã thay đổi trong suốt quá trình phát triển của dòng 2.5, làm hỏng rất nhiều driver. Như một cách để khuyến khích việc lập trình có tính di động (portability) cao hơn, các nhà phát triển kernel đã bổ sung hai macro có thể được sử dụng để lấy số major và minor từ một inode:
 
 ```
 unsigned int iminor(struct inode *inode);
@@ -741,7 +742,7 @@ Mặc dù các hàm kernel trả về một số âm để báo hiệu lỗi và
 Giá trị trả về của *read* được hiểu bởi chương trình ứng dụng gọi nó:
 
 - Nếu giá trị bằng với đối số `count` được truyền vào lời gọi hệ thống *read*, số lượng byte được yêu cầu đã được truyền tải. Đây là trường hợp tối ưu.
-- Nếu giá trị là dương nhưng nhỏกว่า `count`, chỉ một phần dữ liệu được truyền tải. Điều này có thể xảy ra vì nhiều lý do, tùy thuộc vào thiết bị. Thường thì chương trình ứng dụng sẽ thử đọc lại (retries). Ví dụ, nếu bạn đọc bằng hàm *fread*, hàm thư viện sẽ thực hiện lại lời gọi hệ thống cho đến khi hoàn tất việc truyền dữ liệu được yêu cầu.
+- Nếu giá trị là số dương nhưng nhỏ hơn `count`, chỉ một phần dữ liệu được truyền tải. Điều này có thể xảy ra vì nhiều lý do, tùy thuộc vào thiết bị. Thường thì chương trình ứng dụng sẽ thử đọc lại (retries). Ví dụ, nếu bạn đọc bằng hàm *fread*, hàm thư viện sẽ thực hiện lại lời gọi hệ thống cho đến khi hoàn tất việc truyền dữ liệu được yêu cầu.
 - Nếu giá trị bằng 0, nghĩa là đã đến cuối tập tin - end-of-file (và không có dữ liệu nào được đọc).
 - Giá trị âm có nghĩa là đã xảy ra lỗi. Giá trị này chỉ định lỗi cụ thể là gì, theo *<linux/errno.h>*. Các giá trị điển hình trả về khi có lỗi bao gồm `-EINTR` (lời gọi hệ thống bị ngắt - interrupted system call) hoặc `-EFAULT` (địa chỉ không hợp lệ - bad address).
 
@@ -901,42 +902,47 @@ Lệnh *free* có thể được sử dụng để xem lượng bộ nhớ trố
 
 Chương này đã giới thiệu các ký hiệu và tệp tiêu đề (header file) sau đây. Danh sách các trường (field) trong struct `file_operations` và struct `file` không được lặp lại ở đây.
 
-```
 ## include <linux/types.h>
+
 dev_t
-    dev_t là kiểu dữ liệu được sử dụng để biểu diễn số hiệu thiết bị (device number) trong kernel.
+dev_t là kiểu dữ liệu được sử dụng để biểu diễn số hiệu thiết bị (device number) trong kernel.
 int MAJOR(dev_t dev);
 int MINOR(dev_t dev);
-    Các macro dùng để trích xuất số major và minor từ một số hiệu thiết bị.
+Các macro dùng để trích xuất số major và minor từ một số hiệu thiết bị.
 dev_t MKDEV(unsigned int major, unsigned int minor);
-    Macro dùng để xây dựng một mục dữ liệu dev_t từ số major và minor.
+Macro dùng để xây dựng một mục dữ liệu dev_t từ số major và minor.
+
 ## include <linux/fs.h>
-    Tệp tiêu đề "filesystem" là tệp bắt buộc khi viết các trình điều khiển thiết bị (device driver). 
-    Nhiều hàm và cấu trúc dữ liệu quan trọng được khai báo ở đây.
+
+Tệp tiêu đề "filesystem" là tệp bắt buộc khi viết các trình điều khiển thiết bị (device driver).
+Nhiều hàm và cấu trúc dữ liệu quan trọng được khai báo ở đây.
 int register_chrdev_region(dev_t first, unsigned int count, char *name)
 int alloc_chrdev_region(dev_t *dev, unsigned int firstminor, unsigned int
- count, char *name)
+count, char *name)
 void unregister_chrdev_region(dev_t first, unsigned int count);
-    Các hàm cho phép một driver cấp phát và giải phóng các dải số hiệu thiết bị. 
-    register_chrdev_region nên được sử dụng khi đã biết trước số major mong muốn; 
-    đối với việc cấp phát động (dynamic allocation), hãy dùng alloc_chrdev_region thay thế.
+Các hàm cho phép một driver cấp phát và giải phóng các dải số hiệu thiết bị.
+register_chrdev_region nên được sử dụng khi đã biết trước số major mong muốn;
+đối với việc cấp phát động (dynamic allocation), hãy dùng alloc_chrdev_region thay thế.
 int register_chrdev(unsigned int major, const char *name, struct file_operations
- *fops);
-    Hàm đăng ký thiết bị ký tự (char device) cũ (trước phiên bản 2.6). Hàm này được mô phỏng 
-    (emulate) trong kernel 2.6 nhưng không nên dùng cho mã nguồn mới. Nếu số major khác 0, 
-    nó sẽ được sử dụng nguyên vẹn; ngược lại, một số động sẽ được cấp phát cho thiết bị này.
+*fops);
+Hàm đăng ký thiết bị ký tự (char device) cũ (trước phiên bản 2.6). Hàm này được mô phỏng
+(emulate) trong kernel 2.6 nhưng không nên dùng cho mã nguồn mới. Nếu số major khác 0,
+nó sẽ được sử dụng nguyên vẹn; ngược lại, một số động sẽ được cấp phát cho thiết bị này.
 int unregister_chrdev(unsigned int major, const char *name);
-    Hàm hủy đăng ký đã thực hiện bằng register_chrdev. Cả số major và chuỗi tên (name) 
-    đều phải chứa các giá trị giống như khi đã dùng để đăng ký driver.
+Hàm hủy đăng ký đã thực hiện bằng register_chrdev. Cả số major và chuỗi tên (name)
+đều phải chứa các giá trị giống như khi đã dùng để đăng ký driver.
 struct file_operations;
 struct file;
 struct inode;
-    Ba cấu trúc dữ liệu quan trọng được sử dụng bởi hầu hết các device driver. Cấu trúc 
-    file_operations chứa các phương thức của char driver; struct file đại diện cho một tệp 
-    đang mở, và struct inode đại diện cho một tệp trên đĩa.
+Ba cấu trúc dữ liệu quan trọng được sử dụng bởi hầu hết các device driver. Cấu trúc
+file_operations chứa các phương thức của char driver; struct file đại diện cho một tệp
+đang mở, và struct inode đại diện cho một tệp trên đĩa.
+
 ## include <linux/cdev.h>
+
 struct cdev *cdev_alloc(void);
 void cdev_init(struct cdev *dev, struct file_operations *fops);
+
 ```
 
 int cdev\_add(struct cdev \*dev, dev\_t num, unsigned int count);

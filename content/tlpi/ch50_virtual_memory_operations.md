@@ -1,4 +1,4 @@
-# Chương 50: CÁC THÁO TÁC BỘ NHỚ ẢO (VIRTUAL MEMORY OPERATIONS)
+# Chương 50: Các thao tác bộ nhớ ảo (Virtual Memory Operations)
 
 Chương này xem xét các System Call (lời hệ thống) khác nhau thực hiện các thao tác trên không gian địa chỉ ảo (virtual address space) của một tiến trình (process):
 
@@ -9,13 +9,14 @@ Chương này xem xét các System Call (lời hệ thống) khác nhau thực h
 
 Một số System Call này đặc biệt hữu ích khi kết hợp với các vùng bộ nhớ chia sẻ (shared memory regions) (Chương 48, 49 và 54), nhưng chúng có thể được áp dụng cho bất kỳ vùng bộ nhớ ảo nào của tiến trình.
 
+> [!NOTE]
 > Các kỹ thuật được mô tả trong chương này thực ra không liên quan gì đến IPC (Interprocess Communication), nhưng chúng tôi đưa chúng vào phần này của cuốn sách bởi vì đôi khi chúng được sử dụng cùng với bộ nhớ chia sẻ (shared memory).
 
 ## 50.1 Thay đổi Quyền Bảo Vệ Bộ Nhớ: mprotect()
 
 System Call `mprotect()` thay đổi quyền bảo vệ trên các trang bộ nhớ ảo trong phạm vi bắt đầu từ `addr` và kéo dài trong `length` byte.
 
-```
+```c
 ## include <sys/mman.h>
 int mprotect(void *addr, size_t length, int prot);
                                              Trả về 0 khi thành công, hoặc –1 khi lỗi
@@ -27,7 +28,7 @@ Giá trị được truyền vào `addr` phải là bội số của kích thư�
 
 Nếu một tiến trình cố gắng truy cập vào một vùng bộ nhớ theo cách vi phạm quyền bảo vệ bộ nhớ, kernel sẽ tạo ra một tín hiệu (signal) `SIGSEGV` cho tiến trình đó.
 
-Một công dụng của `mprotect()` là thay đổi quyền bảo vệ của một vùng bộ nhớ được ánh xạ (mapped memory) ban đầu được thiết lập trong lệnh gọi `mmap()`, như được minh họa trong [Liệt kê 50-1](#page-1-0). Chương trình này tạo ra một ánh xạ ẩn danh (anonymous mapping) ban đầu có tất cả các quyền truy cập bị từ chối (`PROT_NONE`). Sau đó, chương trình thay đổi quyền bảo vệ trên vùng này thành đọc và ghi (read plus write). Trước và sau khi thực hiện thay đổi, chương trình sử dụng hàm `system()` để thực thi một lệnh shell hiển thị dòng từ tệp `/proc/PID/maps` tương ứng với vùng được ánh xạ, để chúng ta có thể thấy sự thay đổi trong quyền bảo vệ bộ nhớ. (Chúng ta có thể lấy thông tin ánh xạ bằng cách phân tích cú pháp trực tiếp `/proc/self/maps`, nhưng chúng tôi đã sử dụng lệnh gọi `mmap()` kết hợp với `system()` vì nó tạo ra một chương trình ngắn hơn). Khi chúng ta chạy chương trình này, chúng ta sẽ thấy kết quả sau:
+Một công dụng của `mprotect()` là thay đổi quyền bảo vệ của một vùng bộ nhớ được ánh xạ (mapped memory) ban đầu được thiết lập trong lệnh gọi `mmap()`, như được minh họa trong [Liệt kê 50-1](#page-1-0). Chương trình này tạo ra một ánh xạ ẩn danh (anonymous mapping) ban đầu có tất cả các quyền truy cập bị từ chối (`PROT_NONE`). Sau đó, chương trình thay đổi quyền bảo vệ trên vùng này thành đọc và ghi (read plus write). Trước và sau khi thực hiện thay đổi, chương trình sử dụng hàm `system()` để thực thi một lệnh shell hiển thị dòng từ tệp `/proc/PID/maps` tương ứng với vùng được ánh xạ, để chúng ta có thể thấy sự thay đổi trong quyền bảo vệ bộ nhớ. (Chúng ta có thể lấy thông tin ánh xạ bằng cách phân tích cú pháp trực tiếp `/proc/self/maps`, nhưng chúng tôi đã sử dụng lệnh gọi `system()` vì nó giúp chương trình ngắn gọn hơn). Khi chúng ta chạy chương trình này, chúng ta sẽ thấy kết quả sau:
 
 ```
 $ ./t_mprotect
@@ -41,7 +42,7 @@ Từ dòng đầu ra cuối cùng, chúng ta có thể thấy rằng `mprotect()
 
 **Liệt kê 50-1:** Thay đổi quyền bảo vệ bộ nhớ bằng `mprotect()`
 
-```
+```c
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––– vmem/t_mprotect.c
 ## define _BSD_SOURCE /* Lấy định nghĩa MAP_ANONYMOUS từ <sys/mman.h> */
 ## include <sys/mman.h>
@@ -82,6 +83,7 @@ Trong một số ứng dụng, việc khóa một phần hoặc toàn bộ bộ 
 
 Một lý do khác để khóa bộ nhớ (locking memory) chính là bảo mật. Nếu một trang bộ nhớ ảo (virtual memory page) chứa dữ liệu nhạy cảm không bao giờ bị hoán đổi ra ngoài (swapped out), thì sẽ không có bản sao nào của trang đó từng được ghi xuống đĩa (disk). Nếu trang đó được ghi xuống đĩa, về mặt lý thuyết, nó có thể được đọc trực tiếp từ thiết bị lưu trữ vào một thời điểm nào đó sau đó. (Một kẻ tấn công có thể cố tình dàn dựng tình huống này bằng cách chạy một chương trình tiêu thụ một lượng lớn bộ nhớ, từ đó ép bộ nhớ của các tiến trình khác phải hoán đổi ra đĩa.) Việc đọc thông tin từ vùng swap (swap space) thậm chí có thể được thực hiện sau khi tiến trình đã kết thúc, vì kernel không đưa ra đảm bảo nào về việc xóa sạch (zeroing out) dữ liệu được lưu trong vùng swap. (Thông thường, chỉ có các tiến trình có đặc quyền (privileged processes) mới có thể đọc từ thiết bị swap).
 
+> [!NOTE]
 > Chế độ tạm nghỉ (suspend mode) trên máy tính xách tay, cũng như một số hệ thống máy tính để bàn, sẽ lưu một bản sao RAM của hệ thống xuống đĩa, bất kể trạng thái khóa bộ nhớ.
 
 Trong phần này, chúng ta sẽ xem xét các System Call được sử dụng để khóa và mở khóa một phần hoặc toàn bộ bộ nhớ ảo của một tiến trình (process). Tuy nhiên, trước khi làm điều đó, trước tiên chúng ta sẽ tìm hiểu về một giới hạn tài nguyên (resource limit) chi phối việc khóa bộ nhớ.
@@ -118,7 +120,7 @@ Lý do khiến RLIMIT\_MEMLOCK có ngữ nghĩa khác đối với bộ nhớ ch
 
 Một tiến trình (process) có thể sử dụng mlock() và munlock() để khóa và mở khóa các vùng nhớ.
 
-```
+```c
 ## include <sys/mman.h>
 int mlock(void *addr, size_t length);
 int munlock(void *addr, size_t length);
@@ -129,6 +131,7 @@ System Call (lệnh hệ thống) mlock() thực hiện khóa tất cả các tr
 
 Vì việc khóa được thực hiện theo đơn vị là toàn bộ trang nhớ, điểm kết thúc của vùng nhớ bị khóa sẽ là ranh giới trang tiếp theo lớn hơn `length` cộng với `addr`. Ví dụ, trên một hệ thống mà kích thước trang là 4096 byte, lời gọi mlock(2000, 4000) sẽ khóa các byte từ 0 đến 8191.
 
+> [!NOTE]
 > Chúng ta có thể xem xét có bao nhiêu bộ nhớ mà một tiến trình hiện đang khóa bằng cách kiểm tra mục VmLck trong tệp đặc thù của Linux `/proc/PID/status`.
 
 Sau một lời gọi mlock() thành công, tất cả các trang trong dải đã chỉ định được đảm bảo là đã khóa và thường trú trong bộ nhớ vật lý (physical memory). System Call mlock() sẽ thất bại nếu không có đủ bộ nhớ vật lý để khóa tất cả các trang được yêu cầu hoặc nếu yêu cầu vi phạm giới hạn tài nguyên mềm (soft resource limit) `RLIMIT_MEMLOCK`.
@@ -170,7 +173,7 @@ Lưu ý rằng ngữ nghĩa của thao tác shmctl() `SHM_LOCK` (Mục 48.7) kh�
 
 Một tiến trình (process) có thể sử dụng mlockall() và munlockall() để khóa và mở khóa toàn bộ bộ nhớ của chính nó.
 
-```
+```c
 ## include <sys/mman.h>
 int mlockall(int flags);
 int munlockall(void);
@@ -191,6 +194,7 @@ Các quy tắc tương tự liên quan đến các ràng buộc, vòng đời, v
 
 System call munlockall() mở khóa tất cả các trang của tiến trình gọi và hoàn tác hiệu ứng của bất kỳ lời gọi mlockall(MCL\_FUTURE) trước đó nào. Giống như munlock(), các trang được mở khóa không được đảm bảo sẽ bị loại khỏi RAM bởi lời gọi này.
 
+> [!NOTE]
 > Trước Linux 2.6.9, quyền hạn (capability `CAP_IPC_LOCK`) là bắt buộc để gọi munlockall() (một cách không nhất quán, quyền hạn không bắt buộc đối với mlock()). Kể từ Linux 2.6.9, quyền hạn không còn là bắt buộc nữa.
 
 ## 50.3 Xác định tính thường trú trong bộ nhớ: mincore()
@@ -199,7 +203,7 @@ System call mincore() là phần bổ trợ cho các system call khóa bộ nh�
 
 SUSv3 không quy định mincore(). Nó có sẵn trên nhiều, nhưng không phải tất cả, các phiên bản UNIX. Trên Linux, mincore() đã có sẵn kể từ kernel phiên bản 2.4.
 
-```
+```c
 ## define _BSD_SOURCE /* Hoặc: #define _SVID_SOURCE */
 ## include <sys/mman.h>
 int mincore(void *addr, size_t length, unsigned char *vec);
@@ -212,6 +216,7 @@ Thông tin về tính thường trú trong bộ nhớ được trả về trong 
 
 Thông tin do mincore() trả về có thể thay đổi giữa thời điểm lời gọi được thực hiện và thời điểm các phần tử của vec được kiểm tra. Các trang duy nhất được đảm bảo tiếp tục thường trú trong bộ nhớ là những trang được khóa bằng mlock() hoặc mlockall().
 
+> [!NOTE]
 > Trước Linux 2.6.21, nhiều vấn đề về cài đặt đồng nghĩa với việc mincore() không báo cáo chính xác thông tin thường trú trong bộ nhớ cho các ánh xạ MAP\_PRIVATE hoặc cho các ánh xạ phi tuyến tính (được thiết lập bằng cách sử dụng remap\_file\_pages()).
 
 [Listing 50-2](#page-7-0) minh họa cách sử dụng mlock() và mincore(). Sau khi cấp phát và ánh xạ một vùng bộ nhớ bằng mmap(), chương trình này sử dụng mlock() để khóa toàn bộ vùng hoặc các nhóm trang theo các khoảng thời gian đều đặn. (Mỗi đối số dòng lệnh (command-line argument) truyền vào chương trình được biểu diễn bằng số lượng trang; chương trình chuyển đổi các giá trị này thành byte, theo yêu cầu của các lời gọi mmap(), mlock(), và mincore().) Trước và sau lời gọi mlock(), chương trình sử dụng mincore() để truy xuất thông tin về tính thường trú trong bộ nhớ của các trang trong vùng và hiển thị thông tin này dưới dạng đồ họa.
@@ -301,7 +306,7 @@ Trong ví dụ này, chúng ta giả định có quyền siêu người dùng (s
 
 System Call (lời gọi hệ thống) `madvise()` được sử dụng để cải thiện hiệu năng của một ứng dụng bằng cách thông báo cho kernel về cách sử dụng dự kiến của tiến trình gọi (calling process) đối với các trang trong dải bắt đầu từ `addr` và kéo dài trong `length` byte. Kernel có thể sử dụng thông tin này để nâng cao hiệu quả của các thao tác I/O được thực hiện trên ánh xạ tệp (file mapping) làm nền tảng cho các trang đó. (Xem Mục 49.4 để thảo luận về file mapping). Trên Linux, `madvise()` đã khả dụng kể từ kernel 2.4.
 
-```
+```c
 ## define _BSD_SOURCE
 ## include <sys/mman.h>
 int madvise(void *addr, size_t length, int advice);
@@ -322,19 +327,15 @@ Các trang trong vùng này sẽ được truy cập ngẫu nhiên, vì vậy vi
 
 Các trang (pages) trong vùng này sẽ được truy cập một lần theo tuần tự. Do đó, kernel có thể thực hiện thao tác đọc trước (read ahead) một cách chủ động, và các trang có thể được giải phóng nhanh chóng sau khi chúng được truy cập.
 
-### MADV\_WILLNEED
+### MADV_WILLNEED
 
-Đọc trước các trang trong vùng này để chuẩn bị cho việc truy cập trong tương lai. Thao tác `MADV\_WILLNEED` có hiệu quả tương tự như System Call `readahead()` đặc trưng của Linux và thao tác `POSIX\_FADV\_WILLNEED` của POSIX.
+Đọc trước các trang trong vùng này để chuẩn bị cho việc truy cập trong tương lai. Thao tác `MADV_WILLNEED` có hiệu quả tương tự như System Call `readahead()` đặc trưng của Linux và thao tác `POSIX_FADV_WILLNEED` của POSIX.
 
-### MADV\_DONTNEED
+### MADV_DONTNEED
 
-Tiến trình gọi (calling process) không còn yêu cầu các trang trong vùng này phải thường trú trong bộ nhớ (memory-resident). Hiệu quả chính xác của cờ này thay đổi tùy theo các cài đặt (implementations) của UNIX. Đầu tiên, chúng ta lưu ý hành vi trên Linux. Đối với vùng `MAP\_PRIVATE`, các trang được ánh xạ sẽ bị hủy bỏ một cách rõ ràng, có nghĩa là các sửa đổi đối với các trang đó sẽ bị mất. Dải địa chỉ bộ nhớ ảo (virtual memory address range) vẫn có thể truy cập được, nhưng lần truy cập tiếp theo vào mỗi trang sẽ dẫn đến một lỗi trang (page fault) để khởi tạo lại trang đó, hoặc với nội dung của tệp mà nó được ánh xạ tới, hoặc bằng các số không trong trường hợp ánh xạ ẩn danh (anonymous mapping). Điều này có thể được sử dụng như một phương2 pháp để khởi tạo lại nội dung của vùng `MAP\_PRIVATE` một cách rõ ràng. Đối với vùng `MAP\_SHARED`, kernel có thể hủy bỏ các trang đã bị sửa đổi trong một số trường hợp, tùy thuộc vào kiến trúc (hành vi này không xảy ra trên x86). Một số cài đặt UNIX khác cũng có hành vi tương tự như Linux. Tuy nhiên, trên một số cài đặt UNIX, `MADV\_DONTNEED` chỉ đơn giản thông báo cho kernel rằng các trang được chỉ định có thể được hoán đổi ra ngoài (swapped out) nếu cần thiết. Các ứng dụng có tính di động (portable applications) không nên phụ thuộc vào ngữ nghĩa hủy diệt của Linux đối với `MADV\_DONTNEED`.
+Tiến trình gọi (calling process) không còn yêu cầu các trang trong vùng này phải thường trú trong bộ nhớ (memory-resident). Hiệu quả chính xác của cờ này thay đổi tùy theo các bản cài đặt (implementations) của UNIX. Đầu tiên, chúng ta lưu ý hành vi trên Linux. Đối với vùng `MAP_PRIVATE`, các trang được ánh xạ sẽ bị hủy bỏ một cách rõ ràng, có nghĩa là các sửa đổi đối với các trang đó sẽ bị mất. Dải địa chỉ bộ nhớ ảo (virtual memory address range) vẫn có thể truy cập được, nhưng lần truy cập tiếp theo vào mỗi trang sẽ dẫn đến một lỗi trang (page fault) để khởi tạo lại trang đó, hoặc với nội dung của tệp mà nó được ánh xạ tới, hoặc bằng các số không trong trường hợp ánh xạ ẩn danh (anonymous mapping). Điều này có thể được sử dụng như một phương pháp để khởi tạo lại nội dung của vùng `MAP_PRIVATE` một cách rõ ràng. Đối với vùng `MAP_SHARED`, kernel có thể hủy bỏ các trang đã bị sửa đổi trong một số trường hợp, tùy thuộc vào kiến trúc (hành vi này không xảy ra trên x86). Một số bản cài đặt UNIX khác cũng có hành vi tương tự như Linux. Tuy nhiên, trên một số bản cài đặt UNIX, `MADV_DONTNEED` chỉ đơn giản thông báo cho kernel rằng các trang được chỉ định có thể được hoán đổi ra ngoài (swapped out) nếu cần thiết. Các ứng dụng có tính di động (portable applications) không nên phụ thuộc vào ngữ nghĩa hủy diệt của Linux đối với `MADV_DONTNEED`.
 
-Linux 2.6.16 đã bổ sung ba giá trị gợi ý phi chuẩn mới: `MADV\_DONTFORK`, `MADV\_DOFORK`, và `MADV\_REMOVE`. Linux 2.6.32 và 2.6.33 đã bổ sung thêm bốn giá trị gợi ý phi chuẩn khác: `MADV\_HWPOISON`, `MADV\_SOFT\_OFFLINE`, `MADV\_MERGEABLE`, và `MADV\_UNMERGEABLE`. Các giá trị này được sử dụng trong các trường hợp đặc biệt và được mô tả trong trang hướng dẫn (manual page) `madvise(2)`.
-
-Hầu hết các cài đặt UNIX đều cung cấp một phiên bản của `madvise()`, thường cho phép ít nhất các hằng số gợi ý được mô tả ở trên. Tuy nhiên, SUSv3 chuẩn hóa API này dưới một tên khác là `posix\_madvise()`, và thêm tiền tố `POSIX\_` vào các hằng số gợi ý tương ứng. Do đó, các hằng số này là `POSIX\_MADV\_NORMAL`, `POSIX\_MADV\_RANDOM`, `POSIX\_MADV\_SEQUENTIAL`, `POSIX\_MADV\_WILLNEED`, và `POSIX\_MADV\_DONTNEED`. Giao diện thay thế này được cài đặt trong glibc (phiên bản 2.2 trở lên) thông qua các lời gọi đến `madvise()`, nhưng nó không có sẵn trên tất cả các cài đặt UNIX.
-
-> SUSv3 nêu rằng `posix\_madvise()` không nên làm ảnh hưởng đến ngữ nghĩa của một chương trình. Tuy nhiên, trong các phiên bản glibc trước 2.7, thao tác `POSIX\_MADV\_DONTNEED` được cài đặt bằng cách sử dụng `madvise()` `MADV\_DONTNEED`, điều này thực sự làm ảnh hưởng đến ngữ nghĩa của chương trình như đã mô tả ở trên. Kể từ glibc 2.7, hàm bọc (wrapper) `posix\_madvise()` cài đặt `POSIX\_MADV\_DONTNEED` thành không làm gì cả, để nó không làm ảnh hưởng đến ngữ nghĩa của chương trình.
+Linux 2.6.16 đã bổ sung ba giá trị gợi ý phi
 
 ## 50.5 Tổng kết
 

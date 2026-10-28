@@ -1,6 +1,4 @@
-## Chapter 9
-
-## THÔNG TIN ĐỊNH DANH TIẾN TRÌNH (PROCESS CREDENTIALS)
+# Chương 9: Định danh tiến trình (Process Credentials)
 
 Mỗi tiến trình (process) có một tập hợp các định danh người dùng (UID) và định danh nhóm (GID) dạng số đi kèm. Các định danh này được gọi là thông tin định danh tiến trình (process credentials).
 
@@ -24,6 +22,7 @@ Trên hầu hết các hệ thống cài đặt UNIX (Linux có đôi chút khá
 
 Một tiến trình có UID hiệu dụng bằng 0 (UID của `root`) sở hữu toàn bộ quyền hạn của siêu người dùng (superuser). Một tiến trình như vậy được gọi là tiến trình đặc quyền (privileged process). Một số system call nhất định chỉ có thể được thực thi bởi các tiến trình đặc quyền.
 
+> [!NOTE]
 > Trong Chương 39, chúng tôi mô tả việc cài đặt các khả năng (capabilities) trong Linux, một cơ chế phân tách các quyền hạn được cấp cho siêu người dùng thành nhiều thành phần riêng biệt có thể được bật và tắt một cách độc lập.
 
 Thông thường, UID và GID hiệu dụng có giá trị giống với các ID thực tương ứng, nhưng có hai cách khiến các ID hiệu dụng này có thể nhận các giá trị khác nhau. Một cách là thông qua việc sử dụng các system call mà chúng ta sẽ thảo luận ở Mục [9.7](#page-19-0). Cách thứ hai là thông qua việc thực thi các chương trình set-user-ID và set-group-ID.
@@ -58,8 +57,10 @@ Các chương trình set-user-ID và set-group-ID cũng có thể được thi�
 
 Đôi khi, chúng ta sẽ sử dụng thuật ngữ set-user-ID-root để phân biệt một chương trình set-user-ID thuộc sở hữu của `root` với chương trình thuộc sở hữu của một người dùng khác, vốn chỉ cấp cho tiến trình các đặc quyền được gán cho người dùng đó.
 
+> [!NOTE]
 > Giờ đây, chúng ta bắt đầu sử dụng thuật ngữ đặc quyền (privileged) theo hai nghĩa khác nhau. Một nghĩa là theo định nghĩa trước đó: một tiến trình có effective user ID bằng 0, sở hữu toàn bộ các đặc quyền được cấp cho `root`. Tuy nhiên, khi chúng ta bàn về một chương trình set-user-ID thuộc sở hữu của một người dùng không phải `root`, đôi khi chúng ta sẽ đề cập đến việc tiến trình có được các đặc quyền gán cho ID người dùng của chương trình set-user-ID đó. Ý nghĩa nào của thuật ngữ privileged được dùng trong từng trường hợp sẽ được làm rõ dựa vào ngữ cảnh.
 
+> [!NOTE]
 > Vì những lý do mà chúng ta sẽ giải thích trong Mục 38.3, các bit quyền set-user-ID và set-group-ID sẽ không có bất kỳ tác dụng nào đối với các tập lệnh shell (shell scripts) trên Linux.
 
 Các ví dụ về chương trình set-user-ID thường được sử dụng trên Linux bao gồm: `passwd(1)`, dùng để thay đổi mật khẩu của người dùng; `mount(8)` và `umount(8)`, dùng để gắn kết (mount) và gỡ gắn kết (unmount) hệ thống tệp (file systems); và `su(1)`, cho phép người dùng chạy một shell dưới một ID người dùng khác. Một ví dụ về chương trình set-group-ID là `wall(1)`, dùng để ghi thông báo tới tất cả các terminal thuộc nhóm `tty` (thông thường, mọi terminal đều thuộc nhóm này).
@@ -101,6 +102,7 @@ real=1000 effective=0 saved=0
 
 Các system call khác nhau cho phép một chương trình set-user-ID chuyển đổi effective user ID của nó giữa giá trị real user ID và saved set-user-ID. Các system call tương tự cho phép chương trình set-group-ID sửa đổi effective group ID của nó. Bằng cách này, chương trình có thể tạm thời từ bỏ và lấy lại bất kỳ đặc quyền (privileges) nào liên quan đến user (group) ID của tệp được `exec`. (Nói cách khác, chương trình có thể chuyển đổi giữa các trạng thái có khả năng có đặc quyền và thực tế đang hoạt động với đặc quyền). Như chúng ta sẽ trình bày chi tiết trong Mục 38.2, việc lập trình an toàn (secure programming practice) đối với các chương trình set-user-ID và set-group-ID là hoạt động dưới ID không có đặc quyền (tức là real ID) bất cứ khi nào chương trình không thực sự cần thực hiện bất kỳ thao tác nào liên quan đến ID có đặc quyền (tức là saved set ID).
 
+> [!NOTE]
 > Saved set-user-ID và saved set-group-ID đôi khi được gọi đồng nghĩa là saved user ID và saved group ID.
 
 Saved set ID là một phát minh của System V được POSIX tiếp nhận. Chúng không được cung cấp trên các phiên bản BSD trước 4.4. Tiêu chuẩn POSIX.1 ban đầu coi việc hỗ trợ các ID này là tùy chọn, nhưng các tiêu chuẩn sau đó (bắt đầu từ FIPS 151-1 vào năm 1988) đã bắt buộc phải hỗ trợ.
@@ -258,6 +260,7 @@ setreuid(getuid(), getuid());
 
 Một Process set-user-ID-root muốn thay đổi cả thông tin định danh (credential) người dùng và nhóm của nó thành các giá trị tùy ý trước tiên nên gọi `setregid()` và sau đó gọi `setreuid()`. Nếu các lệnh gọi được thực hiện theo thứ tự ngược lại, lệnh gọi `setregid()` sẽ thất bại, bởi vì chương trình sẽ không còn đặc quyền sau lệnh gọi `setreuid()`. Các nhận xét tương tự cũng áp dụng nếu chúng ta đang sử dụng `setresuid()` và `setresgid()` (được mô tả bên dưới) cho mục đích này.
 
+> [!NOTE]
 > Các phiên bản BSD cho đến và bao gồm cả 4.3BSD không có Saved Set-User-ID và Saved Set-Group-ID (hiện nay được bắt buộc bởi SUSv3). Thay vào đó, trên BSD, `setreuid()` và `setregid()` cho phép một Process từ bỏ và lấy lại đặc quyền bằng cách hoán đổi qua lại các giá trị của Real ID và Effective ID. Điều này có tác dụng phụ không mong muốn là làm thay đổi Real User ID chỉ để thay đổi Effective User ID.
 
 ### Truy xuất Real, Effective và Saved Set ID

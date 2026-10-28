@@ -1,4 +1,4 @@
-# Chương 2. Khám Phá Bên Trong Kernel
+# Chương 2: Khám phá bên trong Kernel (A Peek Inside the Kernel)
 
 | Trong Chương Này                           |    |
 |------------------------------------------|----|
@@ -198,17 +198,16 @@ if (bootmode) {
 
 Biên dịch lại kernel giống như bạn đã làm trước đó và dùng thử sự thay đổi này. Chúng ta sẽ thảo luận nhiều hơn về các đối số dòng lệnh kernel trong phần "Memory Layout" tại Chương 18, "Embedding Linux."
 
-```
+### Calibrating Delay...1197.46 BogoMIPS (lpj=2394935)
 
-## Calibrating Delay...1197.46 BogoMIPS (lpj=2394935)
+Trong quá trình khởi động (boot), kernel tính toán số lần bộ vi xử lý (processor) có thể thực thi một vòng lặp trễ nội bộ trong một *jiffy* (khoảng thời gian giữa hai ngắt liên tiếp của bộ định thời hệ thống - system timer). Như bạn có thể dự đoán, phép tính này phải được hiệu chuẩn (calibrated) theo tốc độ xử lý của CPU của bạn. Kết quả của việc hiệu chuẩn này được lưu trữ trong một biến của kernel có tên là `loops_per_jiffy`. Một nơi mà kernel sử dụng `loops_per_jiffy` là khi một trình điều khiển thiết bị (device driver) muốn trì hoãn việc thực thi trong các khoảng thời gian ngắn theo thứ tự micro giây.
 
-Trong quá trình khởi động (boot), kernel tính toán số lần bộ vi xử lý (processor) có thể thực thi một vòng lặp trễ nội bộ trong một *jiffy* (khoảng thời gian giữa hai ngắt liên tiếp của bộ định thời hệ thống - system timer). Như bạn có thể dự đoán, phép tính này phải được hiệu chuẩn (calibrated) theo tốc độ xử lý của CPU của bạn. Kết quả của việc hiệu chuẩn này được lưu trữ trong một biến của kernel có tên là loops\_per\_jiffy. Một nơi mà kernel sử dụng loops\_per\_jiffy là khi một trình điều khiển thiết bị (device driver) muốn trì hoãn việc thực thi trong các khoảng thời gian ngắn theo thứ tự micro giây.
+Để hiểu mã nguồn hiệu chuẩn vòng lặp trễ (delay-loop calibration), chúng ta hãy cùng xem xét bên trong `calibrate_delay()`, được định nghĩa trong *init/calibrate.c*. Hàm này một cách khéo léo tạo ra độ chính xác dấu phẩy động (floating-point precision) bằng cách sử dụng phép toán số nguyên trong kernel. Đoạn mã sau (với một số chú thích được thêm vào) cho thấy phần đầu của hàm nhằm tạo ra một giá trị thô cho `loops_per_jiffy`:
 
-Để hiểu mã nguồn hiệu chuẩn vòng lặp trễ (delay-loop calibration), chúng ta hãy cùng xem xét bên trong `calibrate_delay()`, được định nghĩa trong *init/calibrate.c*. Hàm này một cách khéo léo tạo ra độ chính xác dấu phẩy động (floating-point precision) bằng cách sử dụng kernel số nguyên (integer kernel). Đoạn mã sau (với một số chú thích được thêm vào) cho thấy phần đầu của hàm nhằm tạo ra một giá trị thô cho loops\_per\_jiffy:
-
-```
-
+```c
 loops_per_jiffy = (1 << 12); /* Initial approximation = 4096 */
+```
+
 printk(KERN_DEBUG "Calibrating delay loop... ");
 while ((loops_per_jiffy <<= 1) != 0) {
 ticks = jiffies; /* As you will find out in the section, "Kernel
@@ -854,18 +853,14 @@ spin_unlock(&mylock);
 
 Tương tự như các biến thể irq, spinlock cũng có các biến thể *nửa dưới* (bottom half - BH). `spin_lock_bh()` vô hiệu hóa các nửa dưới khi khóa được chiếm giữ, trong khi `spin_unlock_bh()` bật lại các nửa dưới khi khóa được nhả ra. Chúng ta sẽ thảo luận về nửa dưới (bottom halves) ở Chương 4.
 
-```
-
-Nhánh –rt (The –rt tree)
-
-```
-
-Nhánh thời gian thực (-rt) (real-time tree), hay còn gọi là tập bản vá `CONFIG_PREEMPT_RT` (CONFIG_PREEMPT_RT patch-set), triển khai các sửa đổi có độ trễ thấp (low-latency) cho nhân hệ điều hành. Tập bản vá này có thể tải xuống từ www.kernel.org/pub/linux/kernel/projects/rt, cho phép phần lớn nhân hệ điều hành có thể bị tiền chiếm, một phần bằng cách thay thế nhiều spinlock bằng các mutex. Nó cũng tích hợp các bộ định thời độ phân giải cao (high-resolution timers). Một số tính năng của nhánh -rt đã được tích hợp vào nhân chính thống (mainline kernel). Bạn sẽ tìm thấy tài liệu chi tiết tại trang wiki của dự án được lưu trữ tại [http://rt.wiki.kernel.org/.](http://rt.wiki.kernel.org/)
+> **Nhánh –rt (The –rt tree)**
+>
+> Nhánh thời gian thực (-rt) (real-time tree), hay còn gọi là tập bản vá `CONFIG_PREEMPT_RT` (CONFIG_PREEMPT_RT patch-set), triển khai các sửa đổi có độ trễ thấp (low-latency) cho nhân hệ điều hành. Tập bản vá này có thể tải xuống từ www.kernel.org/pub/linux/kernel/projects/rt, cho phép phần lớn nhân hệ điều hành có thể bị tiền chiếm (preempted), một phần bằng cách thay thế nhiều spinlock bằng các mutex. Nó cũng tích hợp các bộ định thời độ phân giải cao (high-resolution timers). Một số tính năng của nhánh -rt đã được tích hợp vào nhân chính thống (mainline kernel). Bạn sẽ tìm thấy tài liệu chi tiết tại trang wiki của dự án được lưu trữ tại http://rt.wiki.kernel.org/.
 
 Nhân hệ điều hành sở hữu các nguyên thủy khóa chuyên biệt trong kho công cụ của mình giúp cải thiện hiệu suất trong các điều kiện cụ thể. Việc sử dụng một cơ chế loại trừ lẫn nhau (mutual-exclusion scheme) được thiết kế riêng cho nhu cầu của bạn sẽ làm cho mã nguồn trở nên mạnh mẽ hơn. Hãy cùng xem xét một số cơ chế loại trừ chuyên biệt.
-```
 
 ## Các toán tử nguyên tử (Atomic Operators)
+```
 
 *Các toán tử nguyên tử* (Atomic operators) được sử dụng để thực hiện các thao tác một lần (one-shot) gọn nhẹ như tăng giảm bộ đếm, tăng có điều kiện và thiết lập vị trí bit. Các thao tác nguyên tử được đảm bảo là tuần tự hóa (serialized) và không cần khóa (lock) để bảo vệ chống lại việc truy cập đồng thời (concurrent access). Việc triển khai các toán tử nguyên tử phụ thuộc vào kiến trúc phần cứng (architecture-dependent).
 
@@ -1042,7 +1037,9 @@ Nhân hệ điều hành cung cấp các kỹ thuật cấp phát bộ nhớ tin
 
 Quá trình khởi động của nhân (kernel boot) bắt đầu bằng việc thực thi mã hợp ngữ chế độ thực (real mode assembly code) nằm trong thư mục *arch/x86/boot/*. Hãy xem *arch/x86/kernel/setup\_32.c* để biết cách nhân ở chế độ được bảo vệ (protected mode kernel) lấy thông tin được thu thập bởi nhân chế độ thực.
 
-Thông điệp khởi động đầu tiên được in bởi mã nằm trong *init/main.c.* Đào sâu vào *init/calibrate.c* để tìm hiểu thêm về hiệu chỉnh BogoMIPS và *include/asm-your-arch/bugs.h* để có cái nhìn sâu sắc về cácamba kiểm tra phụ thuộc kiến trúc (architecture-dependent checks).
+Thông điệp khởi động đầu tiên được in bởi mã nằm trong *init/main.c.* Đào sâu vào *init/calibrate.c* để tìm hiểu thêm về hiệu chỉnh BogoMIPS và *include/asm-your-arch/bugs.h* để có cái nhìn sâu sắc về các kiểm tra phụ thuộc kiến trúc (architecture-dependent checks).
+
+```
 
 Các dịch vụ bộ định thời (timer services) trong nhân bao gồm các phần phụ thuộc kiến trúc nằm trong *arch/your-arch/kernel/* và các phần chung được triển khai trong *kernel/timer.c.* Đối với các định nghĩa liên quan, hãy xem các tệp tiêu đề (header files), *include/linux/time\*.h*.
 
@@ -1090,7 +1087,9 @@ Bảng 2.1 chứa tóm tắt các cấu trúc dữ liệu chính được sử d
 | spin_lock()                                                         | include/linux/spinlock.h<br>kernel/spinlock.c                  | Chiếm giữ một spinlock.                                                                                                                         |
 | spin_unlock()                                                       | include/linux/spinlock.h                                       | Giải phóng một spinlock                                                                                                                         |
 | spin_lock_irqsave()                                                 | include/linux/spinlock.h<br>kernel/spinlock.c                  | Lưu trạng thái ngắt, vô hiệu hóa ngắt và<br>tiền chiếm chỗ (preemption) trên CPU cục bộ, đồng thời khóa vùng tới hạn (critical section) của chúng để điều tiết quyền truy cập từ các CPU khác |
-| spin_unlock_irqrestore() include/linux/spinlock.h                   | kernel/spinlock.c                                              | Khôi phục trạng thái ngắt và tiền chiếm chỗ, đồng thời<br>giải phóng khóa                                                                     |
+| spin_unlock_irqrestore()                                            | include/linux/spinlock.h<br>kernel/spinlock.c                  | Khôi phục trạng thái ngắt và tiền chiếm chỗ, đồng thời<br>giải phóng khóa                                                                     |
+```
+
 | DEFINE_MUTEX()                                                      | include/linux/mutex.h                                          | Khai báo tĩnh một mutex                                                                                                                         |
 | mutex_init()                                                        | include/linux/mutex.h                                          | Khai báo động một mutex                                                                                                                         |
 | mutex_lock()                                                        | kernel/mutex.c                                                 | Chiếm giữ một mutex                                                                                                                             |
@@ -1100,9 +1099,11 @@ Bảng 2.1 chứa tóm tắt các cấu trúc dữ liệu chính được sử d
 | mutex_unlock()                                                                                                                                                     | kernel/mutex.c                                | Giải phóng một mutex                                                                         |
 | DECLARE_MUTEX()                                                                                                                                                    | include/asm-your<br>arch/semaphore.h          | Khai báo tĩnh một semaphore                                                                  |
 | init_MUTEX()                                                                                                                                                       | include/asm-your<br>arch/semaphore.h          | Khai báo động một semaphore                                                                  |
-| up()                                                                                                                                                               | arch/your<br>arch/kernel/semaphore.c          | Chiếm giữ một semaphore                                                                      |
+| up()                                                                                                                                                               | arch/your<br>arch/kernel/semaphore.c          | Giải phóng/Tăng giá trị semaphore (Release semaphore)                                        |
 
-| down()                                                                                                                                                             | arch/your<br>arch/kernel/semaphore.c          | Giải phóng một Semaphore (semaphore)                                                         |
+| down()                                                                                                                                                             | arch/your<br>arch/kernel/semaphore.c          | Chiếm giữ/Giảm giá trị semaphore (Acquire/Wait on semaphore)                                 |
+
+```
 | atomic_inc()<br>atomic_inc_and_test()<br>atomic_dec()<br>atomic_dec_and_test()<br>clear_bit()<br>set_bit()<br>test_bit()<br>test_and_set_bit()                     | include/asm-your<br>arch/atomic.h             | Các toán tử nguyên tử (atomic operator) để thực hiện các thao tác trọng lượng nhẹ (lightweight) |
 | read_lock()<br>read_unlock()<br>read_lock_irqsave()<br>read_lock_irqrestore()<br>write_lock()<br>write_unlock()<br>write_lock_irqsave()<br>write_lock_irqrestore() | include/linux/spinlock.h<br>kernel/spinlock.c | Biến thể đọc-ghi (reader-writer) của Spinlock                                                |
 | down_read()<br>up_read()<br>down_write()<br>up_write()                                                                                                             | kernel/rwsem.c                                | Biến thể đọc-ghi (reader-writer) của Semaphore                                               |

@@ -1,16 +1,16 @@
-# Chương 36: TÀI NGUYÊN TIẾN TRÌNH (PROCESS RESOURCES)
+# Chương 36: Tài nguyên tiến trình (Process Resources)
 
-Mỗi tiến trình (process) tiêu thụ các tài nguyên hệ thống (system resources) như bộ nhớ và thời gian CPU. Chương trình này xem xét các system call liên quan đến tài nguyên. Chúng ta bắt đầu với system call `getrusage()`, cho phép một tiến trình theo dõi các tài nguyên mà nó đã sử dụng hoặc các tiến trình con của nó đã sử dụng. Sau đó, chúng ta xem xét các system call `setrlimit()` và `getrlimit()`, có thể được sử dụng để thay đổi và truy xuất các giới hạn về mức độ tiêu thụ các tài nguyên khác nhau của tiến trình gọi.
+Mỗi tiến trình (process) tiêu thụ các tài nguyên hệ thống (system resources) như bộ nhớ và thời gian CPU. Chương này xem xét các system call liên quan đến tài nguyên. Chúng ta bắt đầu với system call `getrusage()`, cho phép một tiến trình theo dõi các tài nguyên mà nó đã sử dụng hoặc các tiến trình con của nó đã sử dụng. Sau đó, chúng ta xem xét các system call `setrlimit()` và `getrlimit()`, có thể được sử dụng để thay đổi và truy xuất các giới hạn về mức độ tiêu thụ các tài nguyên khác nhau của tiến trình gọi.
 
 ## 36.1 Sử dụng Tài nguyên Tiến trình (Process Resource Usage)
 
 System call `getrusage()` truy xuất các thống kê về các tài nguyên hệ thống khác nhau được sử dụng bởi tiến trình gọi hoặc bởi tất cả các tiến trình con của nó.
 
-```
+```c
 ## include <sys/resource.h>
-```
 
-int **getrusage**(int who, struct rusage \*res\_usage);
+int getrusage(int who, struct rusage *res_usage);
+```
 
 Trả về 0 khi thành công, hoặc –1 khi xảy ra lỗi
 
@@ -42,7 +42,7 @@ struct rusage {
  struct timeval ru_stime; /* Thời gian CPU ở Kernel Space đã dùng */
  long ru_maxrss; /* Kích thước tối đa của tập thường trú - resident set (kilobytes)
  [được sử dụng từ Linux 2.6.32] */
- long ru_ixrss; /* Kích thước bộ nhớ văn bản tích phân (chia sẻ)
+ long ru_ixrss; /* Kích thước tích phân bộ nhớ đoạn mã (text segment) (chia sẻ)
  (kilobyte-seconds) [không sử dụng] */
  long ru_idrss; /* Bộ nhớ dữ liệu tích phân (không chia sẻ) đã dùng
  (kilobyte-seconds) [không sử dụng] */
@@ -73,23 +73,26 @@ Mặc dù `getrusage()` xuất hiện trên hầu hết các bản triển khai 
 
 Các trường `ru_utime` và `ru_stime` là các cấu trúc kiểu `timeval` (Mục 10.1), trả về số giây và micro giây thời gian CPU tiêu thụ bởi một tiến trình ở chế độ người dùng (user mode) và chế độ nhân (kernel mode) tương ứng. (Thông tin tương tự được truy xuất bởi system call `times()` được mô tả ở Mục 10.7).
 
+> [!NOTE]
 > Tệp `/proc/PID/stat` đặc thù của Linux cung cấp một số thông tin sử dụng tài nguyên (thời gian CPU và lỗi trang - page faults) về tất cả các tiến trình trên hệ thống. Xem trang hướng dẫn (manual page) `proc(5)` để biết thêm chi tiết.
 
 Cấu trúc `rusage` được trả về bởi thao tác `RUSAGE_CHILDREN` của `getrusage()` bao gồm các thống kê sử dụng tài nguyên của tất cả các tiến trình hậu duệ (descendants) của tiến trình gọi. Ví dụ, nếu chúng ta có ba tiến trình có quan hệ là cha, con và cháu, thì khi tiến trình con thực hiện hàm `wait()` đối với tiến trình cháu, các giá trị sử dụng tài nguyên của tiến trình cháu được cộng vào các giá trị `RUSAGE_CHILDREN` của tiến trình con; khi tiến trình cha thực hiện hàm `wait()` đối với tiến trình con, các giá trị sử dụng tài nguyên của cả tiến trình con và tiến trình cháu đều được cộng vào các giá trị `RUSAGE_CHILDREN` của tiến trình cha. Ngược lại, nếu tiến trình con không gọi `wait()` đối với tiến trình cháu, thì việc sử dụng tài nguyên của tiến trình cháu sẽ không được ghi lại trong các giá trị `RUSAGE_CHILDREN` của tiến trình cha.
 
 Đối với thao tác `RUSAGE_CHILDREN`, trường `ru_maxrss` trả về kích thước tập thường trú tối đa trong số tất cả các tiến trình hậu duệ của tiến trình gọi (thay vì là tổng của tất cả các hậu duệ).
 
+> [!NOTE]
 > SUSv3 quy định rằng nếu tín hiệu SIGCHLD bị bỏ qua (để các tiến trình con không biến thành tiến trình thây ma - zombie có thể thực hiện hàm wait), thì các thống kê của tiến trình con không được cộng vào các giá trị do RUSAGE\_CHILDREN trả về. Tuy nhiên, như đã lưu ý ở Mục 26.3.3, trong các phiên bản kernel trước 2.6.9, Linux không tuân theo yêu cầu này—nếu SIGCHLD bị bỏ qua, thì các giá trị sử dụng tài nguyên của các tiến trình con đã chết vẫn được bao gồm trong các giá trị trả về cho RUSAGE\_CHILDREN.
 
 ## 36.2 Giới hạn tài nguyên tiến trình (Process Resource Limits)
 
 Mỗi tiến trình (process) có một tập hợp các giới hạn tài nguyên có thể được sử dụng để hạn chế lượng tài nguyên hệ thống khác nhau mà tiến trình đó được phép tiêu thụ. Ví dụ, chúng ta có thể muốn thiết lập giới hạn tài nguyên cho một tiến trình trước khi thực thi (exec) một chương trình bất kỳ, nếu chúng ta lo ngại rằng nó có thể tiêu thụ tài nguyên quá mức. Chúng ta có thể thiết lập giới hạn tài nguyên của shell bằng cách sử dụng lệnh nội tại `ulimit` (hoặc lệnh `limit` trong C shell). Các giới hạn này được kế thừa bởi các tiến trình do shell tạo ra để thực thi lệnh của người dùng.
 
+> [!NOTE]
 > Kể từ phiên bản kernel 2.6.24, tệp chuyên biệt của Linux `/proc/PID/limits` có thể được sử dụng để xem toàn bộ giới hạn tài nguyên của bất kỳ tiến trình nào. Tệp này thuộc quyền sở hữu của UID thực (real user ID) của tiến trình tương ứng và quyền của nó chỉ cho phép đọc bởi UID đó (hoặc bởi một tiến trình có đặc quyền - privileged process).
 
 Các system call `getrlimit()` và `setrlimit()` cho phép một tiến trình lấy và sửa đổi giới hạn tài nguyên của chính nó.
 
-```
+```c
 ## include <sys/resource.h>
 int getrlimit(int resource, struct rlimit *rlim);
 int setrlimit(int resource, const struct rlimit *rlim);
@@ -143,6 +146,7 @@ Hãy lưu ý rằng trong nhiều trường hợp, các lệnh shell dùng để
 
 Trước khi đi vào chi tiết của từng giới hạn tài nguyên, chúng ta hãy xem xét một ví dụ đơn giản về việc sử dụng giới hạn tài nguyên. [Liệt kê 36-2](#page-25-0) định nghĩa hàm printRlimit(), hiển thị một thông báo cùng với giới hạn mềm (soft limit) và giới hạn cứng (hard limit) cho một tài nguyên được chỉ định.
 
+> [!NOTE]
 > Kiểu dữ liệu rlim\_t thường được biểu diễn giống như off\_t, để xử lý việc biểu diễn RLIMIT\_FSIZE, giới hạn tài nguyên kích thước tệp. Vì lý do này, khi in các giá trị rlim\_t (như trong [Liệt kê 36-2](#page-25-0)), chúng ta ép kiểu (cast) chúng sang `long long` và sử dụng định dạng `%lld` của printf(), như đã giải thích ở Mục 5.10.
 
 Chương trình trong [Liệt kê 36-3](#page-25-1) gọi setrlimit() để thiết lập giới hạn mềm và giới hạn cứng về số lượng tiến trình (Process) mà một người dùng có thể tạo (RLIMIT\_NPROC), sử dụng hàm printRlimit() từ [Liệt kê 36-2](#page-25-0) để hiển thị các giới hạn trước và sau khi thay đổi, sau đó tạo ra càng nhiều tiến trình càng tốt. Khi chúng ta chạy chương trình này, thiết lập giới hạn mềm thành 30 và giới hạn cứng thành 100, kết quả thu được như sau:
@@ -162,7 +166,7 @@ Trong ví dụ này, chương trình chỉ tạo được 4 tiến trình mới,
 
 **Liệt kê 36-2:** Hiển thị giới hạn tài nguyên của tiến trình
 
-```
+```c
 –––––––––––––––––––––––––––––––––––––––––––––––––––– procres/print_rlimit.c
 ## include <sys/resource.h>
 ## include "print_rlimit.h" /* Khai báo hàm được định nghĩa ở đây */
@@ -176,7 +180,7 @@ printRlimit(const char *msg, int resource)
  printf("%s soft=", msg);
  if (rlim.rlim_cur == RLIM_INFINITY)
  printf("infinite");
-## ifdef RLIM_SAVED_CUR /* Không được định nghĩa trên một số cài đặt */
+## ifdef RLIM_SAVED_CUR /* Không được định nghĩa trên một số triển khai */
  else if (rlim.rlim_cur == RLIM_SAVED_CUR)
  printf("unrepresentable");
 ## endif
@@ -185,7 +189,7 @@ printRlimit(const char *msg, int resource)
  printf("; hard=");
  if (rlim.rlim_max == RLIM_INFINITY)
  printf("infinite\n");
-## ifdef RLIM_SAVED_MAX /* Không được định nghĩa trên một số cài đặt */
+## ifdef RLIM_SAVED_MAX /* Không được định nghĩa trên một số triển khai */
  else if (rlim.rlim_max == RLIM_SAVED_MAX)
  printf("unrepresentable");
 ## endif
@@ -194,7 +198,7 @@ printRlimit(const char *msg, int resource)
  return 0;
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––– procres/print_rlimit.c
-Liệt kê 36-3: Thiết lập giới hạn tài nguyên RLIMIT_NPROC
+Listing 36-3: Thiết lập giới hạn tài nguyên RLIMIT_NPROC
 –––––––––––––––––––––––––––––––––––––––––––––––––––– procres/rlimit_nproc.c
 ## include <sys/resource.h>
 ## include "print_rlimit.h" /* Khai báo của printRlimit() */
@@ -243,8 +247,10 @@ Trong một số môi trường lập trình, kiểu dữ liệu `rlim_t` có th
 
 Nếu tất cả các giá trị giới hạn tài nguyên có thể có đều biểu diễn được trong `rlim_t`, thì SUSv3 cho phép một bản cài đặt (implementation) định nghĩa `RLIM_SAVED_CUR` và `RLIM_SAVED_MAX` giống với `RLIM_INFINITY`. Đây là cách các hằng số này được định nghĩa trên Linux, ngụ ý rằng tất cả các giá trị giới hạn tài nguyên có thể có đều biểu diễn được trong `rlim_t`. Tuy nhiên, điều này không đúng trên các kiến trúc 32-bit như x86-32. Trên các kiến trúc đó, trong môi trường biên dịch tệp lớn (tức là đặt macro kiểm tra tính năng `_FILE_OFFSET_BITS` thành 64 như được mô tả trong Mục 5.10), định nghĩa của glibc đối với `rlim_t` có độ rộng 64-bit, nhưng kiểu dữ liệu của kernel để biểu diễn giới hạn tài nguyên lại là `unsigned long`, vốn chỉ có độ rộng 32-bit. Các phiên bản glibc hiện tại giải quyết tình huống này như sau: nếu một chương trình được biên dịch với `_FILE_OFFSET_BITS=64` cố gắng đặt giới hạn tài nguyên thành một giá trị lớn hơn mức có thể biểu diễn trong `unsigned long` 32-bit, thì trình bao bọc (wrapper) của glibc cho hàm `setrlimit()` sẽ âm thầm chuyển đổi giá trị thành `RLIM_INFINITY`. Nói cách khác, thiết lập giới hạn tài nguyên được yêu cầu sẽ không được tôn trọng.
 
+> [!NOTE]
 > Do các tiện ích xử lý tệp thường được biên dịch với `_FILE_OFFSET_BITS=64` trong nhiều bản phân phối x86-32, việc không tuân thủ các giới hạn tài nguyên lớn hơn giá trị có thể biểu diễn trong 32-bit là một vấn đề không chỉ ảnh hưởng đến các lập trình viên ứng dụng mà còn cả người dùng cuối.
 
+> [!NOTE]
 > Người ta có thể lập luận rằng sẽ tốt hơn nếu trình bao bọc `setrlimit()` của glibc trả về lỗi khi giới hạn tài nguyên được yêu cầu vượt quá dung lượng của một `unsigned long` 32-bit. Tuy nhiên, vấn đề cốt lõi nằm ở giới hạn của kernel (kernel limitation), và hành vi được mô tả trong phần chính là cách tiếp cận mà các nhà phát triển glibc đã chọn để xử lý vấn đề này.
 
 ## 36.3 Chi tiết về các giới hạn tài nguyên cụ thể
@@ -302,8 +308,10 @@ Giới hạn RLIMIT\_NOFILE quy định một giá trị lớn hơn một đơn 
 
 Các thay đổi đối với giới hạn RLIMIT\_NOFILE được phản ánh qua giá trị trả về bởi hàm sysconf(\_SC\_OPEN\_MAX). Tiêu chuẩn SUSv3 cho phép, nhưng không bắt buộc, một bản triển khai phải trả về các giá trị khác nhau cho một lời gọi tới sysconf(\_SC\_OPEN\_MAX) trước và sau khi thay đổi giới hạn RLIMIT\_NOFILE; các bản triển khai khác có thể không hành xử giống như Linux về điểm này.
 
+> [!NOTE]
 > Tiêu chuẩn SUSv3 nêu rõ rằng nếu một ứng dụng đặt giới hạn mềm hoặc cứng RLIMIT\_NOFILE thành một giá trị nhỏ hơn hoặc bằng số hiệu của file descriptor cao nhất mà tiến trình đang mở, thì hành vi bất ngờ có thể xảy ra.
 
+> [!NOTE]
 > Trên Linux, chúng ta có thể kiểm tra xem tiến trình hiện đang mở những file descriptor nào bằng cách sử dụng readdir() để quét nội dung của thư mục /proc/PID/fd, nơi chứa các liên kết tượng trưng (symbolic links) cho từng file descriptor đang được mở bởi tiến trình đó.
 
 Kernel áp đặt một mức trần đối với giá trị mà giới hạn RLIMIT\_NOFILE có thể được nâng lên. Trong các phiên bản kernel trước 2.6.25, mức trần này là một giá trị được mã hóa cứng (hard-coded) do hằng số kernel NR\_OPEN định nghĩa, có giá trị là 1.048.576. (Cần phải biên dịch lại kernel để nâng mức trần này lên). Kể từ kernel 2.6.25, giới hạn được định nghĩa bởi giá trị nằm trong tệp /proc/sys/fs/nr\_open đặc trưng của Linux. Giá trị mặc định trong tệp này là 1.048.576; siêu người dùng (superuser) có thể sửa đổi giá trị này. Các cố gắng thiết lập giới hạn mềm hoặc cứng RLIMIT\_NOFILE cao hơn giá trị mức trần sẽ dẫn đến lỗi EPERM.
@@ -316,14 +324,18 @@ Giới hạn `RLIMIT_NPROC` (có nguồn gốc từ BSD; không có trong SUSv3 
 
 Giới hạn `RLIMIT_NPROC` chỉ ảnh hưởng đến tiến trình gọi. Các tiến trình khác thuộc về người dùng này không bị ảnh hưởng trừ khi chúng cũng thiết lập hoặc kế thừa giới hạn này. Giới hạn này không được áp dụng đối với các tiến trình có đặc quyền (`CAP_SYS_ADMIN` hoặc `CAP_SYS_RESOURCE`).
 
+> [!NOTE]
 > Linux cũng áp dụng giới hạn toàn hệ thống đối với số lượng tiến trình có thể được tạo bởi tất cả người dùng. Trên Linux 2.4 trở lên, file đặc thù của Linux `/proc/sys/kernel/threads-max` có thể được sử dụng để truy vấn và chỉnh sửa giới hạn này.
 
+> [!NOTE]
 > Nói một cách chính xác, giới hạn tài nguyên (resource limit) `RLIMIT_NPROC` và file `threads-max` thực chất là giới hạn về số lượng luồng (thread) có thể được tạo, thay vì số lượng tiến trình.
 
 Cách thức mà giá trị mặc định cho giới hạn tài nguyên `RLIMIT_NPROC` được thiết lập có sự thay đổi qua các phiên bản kernel. Trong Linux 2.2, nó được tính toán theo một công thức cố định. Trong Linux 2.4 trở lên, nó được tính toán bằng cách sử dụng một công thức dựa trên dung lượng bộ nhớ vật lý (physical memory) khả dụng.
 
+> [!NOTE]
 > SUSv3 không quy định giới hạn tài nguyên `RLIMIT_NPROC`. Phương thức do SUSv3 yêu cầu để truy vấn (nhưng không thay đổi) số lượng tiến trình tối đa được phép cho một User ID là thông qua lời gọi `sysconf(_SC_CHILD_MAX)`. Lời gọi `sysconf()` này được hỗ trợ trên Linux, nhưng trong các phiên bản kernel trước 2.6.23, lời gọi này không trả về thông tin chính xác—nó luôn trả về giá trị 999. Kể từ Linux 2.6.23 (và với glibc 2.4 trở lên), lời gọi này báo cáo chính xác giới hạn (bằng cách kiểm tra giá trị của giới hạn tài nguyên `RLIMIT_NPROC`).
 
+> [!NOTE]
 > Không có cách thức nào có thể di chuyển (portable) để phát hiện có bao nhiêu tiến trình đã được tạo cho một User ID cụ thể. Trên Linux, chúng ta có thể thử quét toàn bộ các file `/proc/PID/status` trên hệ thống và kiểm tra thông tin bên dưới mục `Uid` (liệt kê bốn ID người dùng của tiến trình theo thứ tự: real, effective, saved set, và file system) nhằm ước tính số lượng tiến trình hiện đang thuộc sở hữu của một người dùng. Tuy nhiên, cần lưu ý rằng vào thời điểm chúng ta hoàn thành việc quét đó, thông tin này có thể đã thay đổi.
 
 ### RLIMIT_RSS
@@ -356,6 +368,7 @@ Từ kernel 2.6.12 trở đi, trường `SigQ` trong tệp `/proc/PID/status` đ
 
 Giới hạn RLIMIT\_STACK chỉ định kích thước tối đa của stack tiến trình, tính bằng byte. Các nỗ lực làm cho stack vượt quá giới hạn này sẽ dẫn đến việc tạo ra một tín hiệu `SIGSEGV` cho tiến trình. Vì stack đã cạn kiệt, cách duy nhất để bắt (catch) tín hiệu này là thiết lập một stack tín hiệu thay thế (alternate signal stack), như được mô tả trong Mục 21.3.
 
+> [!NOTE]
 > Kể từ Linux 2.6.23, giới hạn RLIMIT\_STACK cũng quyết định dung lượng bộ nhớ khả dụng để chứa các tham số dòng lệnh (command-line argument) và biến môi trường (environment variable) của tiến trình. Xem trang hướng dẫn sử dụng (manual page) `execve(2)` để biết thêm chi tiết.
 
 ## 36.4 Tổng kết

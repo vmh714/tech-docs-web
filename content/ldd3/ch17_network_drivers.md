@@ -1,4 +1,4 @@
-# Chương 17: Trình điều khiển Mạng (Network Drivers)
+# Chương 17: Driver mạng (Network Drivers)
 
 Sau khi đã thảo luận về trình điều khiển ký tự (char driver) và trình điều khiển khối (block driver), giờ đây chúng ta đã sẵn sàng bước sang thế giới mạng. Giao diện mạng (network interface) là lớp tiêu chuẩn thứ ba của các thiết bị Linux, và chương này mô tả cách chúng tương tác với phần còn lại của kernel.
 
@@ -486,6 +486,7 @@ kernel phải duyệt qua một gói tin bị phân mảnh ("phi tuyến tính" 
 
 NETIF\_F\_IP\_CSUM NETIF\_F\_NO\_CSUM NETIF\_F\_HW\_CSUM
 
+> [!NOTE]
 > Những cờ này đều là các cách thông báo cho kernel rằng nó không cần áp dụng checksum cho một số hoặc tất cả các gói tin rời khỏi hệ thống qua giao diện này. Hãy thiết lập NETIF\_F\_IP\_CSUM nếu giao diện của bạn có thể tính checksum cho các gói tin IP nhưng không áp dụng cho các gói tin khác. Nếu không bao giờ cần checksum cho giao diện này, hãy thiết lập NETIF\_F\_NO\_CSUM. Driver loopback thiết lập cờ này, và *snull* cũng vậy; vì các gói tin chỉ được truyền tải qua bộ nhớ hệ thống, (hy vọng rằng) không có cơ hội nào để chúng bị hỏng (corrupted), và do đó không cần phải kiểm tra chúng. Nếu phần cứng của bạn tự thực hiện việc tính checksum, hãy thiết lập NETIF\_F\_HW\_CSUM.
 
 NETIF\_F\_HIGHDMA
@@ -494,6 +495,7 @@ NETIF\_F\_HIGHDMA
 
 NETIF\_F\_HW\_VLAN\_TX NETIF\_F\_HW\_VLAN\_RX NETIF\_F\_HW\_VLAN\_FILTER NETIF\_F\_VLAN\_CHALLENGED
 
+> [!NOTE]
 > Các tùy chọn này mô tả khả năng hỗ trợ gói tin 802.1q VLAN của phần cứng. Việc hỗ trợ VLAN nằm ngoài phạm vi có thể đề cập trong chương này. Nếu các gói tin VLAN làm thiết bị của bạn gặp sự cố (thực tế thì không nên như vậy), hãy đặt cờ `NETIF_F_VLAN_CHALLENGED`.
 
 NETIF\_F\_TSO
@@ -1568,7 +1570,7 @@ Phương thức `poll_controller`, về bản chất, chỉ đơn giản là mô
 ## Tra cứu nhanh (Quick Reference)
 Phần này cung cấp tài liệu tham khảo cho các khái niệm được giới thiệu trong chương này. Nó cũng giải thích vai trò của từng tệp tiêu đề (header file) mà một trình điều khiển cần phải bao gồm (`include`). Tuy nhiên, danh sách các trường trong các cấu trúc `net_device` và `sk_buff` sẽ không được lặp lại ở đây.
 
-```
+```c
 
 ## include <linux/netdevice.h>
 
@@ -1633,7 +1635,7 @@ void netif_rx_complete(struct net_device *dev);
 
 Các hàm chỉ nên được sử dụng bởi các driver tương thích với NAPI. *netif\_receive\_skb* là hàm tương đương trong NAPI của *netif\_rx*; nó chuyển một gói tin vào kernel. Khi một driver tương thích với NAPI đã cạn kiệt nguồn gói tin nhận được, nó nên kích hoạt lại ngắt và gọi *netif\_rx\_complete* để dừng việc thăm dò (polling).
 
-```
+```c
 
 ## include <linux/if.h>
 
@@ -1663,7 +1665,7 @@ struct ethhdr;
 
 Được bao gồm bởi *netdevice.h*, *if\_ether.h* định nghĩa tất cả các macro ETH\_ được sử dụng để biểu diễn độ dài octet (chẳng hạn như độ dài địa chỉ) và các giao thức mạng (chẳng hạn như IP). Nó cũng định nghĩa cấu trúc `ethhdr`.
 
-```
+```c
 
 ## include <linux/skbuff.h>
 

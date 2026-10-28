@@ -1,4 +1,4 @@
-# Chương 9. PCMCIA và Compact Flash
+# Chương 9: PCMCIA và Compact Flash (PCMCIA and Compact Flash)
 
 | Trong Chương Này            |     |
 |-----------------------------|-----|
@@ -15,7 +15,7 @@
 | Xem xét Mã nguồn             | 275 |
 |                             |     |
 
-Các công nghệ phổ biến ngày nay như Ethernet không dây và có dây, *General Packet Radio Service* (GPRS), *Global Positioning System* (GPS), bộ nhớ thu nhỏ, và modem đang rất phổ biến dưới dạng yếu tố hình thức (form factor) của thẻ PCMCIA (viết tắt của *Personal Computer Memory Card International Association*) hoặc CF (*Compact Flash*). Hầu hết máyδ laptop và nhiều thiết bị nhúng (embedded device) đều hỗ trợ giao diện PCMCIA hoặc CF, do đó cho phép chúng tận dụng ngay lập tức các công nghệ này. Trên các hệ thống nhúng (embedded system), các khe cắm PCMCIA/CF cung cấp một lộ trình nâng cấp công nghệ mà không cần phải thiết kế lại bảng mạch (re-spin the board). Ví dụ, một phiên bản tiết kiệm chi phí của thiết bị hỗ trợ Internet có thể sử dụng modem quay số PCMCIA, trong khi phiên bản cao cấp hơn có thể tích hợp WiFi.
+Các công nghệ phổ biến ngày nay như Ethernet không dây và có dây, *General Packet Radio Service* (GPRS), *Global Positioning System* (GPS), bộ nhớ thu nhỏ, và modem đang rất phổ biến dưới dạng yếu tố hình thức (form factor) của thẻ PCMCIA (viết tắt của *Personal Computer Memory Card International Association*) hoặc CF (*Compact Flash*). Hầu hết máy tính xách tay (laptop) và nhiều thiết bị nhúng (embedded device) đều hỗ trợ giao diện PCMCIA hoặc CF, do đó cho phép chúng tận dụng ngay lập tức các công nghệ này. Trên các hệ thống nhúng (embedded system), các khe cắm PCMCIA/CF cung cấp một lộ trình nâng cấp công nghệ mà không cần phải thiết kế lại bảng mạch (re-spin the board). Ví dụ, một phiên bản tiết kiệm chi phí của thiết bị hỗ trợ Internet có thể sử dụng modem quay số PCMCIA, trong khi phiên bản cao cấp hơn có thể tích hợp WiFi.
 
 Linux kernel hỗ trợ các thiết bị PCMCIA trên nhiều kiến trúc khác nhau. Trong chương này, chúng ta hãy cùng khám phá các cơ chế hỗ trợ có sẵn trong kernel dành cho các bộ điều khiển host (host adapter) và thiết bị client PCMCIA/CF.
 

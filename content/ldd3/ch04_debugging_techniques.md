@@ -1,4 +1,4 @@
-# Chương 4: Kỹ thuật Gỡ lỗi (Debugging Techniques)
+# Chương 4: Kỹ thuật gỡ lỗi (Debugging Techniques)
 
 Lập trình nhân (Kernel programming) mang lại những thử thách gỡ lỗi độc đáo của riêng nó. Mã nguồn nhân (Kernel code) không thể dễ dàng thực thi dưới một trình gỡ lỗi (debugger), cũng như không thể dễ dàng theo vết (trace), bởi vì nó là một tập hợp các chức năng không gắn liền với một tiến trình (process) cụ thể nào. Các lỗi trong mã nguồn nhân cũng cực kỳ khó tái tạo và có thể làm sập toàn bộ hệ thống (bring down the entire system), từ đó phá hủy phần lớn các dấu vết có thể được sử dụng để truy lùng chúng.
 
@@ -48,7 +48,7 @@ Bật phím "magic SysRq". Chúng ta sẽ tìm hiểu về phím này trong ph�
 
 #### CONFIG\_DEBUG\_STACK\_USAGE
 
-Các tùy chọn này có thể giúp truyش vết các trường hợp tràn ngăn xếp kernel (kernel stack overflows). Dấu hiệu chắc chắn của việc tràn ngăn xếp là một danh sách oops mà không có bất kỳ truy vết ngược (backtrace) hợp lý nào. Tùy chọn đầu tiên bổ sung các bước kiểm tra tràn ngăn xếp tường minh vào kernel; tùy chọn thứ hai khiến kernel giám sát việc sử dụng ngăn xếp và cung cấp một số số liệu thống kê thông qua phím magic SysRq.
+Các tùy chọn này có thể giúp truy vết các trường hợp tràn ngăn xếp kernel (kernel stack overflows). Dấu hiệu chắc chắn của việc tràn ngăn xếp là một danh sách oops mà không có bất kỳ truy vết ngược (backtrace) hợp lý nào. Tùy chọn đầu tiên bổ sung các bước kiểm tra tràn ngăn xếp tường minh vào kernel; tùy chọn thứ hai khiến kernel giám sát việc sử dụng ngăn xếp và cung cấp một số số liệu thống kê thông qua phím magic SysRq.
 
 #### CONFIG\_KALLSYMS
 
@@ -200,20 +200,20 @@ Ví dụ, sử dụng *setlevel 8; setconsole 10* để thiết lập terminal 1
 Đoạn mã sau đây thực thi các tính năng này và xuất phát trực tiếp từ tệp tiêu đề (header) *scull.h*:
 
 ```c
-## undef PDEBUG /* hủy định nghĩa nếu có, đề phòng trường hợp đã tồn tại */
+## undef PDEBUG /* Hủy định nghĩa nếu có, đề phòng trường hợp đã tồn tại */
 ## ifdef SCULL_DEBUG
 ## ifdef __KERNEL__
- /* Trường hợp bật gỡ lỗi và chạy trong kernel space */
+ /* Trường hợp bật gỡ lỗi và chạy trong không gian nhân (kernel space) */
 ## define PDEBUG(fmt, args...) printk( KERN_DEBUG "scull: " fmt, ## args)
 ## else
- /* Trường hợp chạy trong user space */
+ /* Trường hợp chạy trong không gian người dùng (user space) */
 ## define PDEBUG(fmt, args...) fprintf(stderr, fmt, ## args)
 ## endif
 ## else
-## define PDEBUG(fmt, args...) /* không gỡ lỗi: không làm gì cả */
+## define PDEBUG(fmt, args...) /* Không gỡ lỗi: không làm gì cả */
 ## endif
 ## undef PDEBUGG
-## define PDEBUGG(fmt, args...) /* không làm gì cả: đây chỉ là một placeholder */
+## define PDEBUGG(fmt, args...) /* Không làm gì cả: đây chỉ là một giữ chỗ (placeholder) */
 ```
 
 Ký hiệu PDEBUG được định nghĩa hay hủy định nghĩa tùy thuộc vào việc SCULL\_DEBUG có được định nghĩa hay không, và hiển thị thông tin theo cách thức phù hợp với môi trường nơi mã nguồn đang chạy: nó sử dụng lời gọi hệ thống kernel *printk* khi ở trong kernel và lời gọi *libc* *fprintf* ra cổng lỗi chuẩn (standard error) khi chạy trong không gian người dùng (user space). Ngược lại, ký hiệu PDEBUGG không làm gì cả; nó có thể được sử dụng để "chú thích" (comment) các câu lệnh in một cách dễ dàng mà không cần phải xóa chúng hoàn toàn.
@@ -261,7 +261,7 @@ if (printk_ratelimit( ))
 
 *printk_ratelimit* hoạt động bằng cách theo dõi số lượng thông điệp được gửi tới console. Khi mức độ đầu ra vượt quá ngưỡng (threshold), *printk_ratelimit* bắt đầu trả về 0 và làm cho các thông điệp bị loại bỏ (dropped).
 
-Hành vi của *printk_ratelimit* có thể được tùy chỉnh bằng cách chỉnh sửa `/proc/sys/kernel/printk_ratelimit` (số秒/giây phải đợi trước khi bật lại thông điệp) và `/proc/sys/kernel/printk_ratelimit_burst` (số lượng thông điệp được chấp nhận trước khi áp dụng giới hạn tốc độ).
+Hành vi của *printk_ratelimit* có thể được tùy chỉnh bằng cách chỉnh sửa `/proc/sys/kernel/printk_ratelimit` (số giây phải chờ trước khi bật lại thông điệp) và `/proc/sys/kernel/printk_ratelimit_burst` (số lượng thông điệp tối đa được chấp nhận trước khi áp dụng giới hạn tần suất).
 
 ### In số hiệu thiết bị (Printing Device Numbers)
 
@@ -307,7 +307,7 @@ Khi một tiến trình đọc từ tệp */proc* của bạn, kernel cấp phá
 
 ```c
 int (*read_proc)(char *page, char **start, off_t offset, int count,
- int eof, void *data);
+ int *eof, void *data);
 ```
 
 Con trỏ `page` là bộ đệm nơi bạn sẽ ghi dữ liệu của mình; `start` được sử dụng bởi hàm để cho biết dữ liệu quan trọng đã được ghi vào `page` ở đâu (sẽ nói thêm về điều này sau); `offset` và `count` có ý nghĩa giống như đối với phương thức *read*. Đối số `eof` trỏ đến một số nguyên phải được thiết lập bởi driver để báo hiệu rằng nó không còn dữ liệu nào để trả về nữa, trong khi `data` là một con trỏ dữ liệu dành riêng cho driver mà bạn có thể sử dụng cho việc ghi chép nội bộ (internal bookkeeping).
@@ -486,7 +486,7 @@ int seq_path(struct seq_file *sfile, struct vfsmount *m, struct dentry
  *dentry, char *esc);
 ```
 
-Hàm này có thể được sử dụng để xuất ra tên tệp liên kết với một mục nhập thư mục (directory entry) cho trước. Nó không có nhiều hữu ích trong các trình điều khiển thiết bị (device drivers); chúng tôi đưa nó vào đây để tính trọn vẹn của tài liệu.
+Hàm này có thể được sử dụng để xuất ra tên tệp liên kết với một mục nhập thư mục (directory entry) cho trước. Nó ít khi hữu ích trong các trình điều khiển thiết bị (device driver); chúng tôi đưa nó vào đây để đảm bảo tính đầy đủ của tài liệu.
 
 Quay lại với ví dụ của chúng tôi; phương thức *show* được sử dụng trong *scull* là:
 

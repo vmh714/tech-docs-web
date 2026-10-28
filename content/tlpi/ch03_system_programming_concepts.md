@@ -1,4 +1,4 @@
-# Chương 3: CÁC KHÁI NIỆM LẬP TRÌNH HỆ THỐNG
+# Chương 3: Khái niệm lập trình hệ thống (System Programming Concepts)
 
 Chương này bao gồm nhiều chủ đề khác nhau làm tiền đề cho lập trình hệ thống (system programming). Chúng ta bắt đầu bằng việc giới thiệu các lời gọi hệ thống (system call) và trình bày chi tiết các bước diễn ra trong quá trình thực thi của chúng. Sau đó, chúng ta xem xét các hàm thư viện (library function) và sự khác biệt của chúng so với system call, kết hợp với phần mô tả về thư viện C của (GNU) C library.
 
@@ -44,6 +44,7 @@ Quy ước này dựa trên giả định rằng các system call service routin
 
 Thông tin được trình bày trong các đoạn trước nhiều hơn mức chúng ta thường cần biết cho phần còn lại của cuốn sách này. Tuy nhiên, nó minh họa một điểm quan trọng rằng, ngay cả đối với một system call đơn giản, vẫn phải thực hiện một lượng công việc đáng kể, và do đó system call có chi phí chi trả (overhead) nhỏ nhưng đáng kể.
 
+> [!NOTE]
 > Như một ví dụ về chi phí overhead của việc thực hiện một system call, hãy xem xét system call `getppid()`, vốn chỉ đơn giản trả về Process ID (PID) của tiến trình cha của tiến trình đang gọi. Trên một trong các hệ thống x86-32 của tác giả chạy Linux 2.6.25, 10 triệu lần gọi `getppid()` mất khoảng 2,2 giây để hoàn thành. Con số này tương đương với khoảng 0,3 micro giây cho mỗi lần gọi. Để so sánh, trên cùng hệ thống đó, 10 triệu lần gọi đến một hàm C chỉ đơn giản trả về một số nguyên chỉ mất 0,11 giây, hoặc khoảng một phần hai mươi thời gian so với các lệnh gọi `getppid()`. Tất nhiên, hầu hết các system call đều có overhead lớn hơn đáng kể so với `getppid()`.
 
 Vì từ quan điểm của một chương trình C, việc gọi hàm wrapper của thư viện C là đồng nghĩa với việc gọi system call service routine tương ứng, nên trong phần còn lại của cuốn sách này, chúng tôi sử dụng cách diễn đạt như "gọi system call xyz()" để mang ý nghĩa là "gọi hàm wrapper thực hiện gọi system call xyz()".
@@ -102,8 +103,10 @@ Nhiều hàm thư viện không sử dụng bất kỳ system call nào (ví d�
 
 Có các bản cài đặt (implementation) khác nhau của thư viện chuẩn C trên các hệ thống UNIX khác nhau. Bản cài đặt được sử dụng phổ biến nhất trên Linux là thư viện GNU C (glibc, http://www.gnu.org/software/libc/).
 
+> [!NOTE]
 > Nhà phát triển chính và người bảo trì thư viện GNU C ban đầu là Roland McGrath. Ngày nay, nhiệm vụ này do Ulrich Drepper đảm nhận.
 
+> [!NOTE]
 > Nhiều thư viện C khác nhau cũng có sẵn cho Linux, bao gồm các thư viện có yêu cầu bộ nhớ nhỏ hơn để sử dụng trong các ứng dụng thiết bị nhúng (embedded device). Các ví dụ bao gồm uClibc (http://www.uclibc.org/) và diet libc (http://www.fefe.de/dietlibc/). Trong cuốn sách này, chúng ta giới hạn thảo luận ở glibc, vì đó là thư viện C được sử dụng bởi hầu hết các ứng dụng phát triển trên Linux.
 
 ## Xác định phiên bản glibc trên hệ thống
@@ -156,6 +159,7 @@ Hầu như mọi System Call và hàm thư viện đều trả về một số d
 
 Mặc dù việc bỏ qua các bước kiểm tra này rất cám dỗ để tiết kiệm thời gian gõ phím (đặc biệt là sau khi thấy các ví dụ về chương trình UNIX và Linux mà giá trị trạng thái không được kiểm tra), nhưng đây là một sự tiết kiệm sai lầm. Nhiều giờ gỡ lỗi (debugging) có thể bị lãng phí chỉ vì không kiểm tra giá trị trả về của một System Call hoặc hàm thư viện "chắc chắn không thể thất bại".
 
+> [!NOTE]
 > Một vài System Call không bao giờ thất bại. Ví dụ, `getpid()` luôn trả về thành công ID của một Process (tiến trình), và `_exit()` luôn chấm dứt một Process. Không cần thiết phải kiểm tra giá trị trả về từ các System Call như vậy.
 
 ### Xử lý lỗi System Call
@@ -308,12 +312,13 @@ void cmdLineErr(const char *format, ...) NORETURN ;
 
 Để chẩn đoán lỗi từ System Call và các hàm thư viện, chúng tôi sử dụng errMsg(), errExit(), err\_exit(), và errExitEN().
 
-```
 ## include "tlpi_hdr.h"
+
 void errMsg(const char *format, ...);
 void errExit(const char *format, ...);
 void err_exit(const char *format, ...);
 void errExitEN(int errnum, const char *format, ...);
+
 ```
 
 Hàm errMsg() in ra một thông điệp trên luồng lỗi chuẩn (standard error). Danh sách đối số của nó giống với printf(), ngoại trừ việc một ký tự xuống dòng kết thúc được tự động nối thêm vào chuỗi đầu ra. Hàm errMsg() in văn bản lỗi tương ứng với giá trị hiện tại của `errno` — bao gồm tên lỗi, chẳng hạn như `EPERM`, cộng với mô tả lỗi được trả về bởi strerror() — theo sau là đầu ra được định dạng được chỉ định trong danh sách đối số.
@@ -334,25 +339,28 @@ Chủ yếu, chúng tôi sử dụng errExitEN() trong các chương trình ứn
 Chúng ta có thể chẩn đoán lỗi từ các hàm POSIX threads sử dụng đoạn mã như sau:
 
 ```
+
 errno = pthread_create(&thread, NULL, func, &arg);
 if (errno != 0)
- errExit("pthread_create");
+errExit("pthread_create");
+
 ```
 
 Tuy nhiên, cách tiếp cận này không hiệu quả vì trong các chương trình đa luồng (threaded programs), `errno` được định nghĩa là một macro mở rộng thành lời gọi hàm trả về một lvalue có thể thay đổi được (modifiable lvalue). Do đó, mỗi lần sử dụng `errno` đều dẫn đến một lời gọi hàm. Hàm `errExitEN()` cho phép chúng ta viết một đoạn mã tương đương hiệu quả hơn đoạn mã trên:
 
 ```
+
 int s;
 s = pthread_create(&thread, NULL, func, &arg);
 if (s != 0)
- errExitEN(s, "pthread_create");
+errExitEN(s, "pthread_create");
+
 ```
 
 Theo thuật ngữ của ngôn ngữ C, một lvalue là một biểu thức tham chiếu đến một vùng lưu trữ (storage). Ví dụ phổ biến nhất về lvalue là một định danh cho biến (identifier for a variable). Một số toán tử cũng trả về lvalue. Ví dụ, nếu `p` là một con trỏ trỏ đến một vùng lưu trữ, thì `*p` là một lvalue. Theo POSIX threads API, `errno` được định nghĩa lại thành một hàm trả về con trỏ trỏ đến vùng lưu trữ riêng biệt của luồng (thread-specific storage area) (xem Mục 31.3).
 
 Để chẩn đoán các loại lỗi khác, chúng ta sử dụng `fatal()`, `usageErr()` và `cmdLineErr()`.
 
-```
 ## include "tlpi_hdr.h"
 void fatal(const char *format, ...);
 void usageErr(const char *format, ...);
@@ -498,12 +506,15 @@ cmdLineErr(const char *format, ...)
 
 Tệp `ename.c.inc` được bao gồm (include) bởi Listing 3-3 được thể hiện tại [Listing 3-4](#page-37-0). Tệp này định nghĩa một mảng các chuỗi, `ename`, đại diện cho các tên tượng trưng (symbolic name) tương ứng với từng giá trị `errno` có thể xảy ra. Các hàm xử lý lỗi (error-handling function) của chúng ta sử dụng mảng này để in ra tên tượng trưng tương ứng với một mã lỗi cụ thể. Đây là một giải pháp thay thế (workaround) nhằm giải quyết vấn đề: một mặt, chuỗi do hàm `strerror()` trả về không xác định được hằng số tượng trưng (symbolic constant) tương ứng với thông báo lỗi của nó; mặt khác, các trang hướng dẫn sử dụng (manual pages) lại mô tả các lỗi bằng cách sử dụng tên tượng trưng của chúng. Việc in ra tên tượng trưng giúp chúng ta có một cách dễ dàng để tra cứu nguyên nhân gây ra lỗi trong các manual pages.
 
+> [!NOTE]
 > Nội dung của tệp `ename.c.inc` phụ thuộc vào kiến trúc phần cứng (architecture-specific), bởi vì các giá trị `errno` có sự khác biệt nhất định giữa các kiến trúc phần cứng Linux khác nhau. Phiên bản được thể hiện trong [Listing 3-4](#page-37-0) dành cho hệ thống Linux 2.6/x86-32. Tệp này được xây dựng bằng cách sử dụng một tập lệnh (script) (`lib/Build_ename.sh`) được đính kèm trong mã nguồn phân phối của cuốn sách này. Tập lệnh này có thể được sử dụng để tạo ra một phiên bản của `ename.c.inc` phù hợp với một nền tảng phần cứng và phiên bản kernel cụ thể.
 
 Lưu ý rằng một số chuỗi trong mảng `ename` để trống. Chúng tương ứng với các giá trị lỗi không được sử dụng. Hơn nữa, một số chuỗi trong `ename` bao gồm hai tên lỗi được phân tách bằng dấu gạch chéo. Các chuỗi này tương ứng với các trường hợp mà hai tên lỗi tượng trưng có cùng một giá trị số.
 
+> [!NOTE]
 > Từ tệp `ename.c.inc`, chúng ta có thể thấy rằng các lỗi `EAGAIN` và `EWOULDBLOCK` có cùng giá trị. (Tiêu chuẩn SUSv3 cho phép rõ ràng điều này, và giá trị của các hằng số này giống nhau trên hầu hết, nhưng không phải tất cả, các hệ thống UNIX khác). Các lỗi này được trả về bởi một System Call trong các trường hợp mà thông thường nó sẽ bị block (tức là buộc phải chờ đợi trước khi hoàn thành), nhưng tiến trình gọi (caller) lại yêu cầu System Call trả về lỗi thay vì bị block. `EAGAIN` bắt nguồn từ System V, và đó là lỗi được trả về cho các System Call thực hiện I/O, thao tác semaphore, thao tác message queue, và khóa tệp (`fcntl()`). `EWOULDBLOCK` bắt nguồn từ BSD, và nó được trả về bởi các System Call liên quan đến khóa tệp (`flock()`) và socket.
 
+> [!NOTE]
 > Trong tiêu chuẩn SUSv3, `EWOULDBLOCK` chỉ được đề cập trong phần kỹ thuật đặc tả của các giao diện khác nhau liên quan đến socket. Đối với các giao diện này, SUSv3 cho phép trả về hoặc `EAGAIN` hoặc `EWOULDBLOCK` bởi các lệnh gọi không chặn (nonblocking call). Đối với tất cả các lệnh gọi không chặn khác, chỉ có mã lỗi `EAGAIN` được quy định trong SUSv3.
 
 ```c
@@ -545,11 +556,12 @@ static char *ename[] = {
 
 Tệp tiêu đề (header file) trong [Listing 3-5](#page-38-0) cung cấp khai báo của hai hàm mà chúng ta thường xuyên sử dụng để phân tích cú pháp (parse) các đối số dòng lệnh dạng số nguyên (integer): `getInt()` và `getLong()`. Ưu điểm chính của việc sử dụng các hàm này thay vì `atoi()`, `atol()`, và `strtol()` là chúng cung cấp một số cơ chế kiểm tra tính hợp lệ cơ bản cho các đối số dạng số.
 
-```
 ## include "tlpi_hdr.h"
+
 int getInt(const char *arg, int flags, const char *name);
 long getLong(const char *arg, int flags, const char *name);
-                                     Cả hai đều trả về arg đã được chuyển đổi sang dạng số
+Cả hai đều trả về arg đã được chuyển đổi sang dạng số
+
 ```
 
 Các hàm `getInt()` và `getLong()` lần lượt chuyển đổi chuỗi được trỏ bởi `arg` thành kiểu `int` hoặc `long`. Nếu `arg` không chứa một chuỗi số nguyên hợp lệ (tức là chỉ bao gồm các chữ số và các ký tự `+` và `-`), thì các hàm này sẽ in ra thông báo lỗi và chấm dứt (terminate) chương trình.
@@ -565,81 +577,104 @@ Các phần cài đặt (implementation) của hàm `getInt()` và `getLong()` �
 **Listing 3-5:** Tệp tiêu đề cho get\_num.c
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– lib/get_num.h
+
 ## ifndef GET_NUM_H
+
 ## define GET_NUM_H
+
 ## define GN_NONNEG 01 /* Giá trị phải >= 0 */
+
 ## define GN_GT_0 02 /* Giá trị phải > 0 */
- /* Theo mặc định, số nguyên là hệ thập phân */
+
+/* Theo mặc định, số nguyên là hệ thập phân */
+
 ## define GN_ANY_BASE 0100 /* Có thể dùng bất kỳ cơ số nào - giống strtol(3) */
+
 ## define GN_BASE_8 0200 /* Giá trị được biểu diễn dưới hệ bát phân (octal) */
+
 ## define GN_BASE_16 0400 /* Giá trị được biểu diễn dưới hệ thập lục phân (hexadecimal) */
+
 long getLong(const char *arg, int flags, const char *name);
 int getInt(const char *arg, int flags, const char *name);
+
 ## endif
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– lib/get_num.h
 Listing 3-6: Các hàm phân tích cú pháp đối số dòng lệnh dạng số
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– lib/get_num.c
+
 ## include <stdio.h>
+
 ## include <stdlib.h>
+
 ## include <string.h>
+
 ## include <limits.h>
+
 ## include <errno.h>
+
 ## include "get_num.h"
+
 ```
 
 ```
+
 static void
 gnFail(const char *fname, const char *msg, const char *arg, const char *name)
 {
- fprintf(stderr, "%s error", fname);
- if (name != NULL)
- fprintf(stderr, " (in %s)", name);
- fprintf(stderr, ": %s\n", msg);
- if (arg != NULL && *arg != '\0')
- fprintf(stderr, " offending text: %s\n", arg);
- exit(EXIT_FAILURE);
+fprintf(stderr, "%s error", fname);
+if (name != NULL)
+fprintf(stderr, " (in %s)", name);
+fprintf(stderr, ": %s\n", msg);
+if (arg != NULL && *arg != '\0')
+fprintf(stderr, " offending text: %s\n", arg);
+exit(EXIT_FAILURE);
 }
 static long
 getNum(const char *fname, const char *arg, int flags, const char *name)
 {
- long res;
- char *endptr;
- int base;
- if (arg == NULL || *arg == '\0')
- gnFail(fname, "null or empty string", arg, name);
- base = (flags & GN_ANY_BASE) ? 0 : (flags & GN_BASE_8) ? 8 :
- (flags & GN_BASE_16) ? 16 : 10;
- errno = 0;
- res = strtol(arg, &endptr, base);
- if (errno != 0)
- gnFail(fname, "strtol() failed", arg, name);
- if (*endptr != '\0')
- gnFail(fname, "nonnumeric characters", arg, name);
- if ((flags & GN_NONNEG) && res < 0)
- gnFail(fname, "negative value not allowed", arg, name);
- if ((flags & GN_GT_0) && res <= 0)
- gnFail(fname, "value must be > 0", arg, name);
- return res;
+long res;
+char *endptr;
+int base;
+if (arg == NULL || *arg == '\0')
+gnFail(fname, "null or empty string", arg, name);
+base = (flags & GN_ANY_BASE) ? 0 : (flags & GN_BASE_8) ? 8 :
+(flags & GN_BASE_16) ? 16 : 10;
+errno = 0;
+res = strtol(arg, &endptr, base);
+if (errno != 0)
+gnFail(fname, "strtol() failed", arg, name);
+if (*endptr != '\0')
+gnFail(fname, "nonnumeric characters", arg, name);
+if ((flags & GN_NONNEG) && res < 0)
+gnFail(fname, "negative value not allowed", arg, name);
+if ((flags & GN_GT_0) && res <= 0)
+gnFail(fname, "value must be > 0", arg, name);
+return res;
 }
 long
 getLong(const char *arg, int flags, const char *name)
 {
- return getNum("getLong", arg, flags, name);
+return getNum("getLong", arg, flags, name);
 }
 int
 getInt(const char *arg, int flags, const char *name)
 {
- long res;
- res = getNum("getInt", arg, flags, name);
+long res;
+res = getNum("getInt", arg, flags, name);
+
 ```
 
 ```
- if (res > INT_MAX || res < INT_MIN)
- gnFail("getInt", "integer out of range", arg, name);
- return (int) res;
+
+if (res > INT_MAX || res < INT_MIN)
+gnFail("getInt", "integer out of range", arg, name);
+return (int) res;
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– lib/get_num.c
+
 ```
 
 ## 3.6 Các vấn đề về tính tương thích (Portability Issues)
@@ -653,13 +688,17 @@ Nhiều tiêu chuẩn khác nhau chi phối hành vi của các System Call và 
 Đôi khi, khi viết một ứng dụng có tính khả chuyển (portable application), chúng ta có thể muốn các tệp tiêu đề (header file) chỉ hiển thị (expose) các định nghĩa (hằng số, nguyên mẫu hàm, v.v.) tuân theo một tiêu chuẩn cụ thể nào đó. Để làm điều này, chúng ta định nghĩa một hoặc nhiều macro kiểm tra tính năng (feature test macro) được liệt kê dưới đây khi biên dịch chương trình. Một cách để thực hiện là định nghĩa macro trong mã nguồn chương trình trước khi bao gồm (include) bất kỳ tệp tiêu đề nào:
 
 ```c
+
 ## define _BSD_SOURCE 1
+
 ```
 
 Ngoài ra, chúng ta có thể sử dụng tùy chọn `-D` của trình biên dịch C:
 
 ```
+
 $ cc -D_BSD_SOURCE prog.c
+
 ```
 
 Thuật ngữ macro kiểm tra tính năng (feature test macro) có vẻ gây nhầm lẫn, nhưng nó hoàn toàn hợp lý nếu chúng ta nhìn nhận vấn đề từ góc độ của việc hiện thực (implementation). Phía hiện thực quyết định tính năng nào có sẵn trong mỗi tệp tiêu đề nên được làm cho hiển thị bằng cách kiểm tra (với `#if`) xem ứng dụng đã định nghĩa giá trị nào cho các macro này.
@@ -667,13 +706,17 @@ Thuật ngữ macro kiểm tra tính năng (feature test macro) có vẻ gây nh
 Các macro kiểm tra tính năng sau đây được quy định bởi các tiêu chuẩn có liên quan, do đó việc sử dụng chúng có tính di động trên tất cả các hệ thống hỗ trợ các tiêu chuẩn này:
 
 ```
+
 _POSIX_SOURCE
+
 ```
 
 Nếu được định nghĩa (với bất kỳ giá trị nào), sẽ hiển thị các định nghĩa tuân thủ POSIX.1-1990 và ISO C (1990). Macro này đã được thay thế bởi `_POSIX_C_SOURCE`.
 
 ```
+
 _POSIX_C_SOURCE
+
 ```
 
 Nếu được định nghĩa với giá trị 1, nó có tác dụng tương tự như `_POSIX_SOURCE`. Nếu được định nghĩa với giá trị lớn hơn hoặc bằng 199309, cũng hiển thị các định nghĩa cho POSIX.1b (thời gian thực - realtime). Nếu được định nghĩa với giá trị lớn hơn hoặc bằng 199506, cũng hiển thị các định nghĩa cho POSIX.1c (luồng - threads). Nếu được định nghĩa với giá trị 200112, cũng hiển thị các định nghĩa cho đặc tả cơ sở POSIX.1-2001 (tức là phần mở rộng XSI bị loại trừ). (Trước phiên bản 2.3.3, các tệp tiêu đề của glibc không diễn giải giá trị 200112 cho `_POSIX_C_SOURCE`.) Nếu được định nghĩa với giá trị 200809, cũng hiển thị các định nghĩa cho đặc tả cơ sở POSIX.1-2008. (Trước phiên bản 2.10, các tệp tiêu đề của glibc không diễn giải giá trị 200809 cho `_POSIX_C_SOURCE`.)
@@ -703,8 +746,10 @@ Nếu các macro riêng lẻ được định nghĩa, hoặc trình biên dịch
 Việc định nghĩa nhiều macro mang tính chất cộng dồn (additive), do đó chúng ta có thể, ví dụ, sử dụng lệnh `cc` sau đây để chọn một cách rõ ràng các thiết lập macro giống như được cung cấp theo mặc định:
 
 ```
+
 $ cc -D_POSIX_SOURCE -D_POSIX_C_SOURCE=199506 \
- -D_BSD_SOURCE -D_SVID_SOURCE prog.c
+-D_BSD_SOURCE -D_SVID_SOURCE prog.c
+
 ```
 
 Tệp tiêu đề `<features.h>` và trang hướng dẫn (man page) `feature_test_macros(7)` cung cấp thêm thông tin chi tiết về các giá trị chính xác được gán cho từng macro kiểm tra tính năng.
@@ -735,7 +780,9 @@ Các kiểu dữ liệu thực thi khác nhau được thể hiện bằng các 
 Để tránh các vấn đề về tính khả chuyển như vậy, SUSv3 quy định các kiểu dữ liệu hệ thống chuẩn khác nhau và yêu cầu một bản cài đặt phải định nghĩa và sử dụng các kiểu này một cách thích hợp. Mỗi kiểu trong số này được định nghĩa bằng cách sử dụng tính năng `typedef` của C. Ví dụ, kiểu dữ liệu `pid_t` được dùng để biểu diễn các ID tiến trình, và trên Linux/x86-32 kiểu này được định nghĩa như sau:
 
 ```c
+
 typedef int pid_t;
+
 ```
 
 Hầu hết các kiểu dữ liệu hệ thống chuẩn có tên kết thúc bằng `_t`. Nhiều kiểu trong số đó được khai báo trong tệp tiêu đề `<sys/types.h>`, mặc dù một số ít được định nghĩa trong các tệp tiêu đề khác.
@@ -743,7 +790,9 @@ Hầu hết các kiểu dữ liệu hệ thống chuẩn có tên kết thúc b�
 Một ứng dụng nên sử dụng các định nghĩa kiểu này để khai báo các biến mà nó sử dụng một cách khả chuyển. Ví dụ, khai báo sau đây sẽ cho phép một ứng dụng biểu diễn chính xác các ID tiến trình trên bất kỳ hệ thống nào tuân thủ SUSv3:
 
 ```c
+
 pid_t mypid;
+
 ```
 
 Bảng 3-1 liệt kê một số kiểu dữ liệu hệ thống mà chúng ta sẽ gặp trong cuốn sách này. Đối với một số kiểu nhất định trong bảng này, SUSv3 yêu cầu kiểu đó phải được triển khai như một kiểu số học (arithmetic type). Điều này có nghĩa là quá trình thực thi có thể chọn kiểu cơ sở (underlying type) là kiểu số nguyên (integer) hoặc kiểu dấu phẩy động (floating-point - số thực hoặc số phức).
@@ -814,9 +863,11 @@ Khi thảo luận về các kiểu dữ liệu trong Bảng 3-1 ở các chươn
 Khi in các giá trị của một trong các kiểu dữ liệu hệ thống dạng số được hiển thị trong Bảng 3-1 (ví dụ: `pid_t` và `uid_t`), chúng ta phải cẩn thận không để xảy ra sự phụ thuộc vào biểu diễn (representation dependency) trong lời gọi hàm `printf()`. Sự phụ thuộc vào biểu diễn có thể xảy ra do các quy tắc thăng hạng đối số (argument promotion rules) của ngôn ngữ C chuyển đổi các giá trị kiểu `short` thành `int`, nhưng giữ nguyên các giá trị kiểu `int` và `long`. Điều này có nghĩa là, tùy thuộc vào định nghĩa của kiểu dữ liệu hệ thống, một `int` hoặc một `long` sẽ được truyền vào lời gọi `printf()`. Tuy nhiên, vì `printf()` không có cách nào xác định kiểu của các đối số tại thời điểm chạy (run time), nên hàm gọi (caller) phải cung cấp rõ ràng thông tin này bằng cách sử dụng bộ chỉ định định dạng (format specifier) `%d` hoặc `%ld`. Vấn đề nằm ở chỗ chỉ đơn thuần mã hóa một trong các bộ chỉ định này trong lời gọi `printf()` sẽ tạo ra sự phụ thuộc vào cài đặt (implementation dependency). Giải pháp thông thường là sử dụng bộ chỉ định `%ld` và luôn ép kiểu (cast) giá trị tương ứng về `long`, chẳng hạn như:
 
 ```c
+
 pid_t mypid;
 mypid = getpid(); /* Trả về Process ID của tiến trình gọi */
 printf("My PID is %ld\n", (long) mypid);
+
 ```
 
 Chúng ta đưa ra một ngoại lệ đối với kỹ thuật trên. Vì kiểu dữ liệu `off_t` có kích thước bằng `long long` trong một số môi trường biên dịch (compilation environments), chúng ta ép các giá trị `off_t` về kiểu này và sử dụng bộ chỉ định `%lld`, như được mô tả trong [Mục 5.10](#page-83-0).
@@ -834,11 +885,13 @@ Trong phần này, chúng ta xem xét một vài vấn đề về tính di độ
 Mỗi bản cài đặt UNIX quy định một loạt các cấu trúc chuẩn được sử dụng trong các System Call (lời gọi hệ thống) và hàm thư viện khác nhau. Lấy cấu trúc `sembuf` làm ví dụ, cấu trúc này được dùng để biểu diễn một thao tác semaphore sẽ được thực hiện bởi System Call `semop()`:
 
 ```c
+
 struct sembuf {
- unsigned short sem_num; /* Số hiệu semaphore */
- short sem_op; /* Thao tác cần thực hiện */
- short sem_flg; /* Cờ thao tác */
+unsigned short sem_num; /* Số hiệu semaphore */
+short sem_op; /* Thao tác cần thực hiện */
+short sem_flg; /* Cờ thao tác */
 };
+
 ```
 
 Mặc dù SUSv3 quy định các cấu trúc như `sembuf`, điều quan trọng cần nhận ra là:
@@ -849,22 +902,28 @@ Mặc dù SUSv3 quy định các cấu trúc như `sembuf`, điều quan trọng
 Do đó, việc sử dụng một bộ khởi tạo cấu trúc (structure initializer) như sau là không mang tính di động (non-portable):
 
 ```c
+
 struct sembuf s = { 3, -1, SEM_UNDO };
+
 ```
 
 Mặc dù bộ khởi tạo này sẽ hoạt động trên Linux, nhưng nó sẽ không chạy được trên một bản cài đặt khác nơi các trường trong cấu trúc `sembuf` được định nghĩa theo một thứ tự khác. Để khởi tạo các cấu trúc này một cách có tính di động, chúng ta phải sử dụng các câu lệnh gán tường minh (explicit assignment statements), như sau:
 
 ```c
+
 struct sembuf s;
 s.sem_num = 3;
 s.sem_op = -1;
 s.sem_flg = SEM_UNDO;
+
 ```
 
 Nếu chúng ta đang sử dụng C99, thì chúng ta có thể tận dụng cú pháp mới của ngôn ngữ đó dành cho bộ khởi tạo cấu trúc để viết một cách khởi tạo tương đương:
 
 ```c
+
 struct sembuf s = { .sem_num = 3, .sem_op = -1, .sem_flg = SEM_UNDO };
+
 ```
 
 Các cân nhắc về thứ tự các thành viên (member) của cấu trúc chuẩn cũng được áp dụng nếu chúng ta muốn ghi nội dung của một cấu trúc chuẩn vào một tệp (file). Để thực hiện việc này một cách có tính di động, chúng ta không thể chỉ đơn giản thực hiện một phép ghi nhị phân (binary write) cấu trúc đó. Thay vào đó, các trường của cấu trúc phải được ghi riêng lẻ (có thể ở dạng văn bản) theo một thứ tự xác định.
@@ -874,9 +933,13 @@ Các cân nhắc về thứ tự các thành viên (member) của cấu trúc ch
 Trong một số trường hợp, một macro có thể không được định nghĩa trên mọi bản cài đặt UNIX (UNIX implementations). Ví dụ, macro WCOREDUMP() (dùng để kiểm tra xem một tiến trình con có tạo ra tệp core dump hay không) rất phổ biến, nhưng lại không được quy định trong chuẩn SUSv3. Do đó, macro này có thể không có mặt trên một số bản cài đặt UNIX. Để xử lý các khả năng như vậy một cách tương thích (portably), chúng ta có thể sử dụng chỉ thị tiền xử lý C (C preprocessor) `#ifdef`, như trong ví dụ sau:
 
 ```c
+
 ## ifdef WCOREDUMP
- /* Sử dụng macro WCOREDUMP() */
+
+/* Sử dụng macro WCOREDUMP() */
+
 ## endif
+
 ```
 
 ### Sự khác biệt về các tệp header bắt buộc giữa các bản cài đặt

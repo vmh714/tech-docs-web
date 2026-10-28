@@ -1,6 +1,4 @@
-## Chapter 24
-
-## TẠO TIẾN TRÌNH (PROCESS CREATION)
+# Chương 24: Tạo tiến trình (Process Creation)
 
 Trong chương này và ba chương tiếp theo, chúng ta sẽ tìm hiểu cách một tiến trình (process) được tạo ra và kết thúc, cũng như cách một tiến trình có thể thực thi một chương trình mới. Chương này đề cập đến việc tạo tiến trình. Tuy nhiên, trước khi đi sâu vào chủ đề đó, chúng ta sẽ xem xét một tóm tắt ngắn gọn về các system call (lời gọi hệ thống) chính được đề cập trong bốn chương này.
 
@@ -18,6 +16,7 @@ Thư viện hàm exit() được xây dựng chồng lên trên system call \_ex
 
 Một số hệ điều hành khác kết hợp chức năng của fork() và exec() thành một thao tác duy nhất — được gọi là spawn — tạo ra một tiến trình mới, sau đó thực thi một chương trình được chỉ định. So với cách đó, cách tiếp cận của UNIX thường đơn giản và thanh lịch hơn. Việc tách biệt hai bước này giúp các API trở nên đơn giản hơn (system call fork() không nhận đối số nào) và cho phép chương trình có độ linh hoạt cao trong các hành động mà nó thực hiện giữa hai bước. Hơn nữa, việc thực hiện fork() mà không có lời gọi exec() theo sau thường rất hữu ích.
 
+> [!NOTE]
 > SUSv3 quy định hàm tùy chọn posix\_spawn(), kết hợp hiệu ứng của cả fork() và exec(). Hàm này, cùng với một số API liên quan được quy định bởi SUSv3, được cài đặt trên Linux trong glibc. SUSv3 quy định posix\_spawn() để cho phép các ứng dụng di động (portable applications) được viết cho các kiến trúc phần cứng không cung cấp cơ chế hoán đổi (swap facilities) hoặc đơn vị quản lý bộ nhớ (memory-management units - đây là điểm đặc trưng của nhiều hệ thống nhúng - embedded systems). Trên các kiến trúc như vậy, một lời gọi fork() truyền thống rất khó hoặc không thể thực hiện được.
 
 Hình 24-1 cung cấp tổng quan về cách fork(), exit(), wait(), và execve() thường được sử dụng kết hợp với nhau. (Biểu đồ này phác thảo các bước được thực hiện bởi shell khi thực thi một lệnh: shell liên tục thực thi một vòng lặp đọc một lệnh, thực hiện các xử lý khác nhau trên lệnh đó, và sau đó fork một tiến trình con để exec lệnh đó.)
@@ -411,8 +410,10 @@ Những điểm này có một số hàm ý quan trọng. Vì tiến trình con 
 
 Có một số thao tác mà tiến trình con (child process) có thể thực hiện giữa `vfork()` và `exec()` mà không làm ảnh hưởng đến tiến trình cha (parent process). Trong số này có các thao tác trên bảng mô tả tệp đang mở (open file descriptors) (nhưng không áp dụng cho các luồng tệp stdio). Vì bảng mô tả tệp cho mỗi tiến trình được duy trì trong không gian nhân (kernel space) (Mục 5.4) và được nhân bản trong quá trình `vfork()`, tiến trình con có thể thực hiện các thao tác mô tả tệp mà không ảnh hưởng đến tiến trình cha.
 
+> [!NOTE]
 > SUSv3 quy định rằng hành vi của một chương trình là không xác định (undefined) nếu nó: a) sửa đổi bất kỳ dữ liệu nào khác ngoài biến có kiểu `pid_t` được sử dụng để lưu trữ giá trị trả về của `vfork()`; b) trả về (return) từ hàm mà trong đó `vfork()` được gọi; hoặc c) gọi bất kỳ hàm nào khác trước khi gọi thành công `_exit()` hoặc thực hiện một lệnh `exec()`.
 
+> [!NOTE]
 > Khi chúng ta xem xét System Call `clone()` trong Mục [28.2](#page-85-0), chúng ta sẽ thấy rằng một tiến trình con được tạo bằng `fork()` hoặc `vfork()` cũng nhận được các bản sao của riêng nó về một số thuộc tính tiến trình khác.
 
 Ngữ nghĩa của `vfork()` có nghĩa là sau lệnh gọi, tiến trình con được đảm bảo sẽ được lên lịch (scheduled) cho CPU trước tiến trình cha. Trong Mục [24.2](#page-2-0), chúng ta đã lưu ý rằng đây không phải là đảm bảo do `fork()` cung cấp, mà sau `fork()`, tiến trình cha hoặc tiến trình con có thể được lên lịch trước.
@@ -474,6 +475,7 @@ $ ./fork_whos_on_first 1
 
 Chúng ta có thể sử dụng chương trình này để tạo ra một số lượng lớn tiến trình con, sau đó phân tích đầu ra để xem tiến trình cha hay tiến trình con là bên đầu tiên in ra thông báo của mình mỗi lần. Việc phân tích kết quả khi sử dụng chương trình này để tạo ra 1 triệu tiến trình con trên hệ thống Linux/x86-32 2.2.19 cho thấy tiến trình cha luôn in thông báo trước trong tất cả các trường hợp ngoại trừ 332 trường hợp (tức là chiếm 99,97% các trường hợp).
 
+> [!NOTE]
 > Kết quả từ việc chạy chương trình trong Liệt kê 24-5 đã được phân tích bằng cách sử dụng tập lệnh `procexec/fork_whos_on_first.count.awk`, được cung cấp trong gói mã nguồn của cuốn sách này.
 
 Từ những kết quả này, chúng ta có thể phỏng đoán rằng, trên Linux 2.2.19, quá trình thực thi luôn tiếp tục với tiến trình cha sau một lời gọi `fork()`. Lý do khiến tiến trình con đôi khi in thông báo trước là vì trong 0,03% trường hợp, lát cắt thời gian CPU (CPU time slice) của tiến trình cha đã cạn kiệt trước khi nó kịp in thông báo. Nói cách khác, nếu ví dụ này đại diện cho một trường hợp mà chúng ta phụ thuộc vào việc tiến trình cha luôn được lập lịch trước sau `fork()`, thì mọi thứ thường sẽ diễn ra đúng, nhưng cứ 3000 lần thì sẽ có 1 lần xảy ra sai sót. Tất nhiên, nếu ứng dụng mong đợi tiến trình cha có thể thực hiện một khối lượng công việc lớn hơn trước khi tiến trình con được lập lịch, khả năng xảy ra lỗi sẽ cao hơn. Việc cố gắng gỡ lỗi (debug) các lỗi như vậy trong một chương trình phức tạp có thể rất khó khăn.
@@ -529,6 +531,7 @@ Sau một lời gọi `fork()`, nếu một trong hai tiến trình cần phải
 
 [Liệt kê 24-6](#page-15-0) minh họa kỹ thuật này. Trong chương trình này, chúng ta giả định rằng tiến trình cha là bên phải đợi tiến trình con thực hiện một hành động nào đó. Các lời gọi liên quan đến tín hiệu ở tiến trình cha và con có thể được hoán đổi nếu tiến trình con phải đợi tiến trình cha. Thậm chí, cả tiến trình cha và con có thể gửi tín hiệu cho nhau nhiều lần để phối hợp các hành động của chúng, mặc dù trên thực tế, việc phối hợp như vậy có nhiều khả năng được thực hiện bằng cách sử dụng semaphore, khóa tập tin (file lock), hoặc truyền thông điệp (message passing).
 
+> [!NOTE]
 > [Stevens & Rago, 2005] đề xuất việc đóng gói các bước đồng bộ hóa này (chặn tín hiệu, gửi tín hiệu, bắt tín hiệu) thành một tập hợp các hàm tiêu chuẩn để đồng bộ hóa tiến trình (process synchronization). Ưu điểm của việc đóng gói này là sau đó chúng ta có thể thay thế việc sử dụng tín hiệu bằng một cơ chế IPC (Inter-Process Communication) khác nếu muốn.
 
 Lưu ý rằng chúng ta chặn tín hiệu đồng bộ hóa (`SIGUSR1`) trước lời gọi `fork()` trong [Liệt kê 24-6](#page-15-0). Nếu tiến trình cha cố gắng chặn tín hiệu sau lời gọi `fork()`, nó sẽ vẫn dễ bị tổn thương bởi chính tình trạng tranh chấp (`race condition`) mà chúng ta đang cố gắng tránh. (Trong chương trình này, chúng ta giả định rằng trạng thái của mặt nạ tín hiệu - signal mask - ở tiến trình con là không quan trọng; nếu cần thiết, chúng ta có thể bỏ chặn `SIGUSR1` ở tiến trình con sau `fork()`.)

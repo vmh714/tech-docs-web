@@ -1,4 +1,4 @@
-# Chương 59: SOCKETS: MIỀN INTERNET (INTERNET DOMAINS)
+# Chương 59: Socket: Miền Internet (Sockets: Internet Domains)
 
 Sau khi đã tìm hiểu các khái niệm socket tổng quát (generic sockets concepts) và bộ giao thức TCP/IP ở các chương trước, trong chương này, chúng ta sẽ sẵn sàng tìm hiểu về lập trình với socket trong miền (domain) IPv4 (`AF_INET`) và IPv6 (`AF_INET6`).
 
@@ -36,7 +36,7 @@ Tuy nhiên, đôi khi chúng ta sử dụng trực tiếp các hằng số nguy�
 
 Các hàm htons(), htonl(), ntohs() và ntohl() được định nghĩa (thường là các macro) để chuyển đổi các số nguyên theo cả hai chiều giữa thứ tự byte của máy chủ (host byte order) và thứ tự byte của mạng (network byte order).
 
-```
+```c
 ## include <arpa/inet.h>
 uint16_t htons(uint16_t host_uint16);
                            Trả về host_uint16 đã được chuyển đổi sang network byte order
@@ -56,7 +56,7 @@ unsigned long htonl(unsigned long hostlong);
 
 Điều này cho thấy nguồn gốc của tên các hàm — trong trường hợp này là host to network long (chuyển đổi số nguyên dài từ máy chủ sang mạng). Trên hầu hết các hệ thống đời đầu triển khai socket (Socket), các số nguyên ngắn (short integer) có kích thước 16 bit, và các số nguyên dài (long integer) có kích thước 32 bit. Điều này không còn đúng trên các hệ thống hiện đại (ít nhất là đối với các số nguyên dài), vì vậy các nguyên mẫu được cung cấp ở trên mang lại định nghĩa chính xác hơn về các kiểu dữ liệu mà các hàm này xử lý, mặc dù tên hàm vẫn được giữ nguyên. Các kiểu dữ liệu uint16_t và uint32_t lần lượt là các số nguyên không dấu (unsigned integer) 16-bit và 32-bit.
 
-Nói một cách nghiêm ngặt, việc sử dụng bốn hàm này chỉ cần thiết trên các hệ thống mà thứ tự byte của máy chủ (host byte order) khác với thứ tự byte của mạng (network byte order). Tuy nhiên, các hàm này nên luôn được sử dụng để các chương trình có tính diors (portable) sang các kiến trúc phần cứng khác nhau. Trên các hệ thống mà thứ tự byte của máy chủ giống với thứ tự byte của mạng, các hàm này đơn giản là trả về các tham số đầu vào mà không thay đổi gì.
+Nói một cách nghiêm ngặt, việc sử dụng bốn hàm này chỉ cần thiết trên các hệ thống mà thứ tự byte của máy chủ (host byte order) khác với thứ tự byte của mạng (network byte order). Tuy nhiên, các hàm này nên luôn được sử dụng để các chương trình có tính di động (portable) trên các kiến trúc phần cứng khác nhau. Trên các hệ thống mà thứ tự byte của máy chủ giống với thứ tự byte của mạng, các hàm này đơn giản là trả về các tham số đầu vào mà không thay đổi gì.
 
 ## 59.3 Biểu diễn dữ liệu (Data Representation)
 
@@ -70,11 +70,12 @@ Tuy nhiên, một cách tiếp cận đơn giản hơn marshalling thường đ�
 
 Sau đó, chúng ta có thể gõ các dòng văn bản để truyền đến ứng dụng và xem các phản hồi do ứng dụng gửi về. Chúng tôi minh họa kỹ thuật này trong Mục [59.11.](#page-70-0)
 
+> [!NOTE]
 > Các vấn đề liên quan đến sự khác biệt trong cách biểu diễn trên các hệ thống không đồng nhất không chỉ áp dụng cho việc truyền dữ liệu qua mạng, mà còn áp dụng cho bất kỳ cơ chế trao đổi dữ liệu nào giữa các hệ thống đó. Ví dụ, chúng ta phải đối mặt với các vấn đề tương tự khi truyền các tệp trên đĩa hoặc băng từ giữa các hệ thống không đồng nhất. Lập trình mạng đơn giản là ngữ cảnh lập trình phổ biến nhất mà chúng ta có khả năng gặp phải vấn đề này ngày nay.
 
 Nếu chúng ta mã hóa dữ liệu được truyền trên một socket luồng (stream socket) dưới dạng văn bản phân tách bằng ký tự xuống dòng, thì việc định nghĩa một hàm như readLine(), được hiển thị trong [Liệt kê 59-1](#page-52-0), sẽ rất thuận tiện.
 
-```
+```c
 ## include "read_line.h"
 ssize_t readLine(int fd, void *buffer, size_t n);
                            Trả về số lượng byte được sao chép vào buffer (không bao gồm
@@ -177,11 +178,12 @@ struct sockaddr_in6 { /* Địa chỉ socket IPv6 */
 
 Trường `sin_family` được thiết lập thành `AF_INET6`. Các trường `sin6_port` và `sin6_addr` là số hiệu cổng và địa chỉ IP. (Kiểu dữ liệu `uint8_t`, được sử dụng để định kiểu cho các byte của cấu trúc `in6_addr`, là một số nguyên không dấu 8-bit). Các trường còn lại, `sin6_flowinfo` và `sin6_scope_id`, nằm ngoài phạm vi của cuốn sách này; đối với mục đích của chúng ta, chúng luôn được đặt bằng 0. Tất cả các trường trong cấu trúc `sockaddr_in6` đều ở định dạng thứ tự byte mạng (network byte order).
 
+> [!NOTE]
 > Địa chỉ IPv6 được mô tả trong RFC 4291. Thông tin về điều khiển luồng IPv6 (`sin6_flowinfo`) có thể được tìm thấy trong Phụ lục A của [Stevens et al., 2004] và trong các tài liệu RFC 2460 và 3697. Các RFC 3493 và 4007 cung cấp thông tin về `sin6_scope_id`.
 
 IPv6 có các phiên bản tương đương với địa chỉ wildcard (địa chỉ đại diện) và loopback của IPv4. Tuy nhiên, việc sử dụng chúng trở nên phức tạp do thực tế là địa chỉ IPv6 được lưu trữ trong một mảng (thay vì sử dụng kiểu dữ liệu vô hướng - scalar type). Chúng ta sử dụng địa chỉ wildcard IPv6 (0::0) để minh họa điểm này. Hằng số `IN6ADDR_ANY_INIT` được định nghĩa cho địa chỉ này như sau:
 
-```
+```c
 ## define IN6ADDR_ANY_INIT { { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 } }
 ```
 
@@ -213,7 +215,7 @@ Nếu IPv4 và IPv6 cùng tồn tại trên một host, chúng sẽ chia sẻ c�
 
 Với API socket IPv6 (IPv6 sockets API), cấu trúc chung mới `sockaddr_storage` đã được giới thiệu. Cấu trúc này được định nghĩa đủ lớn để chứa bất kỳ loại địa chỉ socket nào (nghĩa là, bất kỳ loại cấu trúc địa chỉ socket nào cũng có thể được ép kiểu - cast - và lưu trữ bên trong nó). Cụ thể, cấu trúc này cho phép chúng ta lưu trữ một cách trong suốt (transparently) hoặc là địa chỉ socket IPv4 hoặc IPv6, qua đó loại bỏ các sự phụ thuộc về phiên bản IP ra khỏi mã nguồn của chúng ta. Cấu trúc `sockaddr_storage` được định nghĩa trên Linux như sau:
 
-```
+```c
 ## define __ss_aligntype uint32_t /* Trên các kiến trúc 32-bit */
 struct sockaddr_storage {
  sa_family_t ss_family;
@@ -276,7 +278,7 @@ Các hàm `inet_pton()` và `inet_ntop()` cho phép chuyển đổi cả địa 
 
 int inet_pton(int domain, const char *src_str, void *addrptr);
 Trả về 1 khi chuyển đổi thành công, 0 nếu src_str không ở
-dịnh dạng trình bày, hoặc –1 khi có lỗi
+định dạng trình bày, hoặc –1 khi có lỗi
 const char *inet_ntop(int domain, const void *addrptr, char *dst_str, size_t len);
 Trả về con trỏ trỏ tới dst_str khi thành công, hoặc NULL khi có lỗi
 
@@ -294,9 +296,9 @@ Hàm `inet_ntop()` thực hiện quá trình chuyển đổi ngược lại. Tư
 
 Để định kích thước chính xác cho bộ đệm do `dst_str` trỏ tới, chúng ta có thể sử dụng hai hằng số được định nghĩa trong `<netinet/in.h>`. Các hằng số này biểu thị độ dài tối đa (bao gồm cả byte null kết thúc) của các chuỗi biểu diễn (presentation string) cho địa chỉ IPv4 và IPv6:
 
-```
+```c
 
-## define INET_ADDRSTRLEN 16 /* Maximum IPv4 dotted-decimal string */
+## define INET_ADDRSTRLEN 16  /* Maximum IPv4 dotted-decimal string */
 
 ## define INET6_ADDRSTRLEN 46 /* Maximum IPv6 hexadecimal string */
 
@@ -312,7 +314,7 @@ Cả client và server đều sử dụng tệp tiêu đề (header file) đư�
 
 **Liệt kê 59-2:** Tệp tiêu đề được sử dụng bởi `i6d_ucase_sv.c` và `i6d_ucase_cl.c`
 
-```
+```c
 
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– sockets/i6d_ucase.h
 
@@ -537,7 +539,7 @@ Hàm `getnameinfo()` là hàm ngược lại của `getaddrinfo()`. Nó dịch m
 
 Được cung cấp một tên host và một tên service, `getaddrinfo()` trả về một danh sách các cấu trúc địa chỉ socket, mỗi cấu trúc chứa một địa chỉ IP và số hiệu cổng.
 
-```
+```c
 
 ## include <sys/socket.h>
 

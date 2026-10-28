@@ -1,9 +1,10 @@
-# Chương 48: BỘ NHỚ CHIA SẺ SYSTEM V (SYSTEM V SHARED MEMORY)
+# Chương 48: Bộ nhớ chia sẻ System V (System V Shared Memory)
 
 Chương trình này mô tả bộ nhớ chia sẻ System V (System V shared memory). Bộ nhớ chia sẻ cho phép hai hoặc nhiều tiến trình (process) cùng chia sẻ một vùng (thường được gọi là một phân đoạn - segment) bộ nhớ vật lý. Vì một phân đoạn bộ nhớ chia sẻ trở thành một phần trong bộ nhớ không gian người dùng (user-space memory) của tiến trình, nên không cần sự can thiệp của kernel cho hoạt động IPC (Inter-Process Communication - Giao tiếp giữa các tiến trình). Tất cả những gì cần làm là một tiến trình sao chép dữ liệu vào bộ nhớ chia sẻ; dữ liệu đó sẽ ngay lập tức có sẵn cho tất cả các tiến trình khác đang chia sẻ cùng phân đoạn đó. Điều này cung cấp cơ chế IPC tốc độ cao so với các kỹ thuật như pipe (đường ống) hoặc message queue (hàng đợi thông điệp), trong đó tiến trình gửi sao chép dữ liệu từ một vùng đệm (buffer) trong không gian người dùng (user space) vào bộ nhớ kernel và tiến trình nhận sao chép theo chiều ngược lại. (Mỗi tiến trình cũng gánh chịu chi phí phát sinh của một System Call để thực hiện thao tác sao chép).
 
 Mặt khác, việc IPC sử dụng bộ nhớ chia sẻ không được trung gian hóa bởi kernel đồng nghĩa với việc thông thường, cần phải có một phương pháp đồng bộ hóa (synchronization) để các tiến trình không cùng lúc truy cập vào bộ nhớ chia sẻ (ví dụ: hai tiến trình thực hiện cập nhật đồng thời, hoặc một tiến trình lấy dữ liệu từ bộ nhớ chia sẻ trong khi một tiến trình khác đang ở giữa quá trình cập nhật nó). Semaphore System V (System V semaphore) là một phương pháp tự nhiên cho việc đồng bộ hóa như vậy. Các phương pháp khác, chẳng hạn như semaphore POSIX (POSIX semaphore - Chương 53) và khóa tệp (file lock - Chương 55), cũng khả thi.
 
+> [!NOTE]
 > Theo thuật ngữ của `mmap()`, một vùng bộ nhớ được ánh xạ (mapped) tại một địa chỉ, trong khi theo thuật ngữ của System V, một phân đoạn bộ nhớ chia sẻ được gắn (attached) tại một địa chỉ. Các thuật ngữ này là tương đương; sự khác biệt về thuật ngữ là hệ quả từ nguồn gốc phát triển riêng biệt của hai API này.
 
 ## 48.1 Tổng quan
@@ -20,8 +21,8 @@ Mặt khác, việc IPC sử dụng bộ nhớ chia sẻ không được trung g
 
 System Call `shmget()` tạo một phân đoạn bộ nhớ chia sẻ (shared memory segment) mới hoặc lấy định danh (identifier) của một phân đoạn đã tồn tại. Nội dung của một phân đoạn bộ nhớ chia sẻ mới được khởi tạo về 0.
 
-```
-## include <sys/types.h> /* For portability */
+```c
+## include <sys/types.h> /* Cho tính di động */
 ## include <sys/shm.h>
 int shmget(key_t key, size_t size, int shmflg);
           Trả về định danh phân đoạn bộ nhớ chia sẻ nếu thành công, hoặc –1 nếu lỗi
@@ -61,8 +62,8 @@ Khi thành công, `shmget()` trả về định danh cho phân đoạn bộ nh�
 
 System Call `shmat()` đính kèm (attach) phân đoạn bộ nhớ chia sẻ được xác định bởi `shmid` vào không gian địa chỉ ảo (virtual address space) của tiến trình gọi.
 
-```
-## include <sys/types.h> /* For portability */
+```c
+## include <sys/types.h> /* Cho tính di động */
 ## include <sys/shm.h>
 void *shmat(int shmid, const void *shmaddr, int shmflg);
                Trả về địa chỉ nơi bộ nhớ chia sẻ được đính kèm nếu thành công,
@@ -77,6 +78,7 @@ void *shmat(int shmid, const void *shmaddr, int shmflg);
 
 bội của kích thước trang hệ thống. Việc đính kèm một phân đoạn tại một địa chỉ là bội số của `SHMLBA` là cần thiết trên một số kiến trúc nhằm cải thiện hiệu năng bộ nhớ đệm CPU (CPU cache performance) và ngăn ngừa khả năng các lần đính kèm khác nhau của cùng một phân đoạn có các góc nhìn không nhất quán bên trong bộ nhớ đệm CPU.
 
+> [!NOTE]
 > Trên các kiến trúc x86, `SHMLBA` giống với kích thước trang hệ thống, phản ánh thực tế là những sự không nhất quán về bộ nhớ đệm như vậy không thể phát sinh trên các kiến trúc đó.
 
 Việc chỉ định một giá trị khác `NULL` cho `shmaddr` (tức là tùy chọn thứ hai hoặc thứ ba được liệt kê ở trên) không được khuyến khích vì những lý do sau:
@@ -90,6 +92,7 @@ Là kết quả của hàm, `shmat()` trả về địa chỉ mà tại đó ph�
 
 Để đính kèm một phân đoạn bộ nhớ chia sẻ, tiến trình (process) yêu cầu quyền đọc và ghi đối với phân đoạn đó, trừ khi `SHM_RDONLY` được chỉ định, trong trường hợp này chỉ cần quyền đọc.
 
+> [!NOTE]
 > Có thể đính kèm cùng một phân đoạn bộ nhớ chia sẻ nhiều lần trong một tiến trình, và thậm chí làm cho một lần đính kèm là chỉ đọc trong khi lần khác là đọc-ghi. Nội dung của bộ nhớ tại mỗi điểm đính kèm là giống nhau, vì các mục khác nhau trong bảng trang bộ nhớ ảo (virtual memory page tables) của tiến trình đang trỏ đến cùng các trang bộ nhớ vật lý (physical pages) cụ thể.
 
 Một giá trị cuối cùng có thể được chỉ định trong `shmflg` là `SHM_REMAP`. Trong trường hợp này, `shmaddr` không được là `NULL`. Cờ này yêu cầu lệnh gọi `shmat()` thay thế bất kỳ đính kèm bộ nhớ chia sẻ hoặc ánh xạ bộ nhớ (memory mapping) hiện có nào trong dải bắt đầu từ `shmaddr` và kéo dài bằng chiều dài của phân đoạn bộ nhớ chia sẻ. Thông thường, nếu chúng ta cố gắng đính kèm một phân đoạn bộ nhớ chia sẻ tại một dải địa chỉ đã được sử dụng, lỗi `EINVAL` sẽ xảy ra. `SHM_REMAP` là một phần mở rộng Linux phi tiêu chuẩn (nonstandard Linux extension).
@@ -99,10 +102,10 @@ Một giá trị cuối cùng có thể được chỉ định trong `shmflg` l�
 Khi một tiến trình không còn cần truy cập phân đoạn bộ nhớ chia sẻ nữa, nó có thể gọi `shmdt()` để tách (detach) phân đoạn khỏi không gian địa chỉ ảo (virtual address space) của mình. Tham số `shmaddr` xác định phân đoạn cần tách. Nó phải là giá trị do lần gọi `shmat()` trước đó trả về.
 
 ```c
-## include <sys/types.h> /* For portability */
+## include <sys/types.h> /* Cho tính di động */
 ## include <sys/shm.h>
 int shmdt(const void *shmaddr);
-                                           Returns 0 on success, or –1 on error
+                                           Trả về 0 nếu thành công, hoặc –1 nếu lỗi
 ```
 
 Việc tách một phân đoạn bộ nhớ chia sẻ không giống như việc xóa nó. Việc xóa được thực hiện bằng cách sử dụng thao tác `shmctl()` với `IPC_RMID`, như được mô tả trong Mục [48.7](#page-134-1).
@@ -111,15 +114,12 @@ Tiến trình con được tạo bởi `fork()` kế thừa các phân đoạn b
 
 Trong quá trình thực thi `exec()`, tất cả các phân đoạn bộ nhớ chia sẻ đã đính kèm đều bị tách ra. Các phân đoạn bộ nhớ chia sẻ cũng tự động bị tách ra khi tiến trình chấm dứt (process termination).
 
-| Table 48-1: shmflg bit-mask values for shmat() |  |  |
-|------------------------------------------------|--|--|
-|------------------------------------------------|--|--|
-
-| Value      | Description                                    |
-|------------|------------------------------------------------|
-| SHM_RDONLY | Attach segment read-only                       |
-| SHM_REMAP  | Replace any existing mapping at shmaddr        |
-| SHM_RND    | Round shmaddr down to multiple of SHMLBA bytes |
+| Bảng 48-1: Các giá trị mặt nạ bit shmflg cho shmat() | |
+|---|---|
+| Giá trị | Mô tả |
+| SHM_RDONLY | Đính kèm phân đoạn ở chế độ chỉ đọc |
+| SHM_REMAP | Thay thế bất kỳ ánh xạ hiện có nào tại shmaddr |
+| SHM_RND | Làm tròn shmaddr xuống bội số của SHMLBA byte |
 
 ## 48.4 Ví dụ: Truyền dữ liệu qua bộ nhớ chia sẻ
 
@@ -169,7 +169,7 @@ graph LR
 
 **Liệt kê 48-1:** Tệp tiêu đề (Header file) cho `svshm_xfr_writer.c` và `svshm_xfr_reader.c`
 
-```
+```c
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––– svshm/svshm_xfr.h
 ## include <sys/types.h>
 ## include <sys/stat.h>
@@ -338,12 +338,15 @@ Lệnh `diff` không tạo ra đầu ra nào, cho thấy tệp đầu ra do ti�
 
 Trong Mục 6.3, chúng ta đã xem xét bố cục của các thành phần khác nhau của một process trong bộ nhớ ảo (virtual memory). Việc xem lại chủ đề này trong bối cảnh đính kèm (attach) các phân vùng bộ nhớ chia sẻ System V là rất hữu ích. Nếu chúng ta tuân theo cách tiếp cận được khuyến nghị là để kernel tự chọn vị trí đính kèm phân vùng bộ nhớ chia sẻ, thì (trên kiến trúc x86-32) bố cục bộ nhớ sẽ xuất hiện như được hiển thị trong [Hình 48-2](#page-130-0), với phân vùng được đính kèm trong không gian chưa được cấp phát (unallocated space) giữa heap (phát triển lên trên) và stack (phát triển xuống dưới). Để chừa không gian cho heap và stack phát triển, các phân vùng bộ nhớ chia sẻ được đính kèm bắt đầu từ địa chỉ ảo `0x40000000`. Các ánh xạ bộ nhớ (memory mappings) (Chương [49](#page-140-0)) và thư viện chia sẻ (shared libraries) (Chương 41 và 42) cũng được đặt trong khu vực này. (Có một số biến thể về vị trí mặc định nơi các ánh xạ bộ nhớ chia sẻ và phân vùng bộ nhớ được đặt, tùy thuộc vào các phiên bản kernel và cấu hình giới hạn tài nguyên `RLIMIT_STACK` của process.)
 
+> [!NOTE]
 > Địa chỉ `0x40000000` được định nghĩa là hằng số kernel `TASK_UNMAPPED_BASE`. Có thể thay đổi địa chỉ này bằng cách định nghĩa hằng số này với một giá trị khác và biên dịch lại kernel.
 
+> [!NOTE]
 > Một phân vùng bộ nhớ chia sẻ (hoặc ánh xạ bộ nhớ) có thể được đặt tại một địa chỉ bên dưới `TASK_UNMAPPED_BASE`, nếu chúng ta áp dụng cách tiếp cận không được khuyến nghị là chỉ định rõ ràng một địa chỉ khi gọi `shmat()` (hoặc `mmap()`).
 
 Sử dụng tệp `/proc/PID/maps` đặc trưng của Linux, chúng ta có thể thấy vị trí của các phân vùng bộ nhớ chia sẻ và thư viện chia sẻ được ánh xạ bởi một chương trình, như chúng ta minh họa trong phiên làm việc shell bên dưới.
 
+> [!NOTE]
 > Bắt đầu từ kernel 2.6.14, Linux cũng cung cấp tệp `/proc/PID/smaps`, cung cấp nhiều thông tin hơn về mức tiêu thụ bộ nhớ của từng ánh xạ trong process. Để biết thêm chi tiết, hãy xem trang hướng dẫn thủ công (manual page) `proc(5)`.
 
 ### Địa chỉ bộ nhớ ảo (hệ thập lục phân)
@@ -506,17 +509,21 @@ target = baseaddr + *p; /* Giải dịch độ lệch */
 
 Ngoài ra, nếu chúng ta đang liên kết một tập hợp các cấu trúc có kích thước cố định, chúng ta có thể ép kiểu (cast) đoạn bộ nhớ chia sẻ (hoặc một phần của nó) thành một mảng, và sau đó sử dụng các số chỉ mục (index numbers) làm "con trỏ" tham chiếu từ cấu trúc này sang cấu trúc khác.
 
-baseaddr
-
 ## 48.7 Các Thao tác Kiểm soát Bộ nhớ Chia sẻ (Shared Memory Control Operations)
+
+```
 
 System Call `shmctl()` thực hiện một loạt các thao tác kiểm soát trên đoạn bộ nhớ chia sẻ được xác định bởi `shmid`.
 
-```
+```c
+
 ## include <sys/types.h> /* Cho tính di động */
+
 ## include <sys/shm.h>
+
 int shmctl(int shmid, int cmd, struct shmid_ds *buf);
-                                           Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Đối số `cmd` chỉ định thao tác kiểm soát cần thực hiện. Đối số `buf` là bắt buộc đối với các thao tác `IPC_STAT` và `IPC_SET` (được mô tả bên dưới), và nên được chỉ định là `NULL` cho các thao tác còn lại.
@@ -563,16 +570,18 @@ Một phương pháp thay thế để khóa bộ nhớ, với ngữ nghĩa hơi 
 Mỗi đoạn bộ nhớ chia sẻ có một cấu trúc dữ liệu `shmid_ds` liên quan có dạng sau:
 
 ```c
+
 struct shmid_ds {
- struct ipc_perm shm_perm; /* Quyền sở hữu và quyền hạn */
- size_t shm_segsz; /* Kích thước của đoạn tính bằng byte */
- time_t shm_atime; /* Thời gian thực hiện shmat() gần nhất */
- time_t shm_dtime; /* Thời gian thực hiện shmdt() gần nhất */
- time_t shm_ctime; /* Thời gian thay đổi gần nhất */
- pid_t shm_cpid; /* PID của tiến trình tạo */
- pid_t shm_lpid; /* PID của shmat() / shmdt() gần nhất */
- shmatt_t shm_nattch; /* Số lượng tiến trình đang đính kèm */
+struct ipc_perm shm_perm; /* Quyền sở hữu và quyền hạn */
+size_t shm_segsz; /* Kích thước của đoạn tính bằng byte */
+time_t shm_atime; /* Thời gian thực hiện shmat() gần nhất */
+time_t shm_dtime; /* Thời gian thực hiện shmdt() gần nhất */
+time_t shm_ctime; /* Thời gian thay đổi gần nhất */
+pid_t shm_cpid; /* PID của tiến trình tạo */
+pid_t shm_lpid; /* PID của shmat() / shmdt() gần nhất */
+shmatt_t shm_nattch; /* Số lượng tiến trình đang đính kèm */
 };
+
 ```
 
 SUSv3 yêu cầu tất cả các trường được hiển thị ở đây. Một số cài đặt UNIX khác bao gồm các trường phi chuẩn bổ sung trong cấu trúc `shmid_ds`.
@@ -642,17 +651,21 @@ Khi khởi động hệ thống, các giới hạn bộ nhớ chia sẻ được
 \$ **cd /proc/sys/kernel** \$ **cat shmmni** 4096
 
 ```
+
 $ cat shmmax
 33554432
 $ cat shmall
 2097152
+
 ```
 
 Thao tác `IPC_INFO` đặc thù của Linux trong `shmctl()` trích xuất một cấu trúc kiểu `shminfo`, chứa các giá trị của các giới hạn bộ nhớ chia sẻ khác nhau:
 
 ```
+
 struct shminfo buf;
 shmctl(0, IPC_INFO, (struct shmid_ds *) &buf);
+
 ```
 
 Một thao tác liên quan đặc thù của Linux, `SHM_INFO`, trích xuất một cấu trúc kiểu `shm_info` chứa thông tin về các tài nguyên thực tế được sử dụng cho các đối tượng bộ nhớ chia sẻ. Một ví dụ về việc sử dụng `SHM_INFO` được cung cấp trong tệp `svshm/svshm_info.c` trong mã nguồn phân phối của cuốn sách này.
@@ -683,12 +696,14 @@ Hệ thống quản lý bộ nhớ Linux (Linux memory-management scheme) và m�
 - **48-2.** Giải thích lý do tại sao chương trình trong [Liệt kê 48-3](#page-128-0) lại báo cáo sai số byte được truyền đi nếu vòng lặp for được sửa đổi như sau:
 
 ```
+
 for (xfrs = 0, bytes = 0; shmp->cnt != 0; xfrs++, bytes += shmp->cnt) {
- reserveSem(semid, READ_SEM); /* Chờ đến lượt chúng ta */
- if (write(STDOUT_FILENO, shmp->buf, shmp->cnt) != shmp->cnt)
- fatal("write");
- releaseSem(semid, WRITE_SEM); /* Nhường lượt cho bên ghi */
+reserveSem(semid, READ_SEM); /* Chờ đến lượt chúng ta */
+if (write(STDOUT_FILENO, shmp->buf, shmp->cnt) != shmp->cnt)
+fatal("write");
+releaseSem(semid, WRITE_SEM); /* Nhường lượt cho bên ghi */
 }
+
 ```
 
 - **48-3.** Thử biên dịch các chương trình trong [Liệt kê 48-2](#page-126-0) (svshm_xfr_writer.c) và [Liệt kê 48-3](#page-128-0) (svshm_xfr_reader.c) với một loạt các kích thước khác nhau (được định nghĩa bởi hằng số BUF_SIZE) cho bộ đệm (buffer) dùng để trao đổi dữ liệu giữa hai chương trình. Đo thời gian thực thi của svshm_xfr_reader.c cho mỗi kích thước bộ đệm.

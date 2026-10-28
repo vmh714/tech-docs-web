@@ -1,4 +1,4 @@
-# Chương 44: PIPES VÀ FIFOS
+# Chương 44: Đường ống và FIFO (Pipes and FIFOs)
 
 Chương này mô tả về pipe (đường ống) và FIFO. Pipe là phương pháp Giao tiếp giữa các tiến trình (Interprocess Communication - IPC) lâu đời nhất trên hệ thống UNIX, xuất hiện từ phiên bản Third Edition UNIX vào đầu những năm 1970. Pipe cung cấp một giải pháp thanh lịch cho một nhu cầu thường gặp: sau khi tạo ra hai tiến trình để chạy các chương trình (lệnh) khác nhau, làm thế nào shell có thể cho phép đầu ra do một tiến trình tạo ra được sử dụng làm đầu vào cho tiến trình còn lại? Pipe có thể được sử dụng để truyền dữ liệu giữa các tiến trình có quan hệ họ hàng (ý nghĩa của từ "có quan hệ họ hàng" sẽ trở nên rõ ràng hơn sau đây). FIFO là một biến thể của khái niệm pipe. Điểm khác biệt quan trọng là FIFO có thể được sử dụng để giao tiếp giữa bất kỳ tiến trình nào.
 
@@ -44,8 +44,9 @@ Tiêu chuẩn SUSv3 yêu cầu `PIPE_BUF` phải có giá trị ít nhất là `
 
 Khi ghi các khối dữ liệu lớn hơn `PIPE_BUF` byte vào một pipe, kernel có thể truyền dữ liệu thành nhiều phần nhỏ hơn, đồng thời bổ sung thêm dữ liệu khi tiến trình đọc lấy các byte ra khỏi pipe. (Hàm `write()` sẽ block cho đến khi toàn bộ dữ liệu đã được ghi vào pipe). Khi chỉ có một tiến trình duy nhất ghi vào pipe (trường hợp thông thường), điều này không gây ảnh hưởng gì. Tuy nhiên, nếu có nhiều tiến trình ghi (writer process), thì các thao tác ghi khối dữ liệu lớn có thể bị chia nhỏ thành các đoạn có kích thước tùy ý (có thể nhỏ hơn `PIPE_BUF` byte) và xen kẽ với các thao tác ghi từ các tiến trình khác.
 
-Giới hạn `PIPE_BUF` ảnh hưởng trực tiếp đến thời điểm dữ liệu được truyền vào pipe. Khi ghi lượng dữ liệu nhỏ hơn hoặc bằng `PIPE_BUF` byte, `write()` sẽ block (nếu cần thiết) cho đến khi có đủ không gian trống trong pipe để có thể hoàn tất thao tác một cách nguyên tử (atomic). Khi ghi lượng dữ liệu lớn hơn `PIPE_BUF` byte, `write()` sẽ truyền đi nhiều dữ liệu nhất có thể để làm đầy pipe, sau đó block cho đến khi dữ liệu được lấy ra khỏi pipe bởi một tiến trình đọc nào đó. Nếu một lời gọi `write()` đang bị block như vậy bị ngắt bởi một trình xử lý tín hiệu (signal handler), thì lời gọi này sẽ được gỡ block (unblock) và trả về số lượng byte đã truyền thành công, con số này sẽ nhỏกว่า lượng dữ liệu được yêu cầu ban đầu (được gọi là thao tác ghi một phần - partial write).
+Giới hạn `PIPE_BUF` ảnh hưởng trực tiếp đến thời điểm dữ liệu được truyền vào pipe. Khi ghi lượng dữ liệu nhỏ hơn hoặc bằng `PIPE_BUF` byte, `write()` sẽ block (nếu cần thiết) cho đến khi có đủ không gian trống trong pipe để có thể hoàn tất thao tác một cách nguyên tử (atomic). Khi ghi lượng dữ liệu lớn hơn `PIPE_BUF` byte, `write()` sẽ truyền đi nhiều dữ liệu nhất có thể để làm đầy pipe, sau đó block cho đến khi dữ liệu được lấy ra khỏi pipe bởi một tiến trình đọc nào đó. Nếu một lời gọi `write()` đang bị block như vậy bị ngắt bởi một trình xử lý tín hiệu (signal handler), thì lời gọi này sẽ được gỡ block (unblock) và trả về số lượng byte đã truyền thành công, con số này sẽ nhỏ hơn lượng dữ liệu được yêu cầu ban đầu (được gọi là thao tác ghi một phần - partial write).
 
+> [!NOTE]
 > Trên Linux 2.2, các thao tác ghi vào pipe với bất kỳ kích thước nào đều mang tính nguyên tử (atomic), trừ khi bị ngắt bởi một signal handler. Trên Linux 2.4 trở về sau, bất kỳ thao tác ghi nào lớn hơn `PIPE_BUF` byte đều có thể bị xen kẽ bởi các thao tác ghi từ các tiến trình khác. (Mã nguồn kernel thực thi pipe đã trải qua những thay đổi đáng kể giữa các phiên bản kernel 2.2 và 2.4).
 
 ## Pipes có dung lượng giới hạn
@@ -56,18 +57,21 @@ SUSv3 không đưa ra yêu cầu nào về dung lượng của một pipe. Trong
 
 Nói chung, một ứng dụng không bao giờ cần phải biết chính xác dung lượng của một pipe. Nếu chúng ta muốn ngăn chặn tiến trình ghi bị block, các tiến trình đọc từ pipe nên được thiết kế để đọc dữ liệu ngay khi nó có sẵn.
 
+> [!NOTE]
 > Về lý thuyết, không có lý do gì mà một pipe lại không thể hoạt động với dung lượng nhỏ hơn, thậm chí chỉ với một buffer một byte. Lý do sử dụng kích thước buffer lớn là để tối ưu hiệu năng (efficiency): mỗi khi tiến trình ghi làm đầy pipe, kernel phải thực hiện một context switch (chuyển ngữ cảnh) để cho phép tiến trình đọc được lên lịch (schedule) nhằm dọn bớt dữ liệu khỏi pipe. Sử dụng kích thước buffer lớn hơn đồng nghĩa với việc cần ít context switch hơn.
 
+> [!NOTE]
 > Bắt đầu từ Linux 2.6.35, dung lượng của một pipe có thể được thay đổi. Lời gọi dành riêng cho Linux fcntl(fd, F\_SETPIPE\_SZ, size) sẽ thay đổi dung lượng của pipe được trỏ bởi fd thành ít nhất là size byte. Một unprivileged process (tiến trình không có đặc quyền) có thể thay đổi dung lượng pipe thành bất kỳ giá trị nào nằm trong khoảng từ kích thước trang hệ thống cho đến giá trị trong `/proc/sys/fs/pipe-max-size`. Giá trị mặc định cho pipe-max-size là 1.048.576 byte. Một privileged process (tiến trình có đặc quyền - `CAP_SYS_RESOURCE`) có thể vượt qua giới hạn này. Khi cấp phát không gian cho pipe, kernel có thể làm tròn kích thước `size` lên thành một giá trị thuận tiện cho việc triển khai. Lời gọi fcntl(fd, F\_GETPIPE\_SZ) trả về kích thước thực tế được cấp phát cho pipe.
 
 ## 44.2 Tạo và Sử dụng Pipes
 
 System Call (lời gọi hệ thống) `pipe()` tạo ra một pipe mới.
 
-```
 ## include <unistd.h>
+
 int pipe(int filedes[2]);
-                                              Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Một lời gọi `pipe()` thành công sẽ trả về hai file descriptor (mô tả tệp) đang mở trong mảng `filedes`: một cho đầu đọc của pipe (`filedes[0]`) và một cho đầu ghi (`filedes[1]`).
@@ -95,30 +99,32 @@ Mặc dù tiến trình cha và con đều có thể đọc và ghi vào pipe, n
 **Liệt kê 44-1:** Các bước tạo pipe để truyền dữ liệu từ tiến trình cha sang tiến trình con
 
 ```
- int filedes[2];
- if (pipe(filedes) == -1) /* Tạo pipe */
- errExit("pipe");
- switch (fork()) { /* Tạo tiến trình con */
- case -1:
- errExit("fork");
- case 0: /* Tiến trình con */
- if (close(filedes[1]) == -1) /* Đóng đầu ghi không dùng đến */
- errExit("close");
- /* Tiến trình con tiến hành đọc từ pipe */
- break;
- default: /* Tiến trình cha */
- if (close(filedes[0]) == -1) /* Đóng đầu đọc không dùng đến */
- errExit("close");
- /* Tiến trình cha tiến hành ghi vào pipe */
- break;
- }
+
+int filedes[2];
+if (pipe(filedes) == -1) /* Tạo pipe */
+errExit("pipe");
+switch (fork()) { /* Tạo tiến trình con */
+case -1:
+errExit("fork");
+case 0: /* Tiến trình con */
+if (close(filedes[1]) == -1) /* Đóng đầu ghi không dùng đến */
+errExit("close");
+/* Tiến trình con tiến hành đọc từ pipe */
+break;
+default: /* Tiến trình cha */
+if (close(filedes[0]) == -1) /* Đóng đầu đọc không dùng đến */
+errExit("close");
+/* Tiến trình cha tiến hành ghi vào pipe */
+break;
+}
+
 ```
 
 Một lý do khiến việc cả tiến trình cha (parent) và tiến trình con (child) cùng đọc từ một pipe duy nhất không phổ biến là nếu hai tiến trình cố gắng đọc đồng thời từ một pipe, chúng ta không thể chắc chắn tiến trình nào sẽ thành công trước—hai tiến trình này tranh chấp dữ liệu (race for data). Việc ngăn chặn các tình trạng tranh chấp (race condition) như vậy sẽ đòi hỏi phải sử dụng một cơ chế đồng bộ hóa (synchronization mechanism) nào đó. Tuy nhiên, nếu chúng ta yêu cầu giao tiếp hai chiều (bidirectional communication), có một cách đơn giản hơn: chỉ cần tạo hai pipe, mỗi pipe dùng để gửi dữ liệu theo một hướng giữa hai tiến trình. (Nếu áp dụng kỹ thuật này, chúng ta cần phải cẩn trọng với các hiện tượng bế tắc (deadlock) có thể xảy ra nếu cả hai tiến trình đều bị chặn (block) khi cố gắng đọc từ các pipe trống hoặc khi cố gắng ghi vào các pipe đã đầy).
 
 Mặc dù việc có nhiều tiến trình cùng ghi vào một pipe là khả thi, nhưng thông thường người ta chỉ dùng một tiến trình ghi duy nhất (single writer). (Chúng tôi trình bày một ví dụ về trường hợp có nhiều tiến trình ghi vào một pipe tỏ ra hữu ích trong Mục [44.3](#page-20-1)). Ngược lại, có những tình huống mà việc có nhiều tiến trình ghi trên một FIFO rất hữu ích, và chúng ta sẽ thấy một ví dụ về điều này trong Mục [44.8.](#page-32-1)
 
-> Bắt đầu từ phiên bản kernel 2.6.27, Linux hỗ trợ một System Call mới không theo chuẩn là `pipe2()`. System Call này thực hiện tác vụ giống như `pipe()`, nhưng hỗ trợ thêm một tham số `flags`, có thể được dùng để sửa đổi hành vi của System Call. Hai cờ (flag) được hỗ trợ. Cờ `O_CLOEXEC` khiến kernel bật cờ đóng khi thực thi (close-on-exec flag - `FD_CLOEXEC`) cho hai File Descriptor mới. Cờ này hữu ích vì những lý do tương tự như cờ `O_CLOEXEC` của hàm `open()` được mô tả trong Mục 4.3.1. Cờ `O_NONBLOCK` khiến kernel đánh dấu cả hai Mô tả File mở (open file description) bên dưới ở chế độ phi chặn (nonblocking), để các thao tác I/O trong tương lai sẽ là phi chặn. Điều này giúp tiết kiệm các lời gọi bổ sung đến `fnctl()` để đạt được cùng một kết quả.
+> Bắt đầu từ phiên bản kernel 2.6.27, Linux hỗ trợ một System Call mới không theo chuẩn là `pipe2()`. System Call này thực hiện tác vụ giống như `pipe()`, nhưng hỗ trợ thêm một tham số `flags`, có thể được dùng để sửa đổi hành vi của System Call. Hai cờ (flag) được hỗ trợ. Cờ `O_CLOEXEC` khiến kernel bật cờ đóng khi thực thi (close-on-exec flag - `FD_CLOEXEC`) cho hai File Descriptor mới. Cờ này hữu ích vì những lý do tương tự như cờ `O_CLOEXEC` của hàm `open()` được mô tả trong Mục 4.3.1. Cờ `O_NONBLOCK` khiến kernel đánh dấu cả hai Mô tả File mở (open file description) bên dưới ở chế độ phi chặn (nonblocking), để các thao tác I/O trong tương lai sẽ là phi chặn. Điều này giúp tiết kiệm các lời gọi bổ sung đến `fcntl()` để đạt được cùng một kết quả.
 
 ### Pipes cho phép giao tiếp giữa các tiến trình có quan hệ họ hàng
 
@@ -151,62 +157,72 @@ Chương trình chính gọi hàm `pipe()` để tạo một pipe q, và sau đ�
 Dưới đây là một ví dụ về những gì chúng ta có thể thấy khi chạy chương trình trong Liệt kê 44-2:
 
 ```
+
 $ ./simple_pipe 'It was a bright cold day in April, '\
 'and the clocks were striking thirteen.'
 It was a bright cold day in April, and the clocks were striking thirteen.
+
 ```
 
 **Liệt kê 44-2:** Sử dụng pipe để giao tiếp giữa tiến trình cha và tiến trình con
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– pipes/simple_pipe.c
+
 ## include <sys/wait.h>
+
 ## include "tlpi_hdr.h"
+
 ## define BUF_SIZE 10
-  int
-  main(int argc, char *argv[])
-  {
-   int pfd[2]; /* Các file descriptor của pipe */
-   char buf[BUF_SIZE];
-   ssize_t numRead;
-   if (argc != 2 || strcmp(argv[1], "--help") == 0)
-   usageErr("%s string\n", argv[0]);
+
+int
+main(int argc, char *argv[])
+{
+int pfd[2]; /* Các file descriptor của pipe */
+char buf[BUF_SIZE];
+ssize_t numRead;
+if (argc != 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s string\n", argv[0]);
 q if (pipe(pfd) == -1) /* Tạo pipe */
-   errExit("pipe");
+errExit("pipe");
 w switch (fork()) {
-   case -1:
-   errExit("fork");
-   case 0: /* Tiến trình con - đọc từ pipe */
+case -1:
+errExit("fork");
+case 0: /* Tiến trình con - đọc từ pipe */
 e if (close(pfd[1]) == -1) /* Đầu ghi không được sử dụng */
-   errExit("close - child");
-   for (;;) { /* Đọc dữ liệu từ pipe, echo ra stdout */
+errExit("close - child");
+for (;;) { /* Đọc dữ liệu từ pipe, echo ra stdout */
 r numRead = read(pfd[0], buf, BUF_SIZE);
-   if (numRead == -1)
-   errExit("read");
+if (numRead == -1)
+errExit("read");
 t if (numRead == 0)
-   break; /* End-of-file */
+break; /* End-of-file */
 y if (write(STDOUT_FILENO, buf, numRead) != numRead)
-   fatal("child - partial/failed write");
-   }
+fatal("child - partial/failed write");
+}
 u write(STDOUT_FILENO, "\n", 1);
-   if (close(pfd[0]) == -1)
-   errExit("close");
-   _exit(EXIT_SUCCESS);
-   default: /* Tiến trình cha - ghi vào pipe */
+if (close(pfd[0]) == -1)
+errExit("close");
+_exit(EXIT_SUCCESS);
+default: /* Tiến trình cha - ghi vào pipe */
 i if (close(pfd[0]) == -1) /* Đầu đọc không được sử dụng */
-   errExit("close - parent");
+errExit("close - parent");
+
 ```
 
 ```
+
 o if (write(pfd[1], argv[1], strlen(argv[1])) != strlen(argv[1]))
-   fatal("parent - partial/failed write");
+fatal("parent - partial/failed write");
 a if (close(pfd[1]) == -1) /* Tiến trình con sẽ nhìn thấy EOF */
-   errExit("close");
+errExit("close");
 s wait(NULL); /* Chờ tiến trình con hoàn tất */
-   exit(EXIT_SUCCESS);
-   }
-  }
-  –––––––––––––––––––––––––––––––––––––––––––––––––––––– pipes/simple_pipe.c
+exit(EXIT_SUCCESS);
+}
+}
+–––––––––––––––––––––––––––––––––––––––––––––––––––––– pipes/simple_pipe.c
+
 ```
 
 ## 44.3 Pipe như một phương pháp đồng bộ hóa tiến trình (Process Synchronization)
@@ -218,66 +234,75 @@ Trong Mục 24.5, chúng ta đã xem xét cách các tín hiệu (signal) có th
 Dưới đây là một ví dụ về những gì chúng ta thấy khi sử dụng chương trình trong Liệt kê 44-3 để tạo ra ba tiến trình con tạm dừng lần lượt trong 4, 2 và 6 giây:
 
 ```
+
 $ ./pipe_sync 4 2 6
 08:22:16 Parent started
 08:22:18 Child 2 (PID=2445) closing pipe
 08:22:20 Child 1 (PID=2444) closing pipe
 08:22:22 Child 3 (PID=2446) closing pipe
 08:22:22 Parent ready to go
+
 ```
 
 **Liệt kê 44-3:** Sử dụng pipe để đồng bộ hóa nhiều tiến trình
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––– pipes/pipe_sync.c
+
 ## include "curr_time.h" /* Khai báo hàm currTime() */
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- int pfd[2]; /* Pipe đồng bộ hóa tiến trình */
- int j, dummy;
+int pfd[2]; /* Pipe đồng bộ hóa tiến trình */
+int j, dummy;
+
 ```
 
 ```c
- if (argc < 2 || strcmp(argv[1], "--help") == 0)
-   usageErr("%s sleep-time...\n", argv[0]);
-   setbuf(stdout, NULL); /* Đặt stdout thành không có bộ đệm (unbuffered), vì chúng ta
-   kết thúc tiến trình con (child process) bằng _exit() */
-   printf("%s Parent started\n", currTime("%T"));
+
+if (argc < 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s sleep-time...\n", argv[0]);
+setbuf(stdout, NULL); /* Đặt stdout thành không có bộ đệm (unbuffered), vì chúng ta
+kết thúc tiến trình con (child process) bằng _exit() */
+printf("%s Parent started\n", currTime("%T"));
 q if (pipe(pfd) == -1)
-   errExit("pipe");
-   for (j = 1; j < argc; j++) {
+errExit("pipe");
+for (j = 1; j < argc; j++) {
 w switch (fork()) {
-   case -1:
-   errExit("fork %d", j);
-   case 0: /* Tiến trình con (Child) */
-   if (close(pfd[0]) == -1) /* Đầu đọc không được sử dụng */
-   errExit("close");
-   /* Tiến trình con thực hiện một số công việc, và báo cho tiến trình cha (parent) biết là đã hoàn thành */
-   sleep(getInt(argv[j], GN_NONNEG, "sleep-time"));
-   /* Giả lập quá trình xử lý */
-   printf("%s Child %d (PID=%ld) closing pipe\n",
-   currTime("%T"), j, (long) getpid());
+case -1:
+errExit("fork %d", j);
+case 0: /* Tiến trình con (Child) */
+if (close(pfd[0]) == -1) /* Đầu đọc không được sử dụng */
+errExit("close");
+/* Tiến trình con thực hiện một số công việc, và báo cho tiến trình cha (parent) biết là đã hoàn thành */
+sleep(getInt(argv[j], GN_NONNEG, "sleep-time"));
+/* Giả lập quá trình xử lý */
+printf("%s Child %d (PID=%ld) closing pipe\n",
+currTime("%T"), j, (long) getpid());
 e if (close(pfd[1]) == -1)
-   errExit("close");
-   /* Tiến trình con bây giờ tiếp tục làm các việc khác... */
-   _exit(EXIT_SUCCESS);
-   default: /* Tiến trình cha lặp để tạo tiến trình con tiếp theo */
-   break;
-   }
-   }
-   /* Tiến trình cha đến đây; đóng đầu ghi của pipe để chúng ta có thể thấy EOF */
+errExit("close");
+/* Tiến trình con bây giờ tiếp tục làm các việc khác... */
+_exit(EXIT_SUCCESS);
+default: /* Tiến trình cha lặp để tạo tiến trình con tiếp theo */
+break;
+}
+}
+/* Tiến trình cha đến đây; đóng đầu ghi của pipe để chúng ta có thể thấy EOF */
 r if (close(pfd[1]) == -1) /* Đầu ghi không được sử dụng */
-   errExit("close");
-   /* Tiến trình cha có thể làm việc khác, sau đó đồng bộ hóa với các tiến trình con */
+errExit("close");
+/* Tiến trình cha có thể làm việc khác, sau đó đồng bộ hóa với các tiến trình con */
 t if (read(pfd[0], &dummy, 1) != 0)
-   fatal("parent didn't get EOF");
-   printf("%s Parent ready to go\n", currTime("%T"));
-   /* Tiến trình cha giờ đây có thể tiếp tục làm các việc khác... */
-   exit(EXIT_SUCCESS);
-  }
-  –––––––––––––––––––––––––––––––––––––––––––––––––––––––– pipes/pipe_sync.c
+fatal("parent didn't get EOF");
+printf("%s Parent ready to go\n", currTime("%T"));
+/* Tiến trình cha giờ đây có thể tiếp tục làm các việc khác... */
+exit(EXIT_SUCCESS);
+}
+–––––––––––––––––––––––––––––––––––––––––––––––––––––––– pipes/pipe_sync.c
+
 ```
 
 Việc đồng bộ hóa sử dụng pipe có một ưu điểm so với ví dụ trước đó về đồng bộ hóa sử dụng tín hiệu (signal): nó có thể được sử dụng để điều phối các hành động của một tiến trình với nhiều tiến trình khác (có quan hệ họ hàng). Thực tế là nhiều tín hiệu (chuẩn) không thể được xếp hàng đợi (queue) khiến cho tín hiệu không phù hợp trong trường hợp này. (Ngược lại, tín hiệu có ưu điểm là chúng có thể được quảng bá (broadcast) bởi một tiến trình tới tất cả các thành viên trong một nhóm tiến trình - process group.)
@@ -291,12 +316,14 @@ Khi một pipe được tạo, các bộ mô tả tệp (File Descriptor) đư�
 Câu trả lời là sử dụng các kỹ thuật được mô tả trong Mục 5.5 để nhân bản bộ mô tả tệp (duplicating file descriptors). Theo truyền thống, chuỗi lệnh gọi sau đây đã được sử dụng để đạt được kết quả mong muốn:
 
 ```c
+
 int pfd[2];
 pipe(pfd); /* Cấp phát (giả sử) bộ mô tả tệp 3 và 4 cho pipe */
 /* Các bước khác ở đây, ví dụ: fork() */
 close(STDOUT_FILENO); /* Giải phóng bộ mô tả tệp 1 */
 dup(pfd[1]); /* Việc nhân bản sử dụng bộ mô tả tệp
- trống thấp nhất, tức là fd 1 */
+trống thấp nhất, tức là fd 1 */
+
 ```
 
 Kết quả cuối cùng của các bước trên là đầu ra chuẩn của tiến trình được gắn với đầu ghi của pipe. Một tập hợp các lệnh gọi tương ứng có thể được sử dụng để gắn đầu vào chuẩn của tiến trình vào đầu đọc của pipe.
@@ -304,30 +331,38 @@ Kết quả cuối cùng của các bước trên là đầu ra chuẩn của ti
 Lưu ý rằng các bước này phụ thuộc vào giả định rằng các bộ mô tả tệp 0, 1 và 2 của một tiến trình đã được mở. (Shell thường đảm bảo điều này cho mỗi chương trình mà nó thực thi.) Nếu bộ mô tả tệp 0 đã bị đóng trước các bước trên, thì chúng ta sẽ vô tình gắn đầu vào chuẩn của tiến trình vào đầu ghi của pipe. Để tránh khả năng này, chúng ta có thể thay thế các lệnh gọi `close()` và `dup()` bằng lệnh gọi `dup2()` sau đây, cho phép chúng ta chỉ định rõ ràng bộ mô tả sẽ được gắn vào đầu pipe:
 
 ```c
+
 dup2(pfd[1], STDOUT_FILENO); /* Đóng bộ mô tả 1, và mở lại gắn
- vào đầu ghi của pipe */
+vào đầu ghi của pipe */
+
 ```
 
 Sau khi nhân bản `pfd[1]`, bây giờ chúng ta có hai bộ mô tả tệp trỏ đến đầu ghi của pipe: bộ mô tả 1 và `pfd[1]`. Vì các bộ mô tả tệp pipe không sử dụng nên được đóng lại, sau lệnh gọi `dup2()`, chúng ta đóng bộ mô tả thừa:
 
 ```c
+
 close(pfd[1]);
+
 ```
 
 Mã nguồn mà chúng ta đã trình bày cho đến nay dựa trên giả định rằng đầu ra chuẩn đã được mở trước đó. Giả sử rằng, trước lệnh gọi `pipe()`, cả đầu vào chuẩn và đầu ra chuẩn đều đã bị đóng. Trong trường hợp này, `pipe()` sẽ cấp phát hai bộ mô tả này cho pipe, có thể với `pfd[0]` có giá trị 0 và `pfd[1]` có giá trị 1. Do đó, các lệnh gọi `dup2()` và `close()` trước đó sẽ tương đương với các lệnh sau:
 
 ```
+
 dup2(1, 1); /* Không làm gì cả */
 close(1); /* Đóng mô tả tệp duy nhất cho đầu ghi của pipe */
+
 ```
 
 Do đó, một thực hành lập trình phòng thủ (defensive programming) tốt là bọc các lời gọi này trong một câu lệnh `if` có dạng sau:
 
 ```
+
 if (pfd[1] != STDOUT_FILENO) {
- dup2(pfd[1], STDOUT_FILENO);
- close(pfd[1]);
+dup2(pfd[1], STDOUT_FILENO);
+close(pfd[1]);
 }
+
 ```
 
 ### Chương trình ví dụ
@@ -337,66 +372,73 @@ Chương trình trong [Liệt kê 44-4](#page-23-0) sử dụng các kỹ thuậ
 **Liệt kê 44-4:** Sử dụng một pipe để kết nối `ls` và `wc`
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– pipes/pipe_ls_wc.c
+
 ## include <sys/wait.h>
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- int pfd[2]; /* Các file descriptor của pipe */
- if (pipe(pfd) == -1) /* Tạo pipe */
- errExit("pipe");
- switch (fork()) {
- case -1:
- errExit("fork");
- case 0: /* Tiến trình con thứ nhất: exec 'ls' để ghi vào pipe */
- if (close(pfd[0]) == -1) /* Đầu đọc không được sử dụng */
- errExit("close 1");
+int pfd[2]; /* Các file descriptor của pipe */
+if (pipe(pfd) == -1) /* Tạo pipe */
+errExit("pipe");
+switch (fork()) {
+case -1:
+errExit("fork");
+case 0: /* Tiến trình con thứ nhất: exec 'ls' để ghi vào pipe */
+if (close(pfd[0]) == -1) /* Đầu đọc không được sử dụng */
+errExit("close 1");
+
 ```
 
 ```
- /* Nhân bản stdout vào đầu ghi của pipe; đóng mô tả tệp đã được nhân bản */
- if (pfd[1] != STDOUT_FILENO) { /* Kiểm tra phòng thủ */
- if (dup2(pfd[1], STDOUT_FILENO) == -1)
- errExit("dup2 1");
- if (close(pfd[1]) == -1)
- errExit("close 2");
- }
- execlp("ls", "ls", (char *) NULL); /* Ghi vào pipe */
- errExit("execlp ls");
- default: /* Tiến trình cha rơi xuống dưới để tạo tiến trình con tiếp theo */
- break;
- }
- switch (fork()) {
- case -1:
- errExit("fork");
- case 0: /* Tiến trình con thứ hai: exec 'wc' để đọc từ pipe */
- if (close(pfd[1]) == -1) /* Đầu ghi không được sử dụng */
- errExit("close 3");
- /* Nhân bản stdin vào đầu đọc của pipe; đóng mô tả tệp đã được nhân bản */
- if (pfd[0] != STDIN_FILENO) { /* Kiểm tra phòng thủ */
- if (dup2(pfd[0], STDIN_FILENO) == -1)
- errExit("dup2 2");
- if (close(pfd[0]) == -1)
- errExit("close 4");
- }
- execlp("wc", "wc", "-l", (char *) NULL); /* Đọc từ pipe */
- errExit("execlp wc");
- default: /* Tiến trình cha rơi xuống dưới */
- break;
- }
- /* Tiến trình cha đóng các file descriptor không sử dụng của pipe, và chờ các tiến trình con */
- if (close(pfd[0]) == -1)
- errExit("close 5");
- if (close(pfd[1]) == -1)
- errExit("close 6");
- if (wait(NULL) == -1)
- errExit("wait 1");
- if (wait(NULL) == -1)
- errExit("wait 2");
- exit(EXIT_SUCCESS);
+
+/* Nhân bản stdout vào đầu ghi của pipe; đóng mô tả tệp đã được nhân bản */
+if (pfd[1] != STDOUT_FILENO) { /* Kiểm tra phòng thủ */
+if (dup2(pfd[1], STDOUT_FILENO) == -1)
+errExit("dup2 1");
+if (close(pfd[1]) == -1)
+errExit("close 2");
+}
+execlp("ls", "ls", (char *) NULL); /* Ghi vào pipe */
+errExit("execlp ls");
+default: /* Tiến trình cha rơi xuống dưới để tạo tiến trình con tiếp theo */
+break;
+}
+switch (fork()) {
+case -1:
+errExit("fork");
+case 0: /* Tiến trình con thứ hai: exec 'wc' để đọc từ pipe */
+if (close(pfd[1]) == -1) /* Đầu ghi không được sử dụng */
+errExit("close 3");
+/* Nhân bản stdin vào đầu đọc của pipe; đóng mô tả tệp đã được nhân bản */
+if (pfd[0] != STDIN_FILENO) { /* Kiểm tra phòng thủ */
+if (dup2(pfd[0], STDIN_FILENO) == -1)
+errExit("dup2 2");
+if (close(pfd[0]) == -1)
+errExit("close 4");
+}
+execlp("wc", "wc", "-l", (char *) NULL); /* Đọc từ pipe */
+errExit("execlp wc");
+default: /* Tiến trình cha rơi xuống dưới */
+break;
+}
+/* Tiến trình cha đóng các file descriptor không sử dụng của pipe, và chờ các tiến trình con */
+if (close(pfd[0]) == -1)
+errExit("close 5");
+if (close(pfd[1]) == -1)
+errExit("close 6");
+if (wait(NULL) == -1)
+errExit("wait 1");
+if (wait(NULL) == -1)
+errExit("wait 2");
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– pipes/pipe_ls_wc.c
+
 ```
 
 Khi chúng ta chạy chương trình trong Liệt kê 44-4, chúng ta thấy kết quả sau:
@@ -405,7 +447,6 @@ Khi chúng ta chạy chương trình trong Liệt kê 44-4, chúng ta thấy k�
 
 Một mục đích sử dụng phổ biến của pipe là thực thi một lệnh shell (shell command) và hoặc đọc đầu ra của nó hoặc gửi một số đầu vào cho nó. Các hàm *popen()* và *pclose()* được cung cấp để đơn giản hóa tác vụ này.
 
-```
 ## include <stdio.h>
 FILE *popen(const char *command, const char *mode);
 ```
@@ -421,8 +462,6 @@ Khi thành công, `popen()` trả về một con trỏ luồng tệp (file strea
 Sau lời gọi *popen()*, tiến trình gọi sử dụng pipe để đọc đầu ra của *command* hoặc gửi đầu vào cho nó. Giống như các pipe được tạo bằng *pipe()*, khi đọc từ pipe, tiến trình gọi sẽ gặp phải dấu hiệu kết thúc tệp (end-of-file) một khi *command* đã đóng đầu ghi của pipe; khi ghi vào pipe, nó sẽ nhận được một tín hiệu `SIGPIPE` và nhận lỗi `EPIPE` nếu command đã đóng đầu đọc của pipe.
 
 Một khi quá trình I/O hoàn tất, hàm `pclose()` được sử dụng để đóng pipe và chờ tiến trình shell con chấm dứt. (Không nên sử dụng hàm `fclose()`, vì nó không chờ tiến trình con.) Khi thành công, `pclose()` trả về trạng thái kết thúc (termination status) (Mục 26.1.3) của shell con (đó là trạng thái kết thúc của lệnh cuối cùng mà shell đã thực thi, trừ khi shell bị tiêu diệt bởi một tín hiệu). Giống như `system()` (Mục 27.6), nếu một shell không thể được thực thi (`execed`), thì `pclose()` trả về một giá trị giống như thể shell con đã kết thúc với lời gọi `_exit(127)`. Nếu một số lỗi khác xảy ra, `pclose()` trả về –1. Một lỗi có thể xảy ra là trạng thái kết thúc không thể được thu thập. Chúng tôi sẽ giải thích điều này có thể xảy ra như thế nào ngay sau đây.
-
-```
 
 Khi thực hiện thao tác chờ để lấy trạng thái của shell con (child shell), SUSv3 yêu cầu `pclose()`, giống như `system()`, phải tự động khởi động lại lệnh gọi bên trong tới `waitpid()` nếu lệnh gọi đó bị gián đoạn bởi một trình xử lý tín hiệu (signal handler).
 
@@ -600,6 +639,7 @@ Trả về 0 khi thành công, hoặc –1 khi có lỗi
 
 Tham số `mode` chỉ định các quyền hạn (permissions) cho FIFO mới. Các quyền này được chỉ định bằng cách kết hợp các hằng số từ Bảng 15-4 (ở trang 295) thông qua phép toán OR. Như thường lệ, các quyền này sẽ được lọc (masked) với giá trị `umask` của tiến trình (Process) (Mục 15.4.6).
 
+> [!NOTE]
 > Về mặt lịch sử, các FIFO được tạo ra bằng cách sử dụng System Call `mknod(pathname, S_IFIFO, 0)`. Chuẩn POSIX.1-1990 đã định nghĩa `mkfifo()` như một API đơn giản hơn nhằm tránh tính tổng quát quá mức của `mknod()`, vốn cho phép tạo ra nhiều loại tệp khác nhau, bao gồm cả tệp thiết bị (device files). (SUSv3 có quy định về `mknod()`, nhưng ở mức độ không bắt buộc chặt chẽ, chỉ định nghĩa việc sử dụng nó để tạo các FIFO). Hầu hết các cài đặt UNIX đều cung cấp `mkfifo()` dưới dạng một hàm thư viện (library function) được xây dựng dựa trên `mknod()`.
 
 Một khi một FIFO đã được tạo, bất kỳ tiến trình (Process) nào cũng có thể mở nó, tuân theo các kiểm tra quyền truy cập tệp thông thường (Mục 15.4.3).
@@ -608,6 +648,7 @@ Việc mở một FIFO có ngữ nghĩa (semantics) khá khác thường. Nhìn 
 
 Dưới hầu hết các hệ thống cài đặt UNIX (bao gồm cả Linux), có thể lách qua hành vi chặn (blocking behavior) khi mở FIFO bằng cách chỉ định cờ `O_RDWR` khi mở. Trong trường hợp này, `open()` trả về ngay lập tức với một File Descriptor (mô tả tệp) có thể dùng để đọc và viết trên FIFO. Làm như vậy sẽ phần nào phá vỡ mô hình I/O của FIFO, và chuẩn SUSv3 lưu ý rõ ràng rằng việc mở một FIFO với cờ `O_RDWR` là không được định nghĩa chuẩn hóa (unspecified); do đó, vì lý do khả chuyển (portability), kỹ thuật này nên tránh. Trong các trường hợp chúng ta cần ngăn chặn việc bị treo (blocking) khi mở một FIFO, cờ `open()` `O_NONBLOCK` cung cấp một phương pháp chuẩn hóa để làm điều đó (tham khảo Mục [44.9](#page-38-0)).
 
+> [!NOTE]
 > Việc tránh sử dụng cờ `O_RDWR` khi mở một FIFO còn có thể hữu ích vì một lý do khác. Sau một lần mở như vậy, tiến trình gọi sẽ không bao giờ nhìn thấy tín hiệu kết thúc tệp (end-of-file) khi đọc từ File Descriptor kết quả, bởi vì sẽ luôn có ít nhất một Descriptor đang mở để viết vào FIFO—chính là Descriptor mà tiến trình đang dùng để đọc.
 
 ## Sử dụng FIFO và lệnh tee(1) để tạo một đường ống kép (dual pipeline)
@@ -641,6 +682,7 @@ Trong phần này, chúng ta sẽ trình bày một ứng dụng client-server �
 
 Trong ứng dụng ví dụ này, tất cả các client đều gửi yêu cầu của mình tới server thông qua một FIFO duy nhất của server. Tệp tiêu đề (header file) ([Liệt kê 44-6\)](#page-34-0) định nghĩa tên nổi tiếng / địa chỉ quen thuộc (`well-known name`) (`/tmp/seqnum_sv`) mà server sử dụng cho FIFO của nó. Tên này là cố định, do đó tất cả các client đều biết cách liên hệ với server. (Trong ứng dụng ví dụ này, chúng ta tạo các FIFO trong thư mục `/tmp`, vì điều này cho phép chúng ta chạy các chương trình một cách thuận tiện mà không cần thay đổi trên hầu hết các hệ thống. Tuy nhiên, như đã lưu ý trong Mục 38.7, việc tạo tệp trong các thư mục mà mọi người đều có quyền ghi như `/tmp` có thể dẫn đến các lỗ hổng bảo mật khác nhau và nên tránh trong các ứng dụng thực tế).
 
+> [!NOTE]
 > Trong các ứng dụng client-server, chúng ta sẽ liên tục gặp lại khái niệm về một địa chỉ quen thuộc (`well-known address`) hoặc tên nổi tiếng được server sử dụng để làm cho dịch vụ của nó hiển thị với các client. Sử dụng một địa chỉ quen thuộc là một giải pháp cho vấn đề làm thế nào để các client biết nơi liên hệ với server. Một giải pháp khả thi khác là cung cấp một loại server tên (name server) mà các server có thể đăng ký tên dịch vụ của chúng. Sau đó, mỗi client sẽ liên hệ với server tên để lấy vị trí của dịch vụ mà nó mong muốn. Giải pháp này cho phép vị trí của các server linh hoạt hơn, đổi lại bằng một chút công sức lập trình bổ sung. Tất nhiên, khi đó các client và server cần phải biết nơi liên hệ với server tên; thông thường, nó nằm ở một địa chỉ quen thuộc.
 
 Tuy nhiên, không thể sử dụng một FIFO duy nhất để gửi phản hồi cho tất cả các client, vì nhiều client sẽ cạnh tranh (race) để đọc từ FIFO và có thể đọc nhầm thông điệp phản hồi của nhau thay vì của chính mình. Do đó, mỗi client tạo ra một FIFO duy nhất mà server sử dụng để gửi phản hồi cho client đó, và server cần phải biết cách tìm FIFO của từng client. Một cách khả thi để làm điều này là client tự tạo đường dẫn (pathname) FIFO của riêng nó, sau đó truyền đường dẫn đó như một phần trong thông điệp yêu cầu của mình. Ngoài ra, client và server có thể thống nhất một quy ước để xây dựng đường dẫn FIFO của client, và trong phần yêu cầu, client có thể truyền cho server thông tin cần thiết để xây dựng đường dẫn dành riêng cho client đó. Giải pháp sau được sử dụng trong ví dụ của chúng ta. Tên FIFO của mỗi client được xây dựng từ một mẫu (`CLIENT_FIFO_TEMPLATE`) bao gồm một đường dẫn chứa ID tiến trình (process ID) của client. Việc bao gồm ID tiến trình cung cấp một cách dễ dàng để tạo ra một tên duy nhất cho client này.
@@ -659,7 +701,7 @@ Hãy nhớ lại rằng dữ liệu trong các pipe và FIFO là một luồng b
 - Đưa vào mỗi thông điệp một *phần đầu có kích thước cố định chứa trường độ dài (fixed-size header with a length field)* chỉ định số lượng byte trong thành phần có độ dài thay đổi còn lại của thông điệp. Trong trường hợp này, tiến trình đọc trước tiên sẽ đọc phần đầu từ FIFO, sau đó sử dụng trường độ dài của phần đầu để xác định số lượng byte cần đọc cho phần còn lại của thông điệp. Phương pháp này có ưu điểm là cho phép các thông điệp có kích thước tùy ý một cách hiệu quả, nhưng có thể dẫn đến sự cố nếu một thông điệp bị lỗi định dạng (ví dụ: trường *length* không hợp lệ) được ghi vào pipe.
 - Sử dụng *các thông điệp có kích thước cố định (fixed-length messages)* và yêu cầu server luôn đọc các thông điệp có kích thước cố định này. Ưu điểm của cách này là đơn giản trong việc lập trình. Tuy nhiên, nó áp đặt một giới hạn trên cho kích thước thông điệp và đồng thời gây lãng phí dung lượng kênh truyền (vì các thông điệp ngắn phải được đệm (pad) cho đủ kích thước cố định). Hơn nữa, nếu một trong các client vô tình hoặc cố ý gửi một thông điệp không đúng kích thước, thì tất cả các thông điệp tiếp theo sẽ bị lệch nhịp (out of step); trong tình huống này, server không thể dễ dàng khôi phục lại trạng thái ban đầu.
 
-Ba kỹ thuật này được minh họa trong Hình 44-7. Cần lưu ý rằng đối với mỗi kỹ thuật này, tổng chiềuยาว của mỗi thông điệp phải nhỏ hơn `PIPE_BUF` byte để tránh khả năng thông điệp bị kernel chia nhỏ và xen kẽ (interleaved) với các thông điệp từ các tiến trình ghi khác.
+Ba kỹ thuật này được minh họa trong Hình 44-7. Cần lưu ý rằng đối với mỗi kỹ thuật này, tổng độ dài của mỗi thông điệp phải nhỏ hơn `PIPE_BUF` byte để tránh khả năng thông điệp bị kernel chia nhỏ và xen kẽ (interleaved) với các thông điệp từ các tiến trình ghi khác.
 
 Trong ba kỹ thuật được mô tả ở phần nội dung chính, một kênh đơn lẻ (FIFO) được sử dụng cho tất cả thông điệp từ mọi client. Một giải pháp thay thế là sử dụng *một kết nối đơn lẻ cho mỗi thông điệp (single connection for each message)*. Bên gửi mở kênh giao tiếp, gửi thông điệp của mình, và sau đó đóng kênh. Tiến trình đọc biết rằng thông điệp đã hoàn tất khi nó gặp dấu hiệu kết thúc tệp (end-of-file). Nếu nhiều tiến trình ghi cùng giữ một FIFO mở, thì cách tiếp cận này không khả thi, bởi vì bên đọc sẽ không nhìn thấy tín hiệu kết thúc tệp khi chỉ có một trong các bên ghi đóng FIFO đó. Tuy nhiên, phương pháp này hoàn toàn khả thi khi sử dụng socket dạng luồng (stream sockets), nơi một tiến trình server tạo ra một kênh giao tiếp duy nhất cho mỗi kết nối client đến.
 
@@ -876,7 +918,7 @@ exit(EXIT_SUCCESS);
 
 ```
 
-## 44.9 I/O không đồng bộ / Không chặn (Nonblocking I/O)
+## 44.9 I/O không chặn (Nonblocking I/O)
 
 Như đã lưu ý trước đó, khi một tiến trình mở một đầu của FIFO, nó sẽ bị chặn (block) nếu đầu kia của FIFO chưa được mở. Đôi khi, chúng ta không muốn bị chặn, và vì mục đích này, cờ `O_NONBLOCK` có thể được chỉ định khi gọi hàm `open()`:
 
@@ -994,7 +1036,7 @@ Việc cài đặt pipe được thảo luận trong [Bach, 1986] và [Bovet & C
 
 ## 44.12 Bài tập
 
-- **44-1.** Viết một chương trình sử dụng hai pipe để cho phép giao tiếp hai chiều (bidirectional communication) giữa tiến trình cha và tiến trình con. Tiến trình cha nên thực hiện vòng lặp đọc một khối văn bản từ đầu vào tiêu chuẩn (standard input) và sử dụng một trong các pipe để gửi văn bản đó cho tiến trình con. Tiến trình con chuyển đổi văn bản thành chữ hoa (uppercase) và gửi ngược lại cho tiến trình cha thông qua pipe kia. Tiến trình cha đọc dữ liệu trả về từ tiến trình con và in lặp lại (echo) nó ra đầu vào/đầu ra tiêu chuẩn trước khi tiếp tục lặp lại vòng lặp một lần nữa.
+- **44-1.** Viết một chương trình sử dụng hai pipe để cho phép giao tiếp hai chiều (bidirectional communication) giữa tiến trình cha và tiến trình con. Tiến trình cha nên thực hiện vòng lặp đọc một khối văn bản từ đầu vào tiêu chuẩn (standard input) và sử dụng một trong các pipe để gửi văn bản đó cho tiến trình con. Tiến trình con chuyển đổi văn bản thành chữ hoa (uppercase) và gửi ngược lại cho tiến trình cha thông qua pipe kia. Tiến trình cha đọc dữ liệu trả về từ tiến trình con và in lặp lại (echo) nó ra đầu ra tiêu chuẩn trước khi tiếp tục lặp lại vòng lặp một lần nữa.
 - **44-2.** Cài đặt lại các hàm `popen()` và `pclose()`. Mặc dù các hàm này được đơn giản hóa nhờ việc không đòi hỏi cơ chế xử lý tín hiệu được sử dụng trong việc cài đặt `system()` (Mục 27.7), bạn sẽ cần phải cẩn thận để liên kết chính xác các đầu của pipe với các luồng tệp (file streams) trong mỗi tiến trình, và đảm bảo rằng tất cả các bộ mô tả không sử dụng (unused descriptors) trỏ đến các đầu của pipe đều được đóng lại. Vì các tiến trình con được tạo bởi nhiều lời gọi `popen()` có thể chạy cùng một lúc, bạn sẽ cần duy trì một cấu trúc dữ liệu liên kết các con trỏ luồng tệp (file stream pointers) do `popen()` cấp phát với các ID tiến trình con tương ứng. (Nếu sử dụng một mảng cho mục đích này, giá trị trả về bởi hàm `fileno()`, dùng để lấy bộ mô tả tệp tương ứng với một luồng tệp, có thể được dùng làm chỉ mục cho mảng). Việc lấy đúng ID tiến trình từ cấu trúc này sẽ cho phép `pclose()` chọn ra tiến trình con để chờ đợi (`wait`). Cấu trúc này cũng sẽ hỗ trợ yêu cầu của chuẩn SUSv3 rằng bất kỳ luồng tệp nào vẫn đang mở được tạo bởi các lời gọi `popen()` trước đó phải được đóng lại trong tiến trình con mới.
 - **44-3.** Server trong Liệt kê 44-7 (`fifo_seqnum_server.c`) luôn bắt đầu cấp phát số thứ tự (sequence numbers) từ 0 mỗi khi nó được khởi động. Hãy sửa đổi chương trình để sử dụng một tệp sao lưu (backup file) được cập nhật mỗi khi một số thứ tự được cấp phát. (Cờ `open()` `O_SYNC`, được mô tả trong Mục 4.3.1, có thể hữu ích). Khi khởi động, chương trình nên kiểm tra sự tồn tại của tệp này, và nếu nó tồn tại, hãy sử dụng giá trị bên trong nó để khởi tạo số thứ tự. Nếu không tìm thấy tệp sao lưu khi khởi động, chương trình nên tạo một tệp mới và bắt đầu cấp phát số thứ tự từ 0. (Một phương pháp thay thế cho kỹ thuật này là sử dụng tệp được ánh xạ bộ nhớ - memory-mapped files, được mô tả trong Chương [49.](#page-140-0))
 

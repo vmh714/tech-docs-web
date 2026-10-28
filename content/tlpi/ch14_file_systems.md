@@ -1,4 +1,4 @@
-# Chương 14: HỆ THỐNG TẬP TIN (FILE SYSTEMS)
+# Chương 14: Hệ thống tập tin (File Systems)
 
 Trong các Chương 4, 5 và [13](#page-0-0), chúng ta đã tìm hiểu về hoạt động I/O của tập tin (file I/O), với trọng tâm đặc biệt là các tập tin thông thường (tức là tập tin trên đĩa). Trong chương này và các chương tiếp theo, chúng ta sẽ đi sâu vào chi tiết một loạt các chủ đề liên quan đến tập tin:
 
@@ -26,6 +26,7 @@ Các thiết bị có thể được chia thành hai loại:
 
 Các tập tin thiết bị xuất hiện trong hệ thống tập tin giống như các tập tin khác, thường nằm dưới thư mục /dev. Người dùng siêu quyền hạn (superuser) có thể tạo một tập tin thiết bị bằng cách sử dụng lệnh `mknod`, và tác vụ tương tự có thể được thực hiện trong một chương trình có đặc quyền (`CAP_MKNOD`) bằng cách sử dụng system call `mknod()`.
 
+> [!NOTE]
 > Chúng ta không mô tả chi tiết system call `mknod()` ("make file-system i-node") vì cách sử dụng của nó rất đơn giản, và mục đích duy nhất mà nó cần đến ngày nay là để tạo các tập tin thiết bị, vốn không phải là một yêu cầu ứng dụng phổ biến. Chúng ta cũng có thể sử dụng `mknod()` để tạo các FIFO (Mục 44.7), nhưng hàm `mkfifo()` được ưu tiên hơn cho tác vụ này. Về mặt lịch sử, một số bản cài đặt UNIX cũng sử dụng `mknod()` để tạo các thư mục, nhưng cách sử dụng này nay đã được thay thế bằng system call `mkdir()`. Tuy nhiên, một số bản cài đặt UNIX — nhưng không phải Linux — vẫn duy trì khả năng này trong `mknod()` để tương thích ngược. Xem trang hướng dẫn thủ công (manual page) `mknod(2)` để biết thêm chi tiết.
 
 Trong các phiên bản Linux trước đây, /dev chứa các mục (entries) cho tất cả các thiết bị có thể có trên hệ thống, ngay cả khi các thiết bị đó không thực sự được kết nối với hệ thống. Điều này có nghĩa là /dev có thể chứa theo đúng nghĩa đen hàng nghìn mục không sử dụng, làm chậm tác vụ của các chương trình cần quét nội dung của thư mục đó, và làm cho việc sử dụng nội dung của thư mục như một phương tiện để khám phá những thiết bị nào thực sự có mặt trên hệ thống trở nên bất khả thi. Trong Linux 2.6, những vấn đề này được giải quyết bởi chương trình `udev`. Chương trình `udev` dựa vào hệ thống tập tin `sysfs`, xuất thông tin về các thiết bị và các đối tượng kernel khác vào user space (User Space) thông qua một hệ thống tập tin giả (pseudo-file system) được mount dưới /sys.
@@ -36,7 +37,7 @@ Trong các phiên bản Linux trước đây, /dev chứa các mục (entries) c
 
 Mỗi tệp thiết bị (device file) có một số định danh chính (major ID number) và một số định danh phụ (minor ID number). Số major xác định lớp chung của thiết bị và được kernel sử dụng để tra cứu trình điều khiển (driver) phù hợp cho loại thiết bị này. Số minor định danh duy nhất một thiết bị cụ thể trong một lớp thiết bị chung.
 
-``` Các số major và minor của một tệp thiết bị được hiển thị bằng lệnh `ls –l`.
+Các số major và minor của một tệp thiết bị được hiển thị bằng lệnh `ls –l`.
 
 Các số major và minor của một thiết bị được ghi lại trong i-node của tệp thiết bị đó. (Chúng ta sẽ mô tả i-node trong Mục [14.4](#page-23-1).) Mỗi device driver đăng ký mối liên kết của nó với một số major device ID cụ thể, và mối liên kết này cung cấp kết nối giữa tệp đặc biệt của thiết bị (device special file) và device driver. Tên của tệp thiết bị không có ý nghĩa gì khi kernel tìm kiếm device driver.
 
@@ -56,6 +57,7 @@ Mặc dù các đĩa hiện đại hoạt động nhanh, việc đọc và ghi t
 
 Mỗi đĩa được chia thành một hoặc nhiều phân vùng (không chồng chéo lên nhau). Mỗi phân vùng được kernel xem như một thiết bị (device) riêng biệt nằm bên trong thư mục `/dev`.
 
+> [!NOTE]
 > Quản trị viên hệ thống (system administrator) xác định số lượng, loại và kích thước các phân vùng trên một đĩa bằng cách sử dụng lệnh `fdisk`. Lệnh `fdisk -l` liệt kê tất cả các phân vùng trên một đĩa. Tệp `/proc/partitions` đặc trưng của Linux liệt kê số hiệu thiết bị chính và phụ (major and minor device numbers), kích thước và tên của từng phân vùng đĩa trên hệ thống.
 
 Một phân vùng đĩa có thể chứa bất kỳ loại thông tin nào, nhưng thường chứa một trong các thành phần sau:
@@ -65,8 +67,9 @@ Một phân vùng đĩa có thể chứa bất kỳ loại thông tin nào, như
 - một vùng hoán đổi (swap area) được kernel sử dụng cho việc quản lý bộ nhớ (memory management).
 
 Một vùng hoán đổi được tạo bằng cách sử dụng lệnh `mkswap(8)`. Một tiến trình (process) có quyền đặc quyền (`CAP_SYS_ADMIN`) có thể sử dụng System Call `swapon()` để thông báo cho kernel biết rằng một phân vùng đĩa sẽ được sử dụng làm vùng hoán đổi. System Call `swapoff()` thực hiện chức năng ngược lại, yêu cầu kernel ngừng sử dụng phân vùng đĩa làm vùng hoán đổi.
-``` Các System Call này không được chuẩn hóa trong SUSv3, nhưng chúng tồn tại trên nhiều bản cài đặt UNIX khác nhau. Hãy tham khảo các trang manual `swapon(2)` và `swapon(8)` để biết thêm thông tin.
+Các System Call này không được chuẩn hóa trong SUSv3, nhưng chúng tồn tại trên nhiều bản cài đặt UNIX khác nhau. Hãy tham khảo các trang manual `swapon(2)` và `swapon(8)` để biết thêm thông tin.
 
+> [!NOTE]
 > Tệp `/proc/swaps` đặc trưng của Linux có thể được sử dụng để hiển thị thông tin về các vùng hoán đổi hiện đang được bật trên hệ thống. Thông tin này bao gồm kích thước của từng vùng hoán đổi và dung lượng của vùng đó đang được sử dụng.
 
 ## 14.3 Hệ thống tệp (File Systems)
@@ -85,18 +88,21 @@ Một trong những điểm mạnh của Linux là nó hỗ trợ rất nhiều 
 
 Các loại hệ thống tệp hiện được kernel nhận biết có thể được xem trong tệp `/proc/filesystems` đặc trưng của Linux.
 
+> [!NOTE]
 > Linux 2.6.14 đã bổ sung cơ chế Hệ thống tệp trong Không gian người dùng (Filesystem in Userspace - FUSE). Cơ chế này thêm các điểm móc (hooks) vào kernel cho phép một hệ thống tệp được triển khai hoàn toàn thông qua một chương trình ở user space, mà không cần phải vá (patch) hay biên dịch lại kernel. Để biết thêm chi tiết, hãy xem tại http://fuse.sourceforge.net/.
 
 ### Hệ thống tập tin ext2
 
 Trong nhiều năm, hệ thống tập tin (file system) được sử dụng rộng rãi nhất trên Linux là ext2 (The Second Extended File System - Hệ thống tập tin mở rộng thứ hai), đây là phiên bản kế nhiệm của hệ thống tập tin Linux gốc là ext. Gần đây, việc sử dụng ext2 đã suy giảm để nhường chỗ cho các hệ thống tập tin nhật ký (journaling file system) khác nhau. Đôi khi, việc mô tả các khái niệm hệ thống tập tin chung dưới dạng một triển khai hệ thống tập tin cụ thể là rất hữu ích, và vì mục đích này, chúng ta sẽ sử dụng ext2 làm ví dụ tại nhiều điểm khác nhau trong phần sau của chương này.
 
+> [!NOTE]
 > Hệ thống tập tin ext2 được viết bởi Remy Card. Mã nguồn của ext2 rất nhỏ gọn (khoảng 5000 dòng mã C) và tạo thành mô hình cho một số triển khai hệ thống tập tin khác. Trang chủ của ext2 là http://e2fsprogs.sourceforge.net/ext2.html. Trang web này bao gồm một tài liệu tổng quan tốt mô tả việc triển khai ext2. Cuốn sách trực tuyến The Linux Kernel của David Rusling, có sẵn tại http://www.tldp.org/, cũng mô tả về ext2.
 
 ### Cấu trúc hệ thống tập tin
 
 Đơn vị cơ bản để cấp phát không gian trong một hệ thống tập tin là một khối logic (logical block), đây là một bội số của các khối vật lý (physical block) liên tục trên thiết bị đĩa mà hệ thống tập tin được lưu trữ trên đó. Ví dụ: kích thước khối logic trên ext2 là 1024, 2048 hoặc 4096 byte. (Kích thước khối logic được chỉ định làm đối số của lệnh `mkfs(8)` được sử dụng để xây dựng hệ thống tập tin).
 
+> [!NOTE]
 > Một chương trình có đặc quyền (privileged) (`CAP_SYS_RAWIO`) có thể sử dụng thao tác `ioctl()` `FIBMAP` để xác định vị trí vật lý của một khối được chỉ định trong tệp. Đối số thứ ba của lời gọi hàm là một số nguyên kiểu giá trị-kết quả (value-result). Trước khi gọi hàm, đối số này phải được đặt thành số hiệu khối logic (khối logic đầu tiên mang số 0); sau khi gọi hàm, nó được đặt thành số hiệu của khối vật lý bắt đầu nơi khối logic đó được lưu trữ.
 
 [Hình 14-1](#page-22-0) minh họa mối quan hệ giữa các phân vùng đĩa (disk partition) và hệ thống tập tin, đồng thời hiển thị các thành phần của một hệ thống tập tin (tổng quát).
@@ -150,6 +156,7 @@ Bảng i-node của một hệ thống tập tin chứa một i-node (viết t�
 
 Giống như hầu hết các hệ thống tệp UNIX, hệ thống tệp ext2 không lưu trữ các data block của một tệp một cách liên tục (contiguously) hay thậm chí theo thứ tự tuần tự (mặc dù nó có cố gắng lưu trữ chúng ở vị trí gần nhau). Để định vị các data block của tệp, kernel duy trì một tập hợp các con trỏ trong i-node. Hệ thống được sử dụng để thực hiện việc này trên hệ thống tệp ext2 được minh họa trong Hình 14-2.
 
+> [!NOTE]
 > Việc loại bỏ yêu cầu phải lưu trữ các block của một tệp một cách liên tục cho phép hệ thống tệp sử dụng không gian một cách hiệu quả. Cụ thể, nó làm giảm tình trạng phân mảnh (fragmentation) của không gian đĩa trống—sự lãng phí do sự tồn tại của nhiều phần không gian trống không liên tục, tất cả đều quá nhỏ để sử dụng. Nói cách khác, chúng ta có thể coi lợi ích của việc sử dụng hiệu quả không gian đĩa trống được đánh đổi bằng việc phân mảnh các tệp nằm trong không gian đĩa đã được lấp đầy.
 
 Dưới ext2, mỗi i-node chứa 15 con trỏ. 12 con trỏ đầu tiên (được đánh số từ 0 đến 11 trong Hình 14-2) trỏ đến vị trí trong hệ thống tệp của 12 block đầu tiên của tệp. Con trỏ tiếp theo là một con trỏ trỏ đến một block chứa các con trỏ (block của con trỏ), cung cấp vị trí của data block thứ 13 và các data block tiếp theo của tệp. Số lượng con trỏ trong block này phụ thuộc vào kích thước block của hệ thống tệp. Mỗi con trỏ yêu cầu 4 byte, do đó có thể có từ 256 con trỏ (đối với kích thước block 1024-byte) đến 1024 con trỏ (đối với kích thước block 4096-byte). Điều này cho phép hỗ trợ các tệp có kích thước khá lớn. Đối với các tệp thậm chí còn lớn hơn nữa, con trỏ thứ 14 (được đánh số 13 trong sơ đồ) là một con trỏ gián tiếp kép (double indirect pointer) — nó trỏ đến các block chứa con trỏ, mà các block này lại trỏ đến các block chứa con trỏ tiếp theo, rồi các block đó mới trỏ đến các data block của tệp. Và nếu phát sinh nhu cầu sử dụng một tệp thực sự khổng lồ, sẽ có thêm một mức độ gián tiếp nữa: con trỏ cuối cùng trong i-node là một con trỏ gián tiếp ba (triple-indirect pointer).
@@ -269,6 +276,7 @@ Các hệ thống tệp nhật ký (Journaling file systems) loại bỏ sự c�
 
 Nhược điểm đáng chú ý nhất của hệ thống tập tin nhật ký (journaling file system) là nó làm tăng thời gian cập nhật tệp, mặc dù thiết kế tốt có thể giúp giảm thiểu mức chi phí phát sinh (overhead) này.
 
+> [!NOTE]
 > Một số hệ thống tập tin nhật ký chỉ đảm bảo tính nhất quán của siêu dữ liệu tệp (file metadata). Do chúng không ghi nhật ký dữ liệu tệp (file data), dữ liệu vẫn có thể bị mất trong trường hợp xảy ra sự cố sập hệ thống (crash). Các hệ thống tập tin ext3, ext4 và Reiserfs cung cấp các tùy chọn để ghi nhật ký các cập nhật dữ liệu, nhưng tùy thuộc vào khối lượng công việc (workload), điều này có thể dẫn đến hiệu năng I/O của tệp thấp hơn.
 
 Các hệ thống tập tin nhật ký có sẵn cho Linux bao gồm:
@@ -294,9 +302,10 @@ Trên Linux, cũng như trên các hệ thống UNIX khác, tất cả các tệ
 
 Lệnh này gắn hệ thống tập tin trên thiết bị được chỉ định vào hệ thống phân cấp thư mục tại thư mục được chỉ định—điểm gắn kết (mount point) của hệ thống tập tin. Có thể thay đổi vị trí mà hệ thống tập tin được gắn kết—hệ thống tập tin được gỡ kết nối (unmount) bằng lệnh `umount`, sau đó được gắn kết lại một lần nữa tại một điểm khác.
 
+> [!NOTE]
 > Kể từ Linux 2.4.19 và các phiên bản sau, mọi thứ trở nên phức tạp hơn. Kernel hiện hỗ trợ không gian tên gắn kết theo từng tiến trình (per-process mount namespace).
 
-``` Điều này có nghĩa là mỗi tiến trình có khả năng có tập hợp các điểm gắn kết hệ thống tập tin của riêng mình, và do đó có thể nhìn thấy một cấu trúc phân cấp thư mục đơn khác với các tiến trình khác. Chúng tôi sẽ giải thích điểm này kỹ hơn khi mô tả cờ `CLONE_NEWNS` trong Mục 28.2.1.
+Điều này có nghĩa là mỗi tiến trình có khả năng có tập hợp các điểm gắn kết hệ thống tập tin của riêng mình, và do đó có thể nhìn thấy một cấu trúc phân cấp thư mục đơn khác với các tiến trình khác. Chúng tôi sẽ giải thích điểm này kỹ hơn khi mô tả cờ `CLONE_NEWNS` trong Mục 28.2.1.
 
 Để liệt kê các hệ thống tập tin hiện đang được gắn kết, chúng ta có thể sử dụng lệnh *mount* mà không có đối số nào, như trong ví dụ sau (với đầu ra đã được rút gọn phần nào):
 
@@ -373,6 +382,7 @@ Trước khi tìm hiểu về các System Call này, việc biết về ba tập
 
 - Danh sách các hệ thống tập tin hiện đang được gắn kết có thể được đọc từ tập tin ảo cụ thể của Linux `/proc/mounts`. `/proc/mounts` là một giao diện trỏ tới các cấu trúc dữ liệu của kernel (Kernel Space), do đó nó luôn chứa thông tin chính xác về các hệ thống tập tin đã được gắn kết.
 
+> [!NOTE]
 > Với sự xuất hiện của tính năng không gian tên gắn kết trên mỗi tiến trình (per-process mount namespace) được đề cập trước đó, mỗi tiến trình hiện có một tập tin `/proc/PID/mounts` liệt kê các điểm gắn kết tạo nên không gian tên gắn kết của nó và `/proc/mounts` chỉ là một liên kết tượng trưng (symbolic link) trỏ đến `/proc/self/mounts`.
 
 - Các lệnh `mount(8)` và `umount(8)` tự động duy trì tập tin `/etc/mtab`, tập tin này chứa thông tin tương tự như trong `/proc/mounts`, nhưng chi tiết hơn một chút. Cụ thể, `/etc/mtab` bao gồm các tùy chọn dành riêng cho hệ thống tập tin được truyền cho `mount(8)`, những tùy chọn này không được hiển thị trong `/proc/mounts`. Tuy nhiên, vì các System Call `mount()` và `umount()` không cập nhật `/etc/mtab`, tập tin này có thể không chính xác nếu một ứng dụng nào đó thực hiện gắn kết hoặc gỡ gắn kết thiết bị nhưng không cập nhật nó.
@@ -406,6 +416,7 @@ unsigned long mountflags, const void *data);
 /* Trả về 0 khi thành công, hoặc –1 khi lỗi */
 
 ```
+
 ```
 
 Tên `source` và `target` được sử dụng cho hai tham số đầu tiên vì `mount()` có thể thực hiện các tác vụ khác ngoài việc gắn kết một hệ thống tập tin đĩa dưới một thư mục.
@@ -505,21 +516,32 @@ Bắt đầu từ kernel 2.6.15, Linux cung cấp bốn cờ mount mới để h
 Chương trình trong Liệt kê 14-1 cung cấp một giao diện cấp dòng lệnh (command-level interface) đối với system call `mount(2)`. Về mặt thực tế, nó là một phiên bản thô sơ của lệnh `mount(8)`. Nhật ký phiên shell sau đây minh họa cách sử dụng chương trình này. Chúng ta bắt đầu bằng cách tạo một thư mục để dùng làm điểm gắn kết (mount point) và mount một file system (hệ thống tệp):
 
 ```bash
+
 $ su # Cần có đặc quyền để mount một file system
 Password:
+
 ## mkdir /testfs
+
 ## ./t_mount -t ext2 -o bsdgroups /dev/sda12 /testfs
+
 ## cat /proc/mounts | grep sda12 # Xác minh thiết lập
+
 /dev/sda12 /testfs ext3 rw 0 0 # Không hiển thị bsdgroups
+
 ## grep sda12 /etc/mtab
+
 ```
 
 Chúng ta nhận thấy rằng lệnh `grep` trước đó không tạo ra đầu ra (output) nào vì chương trình của chúng ta không cập nhật tệp `/etc/mtab`. Chúng ta tiếp tục remount hệ thống tệp ở chế độ chỉ đọc (read-only):
 
 ```bash
+
 ## ./t_mount -f Rr /dev/sda12 /testfs
+
 ## cat /proc/mounts | grep sda12 # Xác minh thay đổi
+
 /dev/sda12 /testfs ext3 ro 0 0
+
 ```
 
 Chuỗi `ro` trong dòng được hiển thị từ `/proc/mounts` chỉ ra rằng đây là một điểm mount chỉ đọc (read-only mount).
@@ -527,100 +549,112 @@ Chuỗi `ro` trong dòng được hiển thị từ `/proc/mounts` chỉ ra rằ
 Cuối cùng, chúng ta di chuyển điểm mount (mount point) đến một vị trí mới trong hệ thống phân cấp thư mục (directory hierarchy):
 
 ```bash
+
 ## mkdir /demo
+
 ## ./t_mount -f m /testfs /demo
+
 ## cat /proc/mounts | grep sda12 # Xác minh thay đổi
+
 /dev/sda12 /demo ext3 ro 0
+
 ```
 
 Liệt kê 14-1: Sử dụng mount()
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––– filesys/t_mount.c
 
 ```c
+
 ## include <sys/mount.h>
+
 ## include "tlpi_hdr.h"
 
 static void
 usageError(const char *progName, const char *msg)
 {
-    if (msg != NULL)
-        fprintf(stderr, "%s", msg);
-    fprintf(stderr, "Usage: %s [options] source target\n\n", progName);
-    fprintf(stderr, "Available options:\n");
+if (msg != NULL)
+fprintf(stderr, "%s", msg);
+fprintf(stderr, "Usage: %s [options] source target\n\n", progName);
+fprintf(stderr, "Available options:\n");
+
 ## define fpe(str) fprintf(stderr, "    " str) /* Ngắn gọn hơn! */
-    fpe("-t fstype        [e.g., 'ext2' or 'reiserfs']\n");
-    fpe("-o data          [file system-dependent options,\n");
-    fpe("                  e.g., 'bsdgroups' for ext2]\n");
-    fpe("-f mountflags    can include any of:\n");
+
+fpe("-t fstype        [e.g., 'ext2' or 'reiserfs']\n");
+fpe("-o data          [file system-dependent options,\n");
+fpe("                  e.g., 'bsdgroups' for ext2]\n");
+fpe("-f mountflags    can include any of:\n");
+
 ## define fpe2(str) fprintf(stderr, "        " str)
-    fpe2("b - MS_BIND        create a bind mount\n");
-    fpe2("d - MS_DIRSYNC     synchronous directory updates\n");
-    fpe2("l - MS_MANDLOCK    permit mandatory locking\n");
-    fpe2("m - MS_MOVE        atomically move subtree\n");
-    fpe2("A - MS_NOATIME     don't update atime (last access time)\n");
-    fpe2("V - MS_NODEV       don't permit device access\n");
-    fpe2("D - MS_NODIRATIME  don't update atime on directories\n");
-    fpe2("E - MS_NOEXEC      don't allow executables\n");
-    fpe2("S - MS_NOSUID      disable set-user/group-ID programs\n");
-    fpe2("r - MS_RDONLY      read-only mount\n");
-    fpe2("c - MS_REC         recursive mount\n");
-    fpe2("R - MS_REMOUNT     remount\n");
-    fpe2("s - MS_SYNCHRONOUS make writes synchronous\n");
-    exit(EXIT_FAILURE);
+
+fpe2("b - MS_BIND        create a bind mount\n");
+fpe2("d - MS_DIRSYNC     synchronous directory updates\n");
+fpe2("l - MS_MANDLOCK    permit mandatory locking\n");
+fpe2("m - MS_MOVE        atomically move subtree\n");
+fpe2("A - MS_NOATIME     don't update atime (last access time)\n");
+fpe2("V - MS_NODEV       don't permit device access\n");
+fpe2("D - MS_NODIRATIME  don't update atime on directories\n");
+fpe2("E - MS_NOEXEC      don't allow executables\n");
+fpe2("S - MS_NOSUID      disable set-user/group-ID programs\n");
+fpe2("r - MS_RDONLY      read-only mount\n");
+fpe2("c - MS_REC         recursive mount\n");
+fpe2("R - MS_REMOUNT     remount\n");
+fpe2("s - MS_SYNCHRONOUS make writes synchronous\n");
+exit(EXIT_FAILURE);
 }
 
 int
 main(int argc, char *argv[])
 {
-    unsigned long flags;
-    char *data, *fstype;
-    int j, opt;
+unsigned long flags;
+char *data, *fstype;
+int j, opt;
 
-    flags = 0;
-    data = NULL;
-    fstype = NULL;
+flags = 0;
+data = NULL;
+fstype = NULL;
 
-    while ((opt = getopt(argc, argv, "o:t:f:")) != -1) {
-        switch (opt) {
-        case 'o':
-            data = optarg;
-            break;
-        case 't':
-            fstype = optarg;
-            break;
-        case 'f':
-            for (j = 0; j < strlen(optarg); j++) {
-                switch (optarg[j]) {
-                case 'b': flags |= MS_BIND; break;
-                case 'd': flags |= MS_DIRSYNC; break;
-                case 'l': flags |= MS_MANDLOCK; break;
-                case 'm': flags |= MS_MOVE; break;
-                case 'A': flags |= MS_NOATIME; break;
-                case 'V': flags |= MS_NODEV; break;
-                case 'D': flags |= MS_NODIRATIME; break;
-                case 'E': flags |= MS_NOEXEC; break;
-                case 'S': flags |= MS_NOSUID; break;
-                case 'r': flags |= MS_RDONLY; break;
-                case 'c': flags |= MS_REC; break;
-                case 'R': flags |= MS_REMOUNT; break;
-                case 's': flags |= MS_SYNCHRONOUS; break;
-                default:  usageError(argv[0], NULL);
-                }
-            }
-            break;
-        default:
-            usageError(argv[0], NULL);
-        }
-    }
-
-    if (argc != optind + 2)
-        usageError(argv[0], "Sai số lượng đối số (Wrong number of arguments)\n");
-
-    if (mount(argv[optind], argv[optind + 1], fstype, flags, data) == -1)
-        errExit("mount");
-
-    exit(EXIT_SUCCESS);
+while ((opt = getopt(argc, argv, "o:t:f:")) != -1) {
+switch (opt) {
+case 'o':
+data = optarg;
+break;
+case 't':
+fstype = optarg;
+break;
+case 'f':
+for (j = 0; j < strlen(optarg); j++) {
+switch (optarg[j]) {
+case 'b': flags |= MS_BIND; break;
+case 'd': flags |= MS_DIRSYNC; break;
+case 'l': flags |= MS_MANDLOCK; break;
+case 'm': flags |= MS_MOVE; break;
+case 'A': flags |= MS_NOATIME; break;
+case 'V': flags |= MS_NODEV; break;
+case 'D': flags |= MS_NODIRATIME; break;
+case 'E': flags |= MS_NOEXEC; break;
+case 'S': flags |= MS_NOSUID; break;
+case 'r': flags |= MS_RDONLY; break;
+case 'c': flags |= MS_REC; break;
+case 'R': flags |= MS_REMOUNT; break;
+case 's': flags |= MS_SYNCHRONOUS; break;
+default:  usageError(argv[0], NULL);
 }
+}
+break;
+default:
+usageError(argv[0], NULL);
+}
+}
+
+if (argc != optind + 2)
+usageError(argv[0], "Sai số lượng đối số (Wrong number of arguments)\n");
+
+if (mount(argv[optind], argv[optind + 1], fstype, flags, data) == -1)
+errExit("mount");
+
+exit(EXIT_SUCCESS);
+}
+
 ```
 
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––– filesys/t_mount.c
@@ -639,6 +673,7 @@ int umount(const char *target);
 /* Trả về 0 khi thành công, hoặc –1 khi lỗi */
 
 ```
+
 ```
 
 Đối số `target` chỉ định điểm gắn kết (mount point) của hệ thống tập tin cần gỡ gắn kết.
@@ -650,9 +685,12 @@ Không thể gỡ gắn kết một hệ thống tập tin đang bận (busy); n
 System call `umount2()` là một phiên bản mở rộng của `umount()`. Nó cho phép kiểm soát chi tiết hơn đối với thao tác gỡ gắn kết thông qua đối số `flags`.
 
 ```c
+
 ## include <sys/mount.h>
+
 int umount2(const char *target, int flags);
-                                             /* Trả về 0 khi thành công, hoặc –1 khi lỗi */
+/* Trả về 0 khi thành công, hoặc –1 khi lỗi */
+
 ```
 
 ```
@@ -717,8 +755,8 @@ lost+found myfile
 
 Chúng tôi trình bày một ví dụ về lý do tại sao việc mount một hệ thống tập tin tại nhiều điểm lại hữu ích khi chúng ta thảo luận về các mount liên kết (bind mount) ở Mục [14.9.4](#page-39-0).
 
+> [!NOTE]
 > Chính vì một thiết bị (device) có thể được mount tại nhiều điểm mà system call `umount()` không thể nhận tên thiết bị làm đối số của nó trong Linux 2.4 trở về sau.
-```
 
 ### 14.9.2 Xếp chồng Nhiều Mount trên Cùng một Điểm Mount
 
@@ -735,15 +773,22 @@ Password:
 /dev/sda13 on /testfs type reiserfs (rw)
 ```
 
-```
 ## touch /testfs/newfile Create a file in this subtree
+
 ## ls /testfs View files in this subtree
+
 newfile
+
 ## umount /testfs Pop a mount from the stack
+
 ## mount | grep testfs
+
 /dev/sda12 on /testfs type ext3 (rw) Now only one mount on /testfs
+
 ## ls /testfs Previous mount is now visible
+
 lost+found myfile
+
 ```
 
 Một công dụng của việc xếp chồng mount (mount stacking) là để xếp chồng một mount mới lên một điểm mount hiện có đang bận (busy). Các tiến trình (process) đang giữ các bộ mô tả tập tin (file descriptor) mở, đang bị giam giữ trong môi trường `chroot()` (`chroot()`-jailed), hoặc có thư mục làm việc hiện tại (current working directory) nằm trong điểm mount cũ sẽ tiếp tục hoạt động dưới mount đó, nhưng các tiến trình thực hiện các truy cập mới vào điểm mount sẽ sử dụng mount mới. Kết hợp với việc unmount kiểu `MNT_DETACH`, điều này có thể giúp di chuyển mượt mà khỏi một hệ thống tập tin mà không cần phải đưa hệ thống về chế độ đơn người dùng (single-user mode). Chúng ta sẽ thấy một ví dụ khác về sự hữu ích của việc xếp chồng mount khi thảo luận về hệ thống tập tin `tmpfs` ở Mục [14.10](#page-41-0).
@@ -753,18 +798,29 @@ Một công dụng của việc xếp chồng mount (mount stacking) là để x
 Trong các phiên bản kernel trước 2.4, có mối tương quan một-một giữa các hệ thống tập tin và các điểm mount. Do điều này không còn đúng trong Linux 2.4 trở về sau, một số giá trị `mountflags` được mô tả ở Mục [14.8.1](#page-31-0) có thể được thiết lập tính trên cơ sở từng mount (per-mount basis). Các cờ này bao gồm `MS_NOATIME` (từ Linux 2.6.16), `MS_NODEV`, `MS_NODIRATIME` (từ Linux 2.6.16), `MS_NOEXEC`, `MS_NOSUID`, `MS_RDONLY` (từ Linux 2.6.26), và `MS_RELATIME`. Phiên bản dòng lệnh sau minh họa hiệu ứng này đối với cờ `MS_NOEXEC`:
 
 ```
+
 $ su
 Password:
+
 ## mount /dev/sda12 /testfs
+
 ## mount -o noexec /dev/sda12 /demo
+
 ## cat /proc/mounts | grep sda12
+
 /dev/sda12 /testfs ext3 rw 0 0
 /dev/sda12 /demo ext3 rw,noexec 0 0
+
 ## cp /bin/echo /testfs
+
 ## /testfs/echo "Art is something which is well done"
+
 Art is something which is well done
+
 ## /demo/echo "Art is something which is well done"
+
 bash: /demo/echo: Permission denied
+
 ```
 
 ### 14.9.4 Bind Mount (Gắn kết liên kết)
@@ -779,24 +835,36 @@ Chúng ta có thể tạo một bind mount từ shell bằng cách sử dụng t
 Trong ví dụ đầu tiên, chúng ta thực hiện bind mount một thư mục tại một vị trí khác và cho thấy các tệp được tạo ở một thư mục có thể nhìn thấy ở vị trí kia:
 
 ```
+
 $ su Cần có quyền root để sử dụng lệnh mount(8)
 Password:
+
 ## pwd
+
 /testfs
+
 ## mkdir d1 Tạo thư mục sẽ được bind tại vị trí khác
+
 ## touch d1/x Tạo tệp trong thư mục
+
 ## mkdir d2 Tạo điểm mount (mount point) mà d1 sẽ được bind vào
+
 ## mount --bind d1 d2 Tạo bind mount: d1 hiển thị thông qua d2
+
 ## ls d2 Kiểm tra xem chúng ta có thể thấy nội dung của d1 thông qua d2 không
+
 x
+
 ## touch d2/y Tạo tệp thứ hai trong thư mục d2
+
 ## ls d1 Kiểm tra xem thay đổi này có hiển thị thông qua d1 không
+
 x y
+
 ```
 
 Trong ví dụ thứ hai, chúng ta thực hiện bind mount một tệp tại một vị trí khác và chứng minh rằng các thay đổi đối với tệp thông qua một mount có thể nhìn thấy thông qua mount kia:
 
-```
 ## cat > f1 Tạo tệp để bind tới vị trí khác
 Chance is always powerful. Let your hook be always cast.
 Type Control-D
@@ -844,20 +912,22 @@ top/sub/bbb
 
 Bây giờ chúng ta tạo một bind mount khác (`dir1`) sử dụng `top` làm nguồn. Vì mount mới này không mang tính đệ quy (nonrecursive), submount không được nhân bản.
 
-```
 ## mkdir dir1
+
 ## mount --bind top dir1 Ở đây chúng ta sử dụng bind mount thông thường
+
 ## find dir1
+
 dir1
 dir1/aaa
 dir1/sub
+
 ```
 
 Sự vắng mặt của `dir1/sub/bbb` trong đầu ra của lệnh `find` cho thấy submount `top/sub` đã không được nhân bản.
 
 Bây giờ chúng ta tạo một recursive bind mount (`dir2`) sử dụng `top` làm nguồn.
 
-```
 ## mkdir dir2
 ## mount --rbind top dir2
 ## find dir2
@@ -875,19 +945,19 @@ Tất cả các hệ thống tệp mà chúng ta đã mô tả cho đến nay tr
 
 Nhiều hệ thống tập tin dựa trên bộ nhớ (memory-based file systems) khác nhau đã được phát triển cho Linux. Tiên tiến nhất trong số này cho đến nay là hệ thống tập tin tmpfs, xuất hiện lần đầu tiên trong Linux 2.4. Hệ thống tập tin tmpfs khác với các hệ thống tập tin dựa trên bộ nhớ khác ở chỗ nó là một hệ thống tập tin bộ nhớ ảo (virtual memory file system). Điều này có nghĩa là tmpfs không chỉ sử dụng RAM mà còn sử dụng cả không gian swap (swap space) nếu RAM cạn kiệt. (Mặc dù hệ thống tập tin tmpfs được mô tả ở đây là đặc thù của Linux, hầu hết các hệ thống cài đặt UNIX đều cung cấp một số dạng hệ thống tập tin dựa trên bộ nhớ.)
 
+> [!NOTE]
 > Hệ thống tập tin tmpfs là một thành phần nhân Linux (Linux kernel) tùy chọn được cấu hình thông qua tùy chọn `CONFIG_TMPFS`.
 
 Để tạo một hệ thống tập tin tmpfs, chúng ta sử dụng một lệnh có dạng sau:
 
-```
 ## mount -t tmpfs source target
+
 ```
 
 Phần `source` có thể là bất kỳ tên nào; ý nghĩa duy nhất của nó là xuất hiện trong `/proc/mounts` và được hiển thị bởi các lệnh `mount` và `df`. Như thường lệ, `target` là điểm gắn kết (mount point) cho hệ thống tập tin. Lưu ý rằng không cần thiết phải sử dụng `mkfs` để tạo hệ thống tập tin trước, bởi vì nhân hệ thống (kernel) sẽ tự động xây dựng một hệ thống tập tin như một phần của System Call `mount()`.
 
 Là một ví dụ về việc sử dụng tmpfs, chúng ta có thể áp dụng việc chồng gắn kết (mount stacking) — nhờ đó chúng ta không cần bận tâm liệu `/tmp` đã được sử dụng hay chưa — và tạo một hệ thống tập tin tmpfs được gắn kết trên `/tmp` như sau:
 
-```
 ## mount -t tmpfs newtmp /tmp
 ## cat /proc/mounts | grep tmp
 newtmp /tmp tmpfs rw 0 0
@@ -908,34 +978,37 @@ Ngoài việc được sử dụng bởi các ứng dụng người dùng (user 
 
 Các hàm thư viện `statvfs()` và `fstatvfs()` lấy thông tin về một hệ thống tập tin đã được gắn kết (mounted file system).
 
-```
 ## include <sys/statvfs.h>
+
 int statvfs(const char *pathname, struct statvfs *statvfsbuf);
 int fstatvfs(int fd, struct statvfs *statvfsbuf);
-                                         Cả hai trả về 0 khi thành công, hoặc –1 khi lỗi
+Cả hai trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Sự khác biệt duy nhất giữa hai hàm này nằm ở cách hệ thống tập tin được định danh. Đối với `statvfs()`, chúng ta sử dụng `pathname` để chỉ định tên của bất kỳ tập tin nào trong hệ thống tập tin. Đối với `fstatvfs()`, chúng ta chỉ định một File Descriptor đang mở, `fd`, trỏ tới bất kỳ tập tin nào trong hệ thống tập tin đó. Cả hai hàm đều trả về một cấu trúc `statvfs` chứa thông tin về hệ thống tập tin trong vùng đệm (buffer) được trỏ tới bởi `statvfsbuf`. Cấu trúc này có dạng như sau:
 
 ```
+
 struct statvfs {
- unsigned long f_bsize; /* Kích thước khối của hệ thống tập tin (tính bằng byte) */
- unsigned long f_frsize; /* Kích thước khối cơ sở của hệ thống tập tin
-                               (tính bằng byte) */
- fsblkcnt_t f_blocks; /* Tổng số khối trong hệ thống tập tin
-                               (tính theo đơn vị 'f_frsize') */
- fsblkcnt_t f_bfree; /* Tổng số khối trống */
- fsblkcnt_t f_bavail; /* Số khối trống khả dụng cho
-                                tiến trình phi đặc quyền (unprivileged process) */
- fsfilcnt_t f_files; /* Tổng số i-node */
- fsfilcnt_t f_ffree; /* Tổng số i-node trống */
- fsfilcnt_t f_favail; /* Số i-node khả dụng cho tiến trình phi đặc quyền
-                               (được đặt bằng 'f_ffree' trên Linux) */
- unsigned long f_fsid; /* ID hệ thống tập tin */
- unsigned long f_flag; /* Các cờ gắn kết (Mount flags) */
- unsigned long f_namemax; /* Chiều dài tối đa của tên tập tin trên
-                               hệ thống tập tin này */
+unsigned long f_bsize; /* Kích thước khối của hệ thống tập tin (tính bằng byte) */
+unsigned long f_frsize; /* Kích thước khối cơ sở của hệ thống tập tin
+(tính bằng byte) */
+fsblkcnt_t f_blocks; /* Tổng số khối trong hệ thống tập tin
+(tính theo đơn vị 'f_frsize') */
+fsblkcnt_t f_bfree; /* Tổng số khối trống */
+fsblkcnt_t f_bavail; /* Số khối trống khả dụng cho
+tiến trình phi đặc quyền (unprivileged process) */
+fsfilcnt_t f_files; /* Tổng số i-node */
+fsfilcnt_t f_ffree; /* Tổng số i-node trống */
+fsfilcnt_t f_favail; /* Số i-node khả dụng cho tiến trình phi đặc quyền
+(được đặt bằng 'f_ffree' trên Linux) */
+unsigned long f_fsid; /* ID hệ thống tập tin */
+unsigned long f_flag; /* Các cờ gắn kết (Mount flags) */
+unsigned long f_namemax; /* Chiều dài tối đa của tên tập tin trên
+hệ thống tập tin này */
 };
+
 ```
 
 Mục đích của hầu hết các trường trong cấu trúc `statvfs` đã được làm rõ trong các chú thích ở trên. Chúng ta lưu ý thêm một số điểm liên quan đến một số trường:
@@ -960,7 +1033,7 @@ Các thiết bị được biểu diễn bằng các mục nhập (entry) trong 
 
 Một ổ đĩa cứng được chia thành một hoặc nhiều phân vùng (partition), mỗi phân vùng có thể chứa một hệ thống tập tin. Hệ thống tập tin là một tập hợp có tổ chức gồm các tệp thông thường (regular file) và thư mục (directory).
 
-``` Linux thực thi một loạt các hệ thống tập tin, bao gồm hệ thống tập tin ext2 truyền thống. Hệ thống tập tin ext2 có cấu trúc tương tự về mặt khái niệm với các hệ thống tập tin UNIX thời kỳ đầu, bao gồm một khối khởi động (boot block), một siêu khối (superblock), một bảng i-node (i-node table), và một vùng dữ liệu chứa các khối dữ liệu của tệp (file data block). Mỗi tệp có một mục nhập trong bảng i-node của hệ thống tập tin. Mục nhập này chứa nhiều thông tin khác nhau về tệp, bao gồm loại, kích thước, số lượng liên kết (link count), quyền sở hữu, quyền truy cập, dấu thời gian (timestamp) và các con trỏ trỏ đến các khối dữ liệu của tệp.
+Linux thực thi một loạt các hệ thống tập tin, bao gồm hệ thống tập tin ext2 truyền thống. Hệ thống tập tin ext2 có cấu trúc tương tự về mặt khái niệm với các hệ thống tập tin UNIX thời kỳ đầu, bao gồm một khối khởi động (boot block), một siêu khối (superblock), một bảng i-node (i-node table), và một vùng dữ liệu chứa các khối dữ liệu của tệp (file data block). Mỗi tệp có một mục nhập trong bảng i-node của hệ thống tập tin. Mục nhập này chứa nhiều thông tin khác nhau về tệp, bao gồm loại, kích thước, số lượng liên kết (link count), quyền sở hữu, quyền truy cập, dấu thời gian (timestamp) và các con trỏ trỏ đến các khối dữ liệu của tệp.
 
 Linux cung cấp một loạt các hệ thống tập tin có nhật ký (journaling file system), bao gồm Reiserfs, ext3, ext4, XFS, JFS và Btrfs. Hệ thống tập tin có nhật ký ghi lại các bản cập nhật siêu dữ liệu (metadata) (và tùy chọn trên một số hệ thống tập tin là cả các bản cập nhật dữ liệu) vào một tệp nhật ký (log file) trước khi các cập nhật tệp thực sự được thực hiện. Điều này có nghĩa là trong trường hợp hệ thống bị treo (crash), tệp nhật ký có thể được phát lại (replay) để nhanh chóng khôi phục hệ thống tập tin về trạng thái nhất quán (consistent state). Lợi ích chính của các hệ thống tập tin có nhật ký là chúng tránh được quá trình kiểm tra tính nhất quán của hệ thống tập tin vốn tốn nhiều thời gian, điều mà các hệ thống tập tin UNIX thông thường phải thực hiện sau khi hệ thống bị treo.
 

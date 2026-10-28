@@ -1,6 +1,4 @@
-## Chapter 5
-
-## NHẬP/XUẤT TỆP: CÁC CHI TIẾT NÂNG CAO
+# Chương 5: File I/O: Các chi tiết bổ sung (File I/O: Further Details)
 
 Trong chương này, chúng ta sẽ mở rộng thảo luận về nhập/xuất tệp (file I/O) đã bắt đầu ở chương trước.
 
@@ -153,6 +151,7 @@ Tuy nhiên, đoạn mã này mắc phải lỗi tương tự như ví dụ trư�
 
 Để tránh vấn đề này, thao tác dịch chuyển con trỏ đến byte tiếp theo ngay sau cuối tệp (seek) và thao tác ghi (write) phải diễn ra một cách nguyên tử (atomically). Đây chính là điều mà việc mở một tệp với cờ `O_APPEND` đảm bảo.
 
+> [!NOTE]
 > Một số hệ thống tệp (ví dụ: NFS) không hỗ trợ `O_APPEND`. Trong trường hợp này, nhân hệ thống (kernel) sẽ quay trở lại trình tự các lời gọi phi nguyên tử (nonatomic) như được hiển thị ở trên, dẫn đến nguy cơ hỏng dữ liệu tệp như vừa mô tả.
 
 ## 5.2 Các Thao tác Điều khiển Tệp: fcntl()
@@ -412,6 +411,7 @@ lseek(fd, orig, SEEK_SET); /* Khôi phục con trỏ tệp ban đầu */
 
 Các system call này đặc biệt hữu ích trong các ứng dụng đa luồng (multithreaded applications). Như chúng ta sẽ thấy ở Chương 29, tất cả các luồng (threads) trong một tiến trình (process) đều chia sẻ cùng một bảng bộ mô tả tệp (file descriptor table). Điều này có nghĩa là con trỏ tệp cho mỗi tệp mở là toàn cục đối với tất cả các luồng. Bằng cách sử dụng `pread()` hoặc `pwrite()`, nhiều luồng có thể đồng thời thực hiện I/O trên cùng một bộ mô tả tệp mà không bị ảnh hưởng bởi các thay đổi đối với con trỏ tệp do các luồng khác thực hiện. Nếu chúng ta cố gắng sử dụng `lseek()` kết hợp với `read()` (hoặc `write()`) thay thế, thì chúng ta sẽ tạo ra một tình trạng tranh chấp (race condition) tương tự như tình trạng mà chúng ta đã mô tả khi thảo luận về cờ `O_APPEND` trong [Mục 5.1](#page-69-2). (Các system call `pread()` và `pwrite()` cũng tương tự có ích trong việc tránh các race condition trong các ứng dụng mà nhiều tiến trình có các bộ mô tả tệp tham chiếu đến cùng một cấu trúc mô tả tệp mở.)
 
+> [!NOTE]
 > Nếu chúng ta liên tục thực hiện các lời gọi `lseek()` theo sau bởi I/O tệp, thì các system call `pread()` và `pwrite()` cũng có thể mang lại lợi thế về hiệu năng (performance) trong một số trường hợp. Điều này là do chi phí của một system call `pread()` (hoặc `pwrite()`) đơn lẻ thấp hơn chi phí của hai system call: `lseek()` và `read()` (hoặc `write()`). Tuy nhiên, chi phí của các system call thường bị lấn át bởi thời gian thực tế để thực hiện I/O.
 
 ```

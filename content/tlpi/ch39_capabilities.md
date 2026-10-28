@@ -1,4 +1,4 @@
-# Chương 39: CAPABILITIES (CÁC QUYỀN HẠN NĂNG LỰC)
+# Chương 39: Cơ chế Capabilities (Linux Capabilities)
 
 Chương này mô tả cơ chế capability của Linux, cơ chế này chia mô hình đặc quyền "được tất cả hoặc mất tất cả" (all-or-nothing) truyền thống của UNIX thành các capability riêng lẻ có thể được bật hoặc tắt một cách độc lập. Việc sử dụng capability cho phép một chương trình thực hiện một số thao tác đặc quyền (privileged operation), đồng thời ngăn cản nó thực hiện các thao tác khác.
 
@@ -8,12 +8,13 @@ Mô hình đặc quyền UNIX truyền thống chia các tiến trình (Process)
 
 Độ chi tiết thô (coarse granularity) của mô hình này là một vấn đề. Nếu chúng ta muốn cho phép một tiến trình thực hiện một thao tác nào đó chỉ cho phép siêu người dùng thực hiện — ví dụ, thay đổi thời gian hệ thống — thì chúng ta phải chạy tiến trình đó với effective user ID là 0. (Nếu một người dùng không có đặc quyền cần thực hiện các thao tác như vậy, điều này thường được triển khai bằng cách sử dụng chương trình set-user-ID-root). Tuy nhiên, điều này cũng cấp cho tiến trình các đặc quyền để thực hiện hàng loạt hành động khác — ví dụ, qua mặt tất cả các kiểm tra quyền khi truy cập tệp — từ đó mở đường cho một loạt lỗ hổng bảo mật nếu chương trình hành xử theo những cách bất ngờ (có thể là hậu quả của các tình huống không lường trước được, hoặc do sự can thiệp có chủ ý từ một người dùng độc hại). Cách truyền thống để giải quyết vấn đề này đã được nêu ở Chương [38:](#page-50-0) chúng ta bỏ các đặc quyền hiệu dụng (effective privilege) (nghĩa là thay đổi từ effective user ID là 0, trong khi vẫn duy trì giá trị 0 trong saved set-user-ID) và tạm thời lấy lại chúng chỉ khi cần thiết.
 
-Cơ chế capability của Linux tinh chỉnh việc xử lý vấn đề này. Thay vì sử dụng một đặc quyền duy nhất (nghĩa là effective user ID bằng 0) khi thực hiện kiểm tra bảo mật trong kernel (Kernel Space), đặc quyền siêu người dùng được chia thành các đơn vị riêng biệt, gọi là capability. Mỗi thao tác đặc quyền được liên kết với một capability cụ thể và một tiến trình chỉ có thể thực hiện thao tác đó nếu nó có capability tương ứng (bất kể effective user ID của nó là gì). Nói một cách khác, bất cứ nơi nào trong cuốn sách này chúng ta nói về một tiến trình đặc quyền (privileged process) trên Linux, điều mà chúng ta thực sựu muốn nói đến là một tiến trình có capability liên quan để thực hiện một thao tác cụ thể.
+Cơ chế capability của Linux tinh chỉnh việc xử lý vấn đề này. Thay vì sử dụng một đặc quyền duy nhất (nghĩa là effective user ID bằng 0) khi thực hiện kiểm tra bảo mật trong kernel (Kernel Space), đặc quyền siêu người dùng được chia thành các đơn vị riêng biệt, gọi là capability. Mỗi thao tác đặc quyền được liên kết với một capability cụ thể và một tiến trình chỉ có thể thực hiện thao tác đó nếu nó có capability tương ứng (bất kể effective user ID của nó là gì). Nói một cách khác, bất cứ nơi nào trong cuốn sách này chúng ta nói về một tiến trình đặc quyền (privileged process) trên Linux, điều mà chúng ta thực sự muốn nói đến là một tiến trình có capability liên quan để thực hiện thao tác cụ thể đó.
 
 Hầu hết thời gian, cơ chế capability của Linux là vô hình đối với chúng ta. Lý do là khi một ứng dụng không nhận thức được capability giả định một effective user ID bằng 0, kernel sẽ cấp cho tiến trình đó toàn bộ dải capability.
 
 Việc triển khai capability trên Linux dựa trên tiêu chuẩn dự thảo POSIX 1003.1e (http://wt.tuxomania.net/publications/posix.1e/). Nỗ lực chuẩn hóa này đã thất bại vào cuối những năm 1990 trước khi được hoàn thành, nhưng các bản triển khai capability khác nhau vẫn dựa trên bản dự thảo tiêu chuẩn này. (Một số capability được liệt kê trong Bảng 39-1 được định nghĩa trong dự thảo POSIX.1e, nhưng nhiều cái là phần mở rộng của Linux).
 
+> [!NOTE]
 > Các cơ chế capability được cung cấp trong một số triển khai UNIX khác, chẳng hạn như trong Solaris 10 của Sun và các bản phát hành Trusted Solaris trước đó, Trusted Irix của SGI, và là một phần của dự án TrustedBSD cho FreeBSD ([Watson, 2000]). Các cơ chế tương tự cũng tồn tại trong một số hệ điều hành khác; ví dụ, cơ chế đặc quyền trong hệ thống VMS của Digital.
 
 ## 39.2 Các Linux Capabilities
@@ -34,12 +35,15 @@ Mỗi tiến trình (process) có ba tập hợp quyền năng (capability sets)
 
 Chúng ta có thể xem biểu diễn dạng thập lục phân (hexadecimal) của ba tập hợp quyền năng cho bất kỳ tiến trình nào trong ba trường `CapInh`, `CapPrm` và `CapEff` nằm trong file đặc trưng của Linux `/proc/PID/status`.
 
+> [!NOTE]
 > Chương trình `getpcap` (một phần của gói `libcap` được mô tả ở Mục [39.7](#page-74-0)) có thể được sử dụng để hiển thị các quyền năng của một tiến trình theo định dạng dễ đọc hơn.
 
 Một tiến trình con được tạo ra thông qua hàm `fork()` sẽ kế thừa các bản sao từ các tập hợp quyền năng của tiến trình cha. Chúng ta mô tả việc xử lý các tập hợp quyền năng trong suốt quá trình `exec()` tại Mục [39.5](#page-72-0).
 
+> [!NOTE]
 > Trên thực tế, các quyền năng là một thuộc tính trên mỗi luồng (per-thread attribute) có thể được điều chỉnh độc lập cho từng luồng trong một tiến trình. Các quyền năng của một luồng cụ thể trong một tiến trình đa luồng (multithreaded process) được hiển thị trong file `/proc/PID/task/TID/status`. File `/proc/PID/status` hiển thị các quyền năng của luồng chính (main thread).
 
+> [!NOTE]
 > Trước phiên bản kernel 2.6.25, Linux biểu diễn các tập hợp quyền năng bằng 32 bit. Việc bổ sung thêm các quyền năng trong kernel 2.6.25 đòi hỏi phải chuyển sang sử dụng các tập hợp 64 bit.
 
 ### 39.3.2 Khả năng của Tệp (File Capabilities)
@@ -105,12 +109,13 @@ Các khả năng liên quan đến một tệp được lưu trữ trong một t
 
 | CAP_SYS_TTY_CONFIG | Thực hiện ngắt kết nối ảo (virtual hangup) của terminal hoặc pseudoterminal sử dụng hàm vhangup() |
 
-### 39.3.3 Mục đích của Tập quyền Hợp pháp (Permitted) và Tập quyền Hiệu lực (Effective) của Tiến trình
+### 39.3.3 Mục đích của Tập Capability Được phép (Permitted) và Tập Capability Hiệu lực (Effective) của Tiến trình
 
-Tập quyền hợp pháp của tiến trình (process permitted capability set) xác định các quyền (capabilities) mà một tiến trình có thể sử dụng. Tập quyền hiệu lực của tiến trình (process effective capability set) xác định các quyền hiện đang có hiệu lực đối với tiến trình đó — nghĩa là tập hợp các quyền mà kernel sử dụng khi kiểm tra xem tiến trình có đặc quyền (privilege) cần thiết để thực hiện một thao tác cụ thể hay không.
+Tập capability được phép của tiến trình (process permitted capability set) xác định các capability mà một tiến trình có thể sử dụng. Tập capability hiệu lực của tiến trình (process effective capability set) xác định các capability hiện đang có hiệu lực đối với tiến trình đó — nghĩa là tập hợp các capability mà kernel sử dụng khi kiểm tra xem tiến trình có đặc quyền (privilege) cần thiết để thực hiện một thao tác cụ thể hay không.
 
-Tập quyền hợp pháp áp đặt một giới hạn trên (upper bound) đối với tập quyền hiệu lực. Một tiến trình chỉ có thể bật (raise) một quyền trong tập hiệu lực nếu quyền đó nằm trong tập hợp pháp. (Các thuật ngữ "thêm vào" [add to] và "đặt" [set] đôi khi được sử dụng đồng nghĩa với "bật" [raise]. Thao tác ngược lại là "bỏ" [drop], hoặc đồng nghĩa là "gỡ bỏ" [remove] hoặc "xóa" [clear].)
+Tập capability được phép áp đặt một giới hạn trên (upper bound) đối với tập capability hiệu lực. Một tiến trình chỉ có thể bật (raise) một capability trong tập hiệu lực nếu capability đó nằm trong tập được phép. (Các thuật ngữ "thêm vào" [add to] và "đặt" [set] đôi khi được sử dụng đồng nghĩa với "bật" [raise]. Thao tác ngược lại là "bỏ" [drop], hoặc đồng nghĩa là "gỡ bỏ" [remove] hoặc "xóa" [clear].)
 
+> [!NOTE]
 > Mối quan hệ giữa tập quyền hiệu lực và tập quyền hợp pháp tương tự như mối quan hệ giữa ID người dùng hiệu lực (effective user ID) và ID người dùng đã lưu (saved set-user-ID) đối với một chương trình set-user-ID-root. Việc loại bỏ một quyền khỏi tập hiệu lực tương tự như việc tạm thời bỏ ID người dùng hiệu lực là 0, trong khi vẫn duy trì giá trị 0 ở ID người dùng đã lưu. Việc loại bỏ một quyền khỏi cả tập hiệu lực lẫn tập hợp pháp tương tự như việc vĩnh viễn từ bỏ đặc quyền siêu người dùng (superuser privileges) bằng cách đặt cả ID người dùng hiệu lực và ID người dùng đã lưu thành các giá trị khác 0.
 
 ### 39.3.4 Mục đích của Tập quyền Hợp pháp (Permitted) và Tập quyền Hiệu lực (Effective) của Tệp
@@ -133,6 +138,7 @@ Vì những lý do này, các capabilities được phép của tiến trình kh
 
 Tập hợp capability kế thừa của tiến trình chỉ định một nhóm các capabilities có thể được gán vào tập hợp capability được phép của tiến trình trong quá trình `exec()`. Tập hợp kế thừa của tệp tương ứng sẽ được lọc (phép toán AND) với tập hợp capability kế thừa của tiến trình để xác định những capabilities nào thực sự được thêm vào tập hợp capability được phép của tiến trình trong quá trình `exec()`.
 
+> [!NOTE]
 > Có một lý do sâu xa hơn về mặt triết lý đằng sau việc không đơn giản bảo lưu tập hợp capability được phép của tiến trình qua `exec()`. Ý tưởng cốt lõi của hệ thống capabilities là tất cả các đặc quyền cấp cho một tiến trình đều được cấp phát hoặc kiểm soát bởi tệp mà tiến trình đó thực thi (`exec`). Mặc dù tập hợp inheritable của tiến trình chỉ định các capabilities được chuyển qua `exec()`, nhưng các capabilities này vẫn bị lọc (mask) bởi tập hợp inheritable của tệp.
 
 ### 39.3.6 Gán và Xem Capabilities của Tệp từ Shell
@@ -221,6 +227,7 @@ Tập giới hạn capability là một thuộc tính trên mỗi tiến trình 
 
 Nếu một tiến trình có capability `CAP_SETPCAP`, nó có thể (vĩnh viễn không thể hoàn tác) loại bỏ các capability khỏi tập giới hạn của mình bằng cách sử dụng thao tác `prctl()` với `PR_CAPBSET_DROP`. (Việc loại bỏ một capability khỏi tập giới hạn không ảnh hưởng đến các tập capability cho phép, hiệu lực và kế thừa của tiến trình). Một tiến trình có thể xác định xem một capability có nằm trong tập giới hạn của nó hay không bằng cách sử dụng thao tác `prctl()` với `PR_CAPBSET_READ`.
 
+> [!NOTE]
 > Chính xác hơn, tập giới hạn capability là một thuộc tính trên mỗi luồng (per-thread attribute). Bắt đầu từ Linux 2.6.26, thuộc tính này được hiển thị dưới dạng trường `CapBnd` trong tệp đặc thù của Linux `/proc/PID/task/TID/status`. Tệp `/proc/PID/status` hiển thị tập giới hạn của luồng chính (main thread) trong tiến trình.
 
 ### 39.5.2 Bảo toàn ngữ nghĩa của root (root Semantics)
@@ -425,13 +432,10 @@ Vì các ứng dụng hiện có không được thiết kế để tận dụng
 
 Cơ chế `securebits` kiểm soát các cờ được hiển thị trong [Bảng 39-2](#page-79-0). Các cờ tồn tại dưới dạng các cặp liên quan gồm một cờ cơ sở (base flag) và một cờ khóa tương ứng (corresponding locked flag). Mỗi cờ cơ sở kiểm soát một trong các cách xử lý đặc biệt đối với root được mô tả ở trên. Việc thiết lập cờ khóa tương ứng là một thao tác một lần (one-time operation) nhằm ngăn chặn các thay đổi tiếp theo đối với cờ cơ sở liên quan — một khi đã được thiết lập, cờ khóa không thể bị hủy thiết lập.
 
-|  |  |  | Bảng 39-2: Các cờ securebits |  |
-|--|--|--|------------------------------|--|
-|--|--|--|------------------------------|--|
+**Bảng 39-2:** Các cờ securebits
 
-| Cờ (Flag)                     | Ý nghĩa nếu được thiết lập                                                                                                                                                                                                                      |
-
-|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Cờ (Flag) | Ý nghĩa nếu được thiết lập |
+|---|---|
 | SECBIT_KEEP_CAPS              | Không tước bỏ các quyền hạn được phép (`permitted capabilities`) khi một tiến trình (`process`) có một hoặc nhiều ID người dùng (user ID) bằng 0 thiết lập tất cả các ID người dùng của nó thành các giá trị khác 0. Cờ này chỉ có tác dụng nếu cờ `SECBIT_NO_SETUID_FIXUP` không được thiết lập đồng thời. Cờ này sẽ bị xóa (`cleared`) khi thực hiện lệnh `exec()`. |
 | SECBIT_NO_SETUID_FIXUP        | Không thay đổi các quyền hạn (`capabilities`) khi ID người dùng hiệu dụng (`effective`) hoặc ID người dùng hệ thống tệp (`file-system user ID`) được chuyển đổi giữa giá trị 0 và các giá trị khác 0.                                                                                                                               |
 | SECBIT_NOROOT                 | Nếu một tiến trình có ID người dùng thực (`real user ID`) hoặc ID người dùng hiệu dụng (`effective user ID`) bằng 0 thực hiện lệnh `exec()`, hoặc nó thực thi một chương trình set-user-ID-root, thì không cấp quyền hạn cho nó (trừ khi tệp thực thi có các quyền hạn tệp - `file capabilities`).                                                  |
@@ -458,6 +462,7 @@ Sau lời gọi này, cách duy nhất để tiến trình này và các tiến 
 
 Cờ SECBIT\_KEEP\_CAPS ngăn không cho các quyền hạn (capabilities) bị hủy bỏ khi một tiến trình (process) có một hoặc nhiều ID người dùng (user ID) mang giá trị 0 thiết lập tất cả các user ID của nó thành các giá trị khác không. Nói một cách đại khái, SECBIT\_KEEP\_CAPS cung cấp một nửa tính năng mà SECBIT\_NO\_SETUID\_FIXUP cung cấp. (Như đã lưu ý trong [Bảng 39-2](#page-79-0), SECBIT\_KEEP\_CAPS chỉ có hiệu lực nếu SECBIT\_NO\_SETUID\_FIXUP chưa được thiết lập.) Cờ này tồn tại nhằm cung cấp một cờ securebits phản ánh thao tác prctl() PR\_SET\_KEEPCAPS cũ hơn, vốn điều khiển cùng một thuộc tính đó. (Điểm khác biệt duy nhất giữa hai cơ chế này là một tiến trình không cần quyền hạn CAP\_SETPCAP để sử dụng thao tác prctl() PR\_SET\_KEEPCAPS.)
 
+> [!NOTE]
 > Trước đó, chúng ta đã lưu ý rằng tất cả các cờ securebits đều được giữ lại trong quá trình thực thi hàm exec(), ngoại trừ SECBIT\_KEEP\_CAPS. Việc thiết lập bit SECBIT\_KEEP\_CAPS được làm ngược lại so với các thiết lập securebits khác nhằm duy trì tính nhất quán với cách xử lý thuộc tính do thao tác prctl() PR\_SET\_KEEPCAPS thiết lập.
 
 Thao tác prctl() PR\_SET\_KEEPCAPS được thiết kế để sử dụng bởi các chương trình set-user-ID-root chạy trên các kernel cũ không hỗ trợ file capabilities. Các chương trình như vậy vẫn có thể cải thiện tính bảo mật của chúng bằng cách chủ động hủy bỏ và cấp phát lại các quyền hạn theo yêu cầu (tham khảo Mục [39.10](#page-81-0)).
@@ -491,12 +496,14 @@ Tuy nhiên, việc thay đổi capability của các process khác chỉ là m�
 
 Kể từ Linux 2.6.25, capability bounding set là một thuộc tính theo từng tiến trình (per-process attribute). Tuy nhiên, trên các kernel cũ hơn, capability bounding set là một thuộc tính toàn hệ thống (system-wide attribute) ảnh hưởng đến tất cả các process trên hệ thống. Capability bounding set toàn hệ thống được khởi tạo sao cho nó luôn che khuất `CAP_SETPCAP` (như đã mô tả ở trên).
 
+> [!NOTE]
 > Trên các kernel sau phiên bản 2.6.25, việc loại bỏ các capability khỏi per-process bounding set chỉ được hỗ trợ nếu file capabilities được kích hoạt trong kernel. Trong trường hợp đó, `init`, tiến trình tổ tiên của mọi process, khởi động với một bounding set chứa tất cả các capability, và một bản sao của bounding set đó được kế thừa bởi các process khác được tạo ra trên hệ thống. Nếu file capabilities bị vô hiệu hóa, thì do sự khác biệt về ngữ nghĩa của `CAP_SETPCAP` được mô tả ở trên, `init` khởi động với một bounding set chứa tất cả các capability ngoại trừ `CAP_SETPCAP`.
 
 Có thêm một thay đổi nữa trong ngữ nghĩa của capability bounding set trong Linux 2.6.25. Như đã lưu ý trước đó [\(Mục 39.5.1\)](#page-72-1), trên Linux 2.6.25 trở về sau, per-process capability bounding set đóng vai trò là một tập siêu hạn chế (limiting superset) cho các capability có thể được thêm vào inheritable set (tập đặc quyền kế thừa) của process. Trong Linux 2.6.24 và các phiên bản trước đó, system-wide capability bounding set không có hiệu ứng che khuất này. (Nó không cần thiết, bởi vì các kernel này không hỗ trợ file capabilities).
 
 Capability bounding set toàn hệ thống có thể truy cập thông qua tệp đặc thù của Linux `/proc/sys/kernel/cap-bound`. Một process phải có capability `CAP_SYS_MODULE` để có thể thay đổi nội dung của `cap-bound`. Tuy nhiên, chỉ có tiến trình `init` mới có thể bật các bit trong mặt nạ (mask) này; các process có đặc quyền khác chỉ có thể tắt các bit. Hệ quả của những giới hạn này là trên một hệ thống không hỗ trợ file capabilities, chúng ta không bao giờ có thể cấp capability `CAP_SETPCAP` cho một process. Điều này là hợp lý, vì capability đó có thể được sử dụng để phá hoại toàn bộ hệ thống kiểm tra đặc quyền của kernel. (Trong trường hợp hy hữu mà chúng ta muốn thay đổi giới hạn này, chúng ta phải tải một kernel module làm thay đổi giá trị trong tập hợp, sửa đổi mã nguồn của chương trình `init`, hoặc thay đổi việc khởi tạo capability bounding set trong mã nguồn kernel và tiến hành biên dịch lại kernel - kernel rebuild).
 
+> [!NOTE]
 > Gây bối rối ở chỗ, mặc dù là một bit mask (mặt nạ bit), giá trị trong tệp `cap-bound` toàn hệ thống lại được hiển thị dưới dạng một số nguyên có dấu (signed decimal number). Ví dụ, giá trị ban đầu của tệp này là –257. Đây là cách diễn giải bù 2 (two's complement) của bit mask với tất cả các bit ngoại trừ (1 << 8) được bật (tức là ở hệ nhị phân, `11111111 11111111 11111110 11111111`); `CAP_SETPCAP` có giá trị là 8.
 
 ### Sử dụng capabilities trong một chương trình trên hệ thống không hỗ trợ file capabilities
@@ -514,6 +521,7 @@ Chúng ta có thể thay thế hai bước trước đó bằng một bước du
 
 Một số ứng dụng được xây dựng cho Linux kernel trước phiên bản 2.6.24 đã áp dụng phương pháp này.
 
+> [!NOTE]
 > Trong số các nhà phát triển kernel phản đối việc triển khai capabilities cho các tệp thực thi, một trong những ưu điểm được nhìn nhận của phương pháp được mô tả trong phần chính là nhà phát triển ứng dụng biết rõ tệp thực thi đó yêu cầu những capability nào. Ngược lại, một quản trị viên hệ thống (system administrator) có thể không dễ dàng xác định được thông tin này.
 
 ## 39.11 Tóm tắt

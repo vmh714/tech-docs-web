@@ -1,4 +1,4 @@
-# Chương 10: Xử lý Ngắt (Interrupt Handling)
+# Chương 10: Xử lý ngắt (Interrupt Handling)
 
 Mặc dù một số thiết bị có thể được điều khiển mà không cần gì ngoài các vùng I/O của chúng, phần lớn các thiết bị thực tế lại phức tạp hơn thế một chút. Các thiết bị phải tương tác với thế giới bên ngoài, thường bao gồm các thành phần như đĩa quay, băng từ chuyển động, dây dẫn đến các khoảng cách xa, v.v. Rất nhiều việc phải được thực hiện trong một khung thời gian khác biệt và chậm hơn nhiều so với bộ vi xử lý (processor). Vì hầu như không bao giờ mong muốn để bộ xử lý phải chờ đợi các sự kiện bên ngoài, nên phải có một cơ chế để thiết bị thông báo cho bộ xử lý biết khi có sự kiện xảy ra.
 
@@ -28,13 +28,13 @@ Các đường ngắt là một tài nguyên quý giá và thường bị hạn 
 
 ```c
 int request_irq(unsigned int irq,
- irqreturn_t (*handler)(int, void *, struct pt_regs *),
- unsigned long flags,
+                irqreturn_t (*handler)(int, void *, struct pt_regs *),
+                unsigned long flags,
+                const char *dev_name,
+                void *dev_id);
+
+void free_irq(unsigned int irq, void *dev_id);
 ```
-
-const char \*dev\_name, void \*dev\_id);
-
-void free\_irq(unsigned int irq, void \*dev\_id);
 
 Giá trị trả về từ hàm *request\_irq* cho hàm gọi là 0 để biểu thị thành công hoặc một mã lỗi âm, như thông thường. Việc hàm trả về mã -EBUSY để ra hiệu rằng một driver khác đang sử dụng đường ngắt (interrupt line) được yêu cầu là điều không hiếm gặp. Các tham số của các hàm này như sau:
 
@@ -328,7 +328,7 @@ return IRQ_HANDLED;
 
 Các tham số truyền vào trình xử lý sẽ được mô tả sau. Việc biết rằng `irq` chính là ngắt đang được xử lý là đủ để hiểu hàm vừa được trình bày ở trên.
 
-### Bộ xử lý nhanh và chậm (Fast and Slow Handlers)
+### Trình xử lý nhanh và chậm (Fast and Slow Handlers)
 Các phiên bản Linux Kernel cũ hơn đã tốn rất nhiều công sức để phân biệt giữa ngắt "nhanh" (fast) và ngắt "chậm" (slow). Ngắt nhanh là những ngắt có thể được xử lý rất nhanh, trong khi việc xử lý ngắt chậm mất nhiều thời gian hơn đáng kể. Ngắt chậm có thể ngốn tài nguyên bộ xử lý (processor) đáng kể, và việc cho phép bật lại ngắt (reenable interrupts) trong khi chúng đang được xử lý là rất đáng giá. Nếu không, các tác vụ yêu cầu phản hồi nhanh có thể bị trì hoãn quá lâu.
 
 Trong các kernel hiện đại, phần lớn sự khác biệt giữa ngắt nhanh và ngắt chậm đã biến mất. Chỉ còn lại một điểm duy nhất: ngắt nhanh (những ngắt được yêu cầu với cờ `SA_INTERRUPT`) được thực thi khi tất cả các ngắt khác trên bộ xử lý hiện tại bị vô hiệu hóa (disabled). Lưu ý rằng các bộ xử lý khác vẫn có thể xử lý ngắt, mặc dù bạn sẽ không bao giờ thấy hai bộ xử lý cùng xử lý một IRQ tại cùng một thời điểm.
@@ -693,7 +693,7 @@ Các ngắt chia sẻ (shared interrupts) được cài đặt thông qua `reque
 - Cờ `SA_SHIRQ` phải được chỉ định trong tham số `flags` khi yêu cầu ngắt.
 - Tham số `dev_id` *phải* là duy nhất. Bất kỳ con trỏ nào trỏ vào không gian địa chỉ (address space) của mô-đun đều được, nhưng `dev_id` tuyệt đối không được đặt là `NULL`.
 
-Kernel duy trì một danh sách các trình xử lý chia sẻ được liên kết với ng chữ ngắt, và `dev_id` có thể được xem như chữ ký (signature) để phân biệt giữa chúng. Nếu hai trình điều khiển (driver) cùng đăng ký `NULL` làm chữ ký của chúng trên cùng một đường ngắt, mọi thứ có thể bị xáo trộn tại thời điểm gỡ bỏ (unload), khiến kernel bị lỗi (oops) khi có ngắt xảy ra. Vì lý do này, các kernel hiện đại sẽ đưa ra cảnh báo mạnh mẽ nếu được truyền một `dev_id` là `NULL` khi đăng ký ngắt chia sẻ. Khi một ngắt chia sẻ được yêu cầu, `request_irq` sẽ thành công nếu một trong các điều kiện sau được thỏa mãn:
+Kernel duy trì một danh sách các trình xử lý chia sẻ được liên kết với đường ngắt đó, và `dev_id` có thể được xem như chữ ký (signature) để phân biệt giữa chúng. Nếu hai trình điều khiển (driver) cùng đăng ký `NULL` làm chữ ký của chúng trên cùng một đường ngắt, mọi thứ có thể bị xáo trộn tại thời điểm gỡ bỏ (unload), khiến kernel bị lỗi (oops) khi có ngắt xảy ra. Vì lý do này, các kernel hiện đại sẽ đưa ra cảnh báo mạnh mẽ nếu được truyền một `dev_id` là `NULL` khi đăng ký ngắt chia sẻ. Khi một ngắt chia sẻ được yêu cầu, `request_irq` sẽ thành công nếu một trong các điều kiện sau được thỏa mãn:
 
 - Đường ngắt đang rảnh (free).
 - Tất cả các trình xử lý đã được đăng ký cho đường ngắt đó cũng đã chỉ định rằng IRQ này được phép chia sẻ.
@@ -741,7 +741,7 @@ Trình xử lý đặt lại bit bằng cách đưa bit cao của cổng dữ li
 
 Tất nhiên, một driver đầy đủ tính năng có thể chia công việc thành nửa trên (top half) và nửa dưới (bottom half), nhưng điều đó rất dễ bổ sung và không có bất kỳ ảnh hưởng nào đến mã nguồn triển khai tính năng chia sẻ. Một driver thực tế cũng có thể sẽ sử dụng đối số `dev_id` để xác định thiết bị nào trong số rất nhiều thiết bị có thể đang gây ra ngắt.
 
-Lưu ý rằng nếu bạn đang sử dụng máy in (thay vì dây nối tắt - jumper wire) để kiểm tra việc quản lý ngắt với *short*, trình xử lý chia sẻ này sẽ không hoạt động như quảng cáo, bởi vì giao thức máy in không cho phép chia sẻ và driver không thể biết được ngắt có xuất处 từ máy in hay không.
+Lưu ý rằng nếu bạn đang sử dụng máy in (thay vì dây nối tắt - jumper wire) để kiểm tra việc quản lý ngắt với *short*, trình xử lý chia sẻ này sẽ không hoạt động như mong đợi, bởi vì giao thức máy in không cho phép chia sẻ và driver không thể biết được ngắt có xuất phát từ máy in hay không.
 
 ### Giao diện /proc và Ngắt chia sẻ (The /proc Interface and Shared Interrupts)
 
@@ -782,7 +782,7 @@ Một cơ chế đệm (buffering mechanism) tốt dẫn đến *I/O điều khi
 Mối quan hệ thời gian giữa thao tác *read* hoặc *write* với thời điểm dữ liệu thực sự đến đã được giới thiệu trong phần "Các thao tác chặn và không chặn" (Blocking and Nonblocking Operations) ở Chương 6.
 
 ### Ví dụ về đệm đầu ra (Write-Buffering Example)
-Chúng ta đã nhắc đến trình điều khiển (driver) *shortprint* vài lần; bây giờ là lúc thực sự xem xét nó. Mô-đun này cài đặt một trình điều khiển rất đơn giản, hướng đầu ra cho cổng song song (parallel port); tuy nhiên, nó đủ để cho phép in các tệp tin. Dù vậy, nếu bạn chọn kiểm tra trình điều khiển này, hãy nhớ rằng bạn phải truyền cho máyพิมพ์ một tệp ở định dạng mà nó hiểu được; không phải máy in nào cũng phản hồi tốt khi nhận được một luồng dữ liệu tùy ý.
+Chúng ta đã nhắc đến trình điều khiển (driver) *shortprint* vài lần; bây giờ là lúc thực sự xem xét nó. Mô-đun này cài đặt một trình điều khiển rất đơn giản, hướng đầu ra cho cổng song song (parallel port); tuy nhiên, nó đủ để cho phép in các tệp tin. Dù vậy, nếu bạn chọn kiểm tra trình điều khiển này, hãy nhớ rằng bạn phải truyền cho máy in một tệp ở định dạng mà nó hiểu được; không phải máy in nào cũng phản hồi tốt khi nhận được một luồng dữ liệu tùy ý.
 
 Trình điều khiển *shortprint* duy trì một bộ đệm đầu ra vòng tròn (circular output buffer) có kích thước một trang (one-page). Khi một tiến trình ở không gian người dùng (user-space process) ghi dữ liệu vào thiết bị, dữ liệu đó được đưa vào bộ đệm, nhưng phương thức *write* không thực sự thực hiện bất kỳ thao tác I/O nào. Thay vào đó, phần cốt lõi của *shortp\_write* trông như sau:
 
@@ -957,7 +957,7 @@ Trình điều khiển *shortprint* không hỗ trợ việc đọc từ cổng;
 
 Các ký hiệu liên quan đến quản lý ngắt (interrupt management) được giới thiệu trong chương này:
 
-```
+```c
 ## include <linux/interrupt.h>
 int request_irq(unsigned int irq, irqreturn_t (*handler)( ), unsigned long
  flags, const char *dev_name, void *dev_id);
@@ -966,14 +966,14 @@ void free_irq(unsigned int irq, void *dev_id);
 
 Các hàm dùng để đăng ký (register) và hủy đăng ký (unregister) một trình xử lý ngắt (interrupt handler).
 
-```
-## include <linux/irq.h.h>
+```c
+## include <linux/irq.h>
 int can_request_irq(unsigned int irq, unsigned long flags);
 ```
 
-Hàm này, có sẵn trên các kiến trúc i386 và x86\_64, trả về một giá trị khác không nếu việc cố gắng cấp phát đường ngắt (interrupt line) chỉ định thành công.
+Hàm này, có sẵn trên các kiến trúc i386 và x86_64, trả về một giá trị khác không nếu việc cố gắng cấp phát đường ngắt (interrupt line) chỉ định thành công.
 
-```
+```c
 ## include <asm/signal.h>
 SA_INTERRUPT
 SA_SHIRQ

@@ -1,4 +1,4 @@
-# Chương 11. Universal Serial Bus (Bus Nối tiếp Đa năng)
+# Chương 11: Bus nối tiếp vạn năng (USB - Universal Serial Bus)
 
 | Trong chương này                 |     |
 |-----------------------------------|-----|
@@ -675,7 +675,7 @@ tele_disconnect(struct usb_interface *interface)
 
 ## Truy cập các thanh ghi (Accessing Registers)
 
-Phương thức `open()` khởi initializes (khởi tạo) thanh ghi cấu hình telemetry (đo từ xa) trên thẻ khi một ứng dụng mở */dev/tele*. Để thiết lập nội dung của thanh ghi này, `tele_open()` gửi (submits) một control URB được đính kèm vào default endpoint 0 (endpoint mặc định 0). Khi bạn gửi một control URB, bạn phải cung cấp một control request (yêu cầu điều khiển) đi kèm. Cấu trúc dùng để gửi một control request tới thiết bị USB phải tuân thủ Chương 9 của đặc tả USB và được định nghĩa như sau trong *include/linux/usb/ch9.h*:
+Phương thức `open()` khởi tạo thanh ghi cấu hình đo từ xa (telemetry) trên thẻ khi một ứng dụng mở */dev/tele*. Để thiết lập nội dung của thanh ghi này, `tele_open()` gửi (submits) một control URB được đính kèm vào default endpoint 0 (endpoint mặc định 0). Khi bạn gửi một control URB, bạn phải cung cấp một control request (yêu cầu điều khiển) đi kèm. Cấu trúc dùng để gửi một control request tới thiết bị USB phải tuân thủ Chương 9 của đặc tả USB và được định nghĩa như sau trong *include/linux/usb/ch9.h*:
 
 ```c
 struct usb_ctrlrequest {
@@ -690,7 +690,7 @@ struct usb_ctrlrequest {
 } __attribute__ ((packed));
 ```
 
-Hãy cùng xem xét các thành phần cấu thành nên một `usb_ctrlrequest`. Trưởng `bRequest` xác định yêu cầu điều khiển (control request). Trường `bRequestType` bổ nghĩa cho yêu cầu bằng cách mã hóa hướng truyền dữ liệu (data transfer direction), phân loại yêu cầu (request category), và xác định xem đối tượng nhận là thiết bị (device), giao diện (interface), endpoint, hay một đối tượng khác. `bRequest` có thể thuộc về một tập hợp các giá trị chuẩn hoặc do nhà vendor-defined (nhà cung cấp định nghĩa). Trong ví dụ của chúng ta, `bRequest` dùng để ghi vào thanh ghi cấu hình telemetry là một yêu cầu do nhà cung cấp định nghĩa. `wValue` chứa dữ liệu cần ghi vào thanh ghi, `wIndex` là offset (độ lệch) mong muốn trong không gian thanh ghi (register space), và `wLength` là số byte sẽ được truyền.
+Hãy cùng xem xét các thành phần cấu thành nên một `usb_ctrlrequest`. Trưởng `bRequest` xác định yêu cầu điều khiển (control request). Trường `bRequestType` bổ nghĩa cho yêu cầu bằng cách mã hóa hướng truyền dữ liệu (data transfer direction), phân loại yêu cầu (request category), và xác định xem đối tượng nhận là thiết bị (device), giao diện (interface), endpoint, hay một đối tượng khác. `bRequest` có thể thuộc về một tập hợp các giá trị chuẩn hoặc do nhà cung cấp định nghĩa (vendor-defined). Trong ví dụ của chúng ta, `bRequest` dùng để ghi vào thanh ghi cấu hình telemetry là một yêu cầu do nhà cung cấp định nghĩa. `wValue` chứa dữ liệu cần ghi vào thanh ghi, `wIndex` là offset (độ lệch) mong muốn trong không gian thanh ghi (register space), và `wLength` là số byte sẽ được truyền.
 
 Liệt kê (Listing) 11.4 thực thi hàm `tele_open()`. Nhiệm vụ chính của nó là cấu hình (program) thanh ghi cấu hình telemetry với các giá trị phù hợp. Trước khi xem xét đoạn mã, hãy xem lại cấu trúc `tele_device_t` được định nghĩa trong Liệt kê 11.3 và tập trung vào hai trường: `ctrl_urb` và `ctrl_req`. Trường đầu tiên là một control URB dùng để giao tiếp với thanh ghi cấu hình, trong khi trường thứ hai là `usb_ctrlrequest` tương ứng.
 
@@ -717,80 +717,85 @@ Liệt kê (Listing) 11.4 thực thi hàm `tele_open()`. Nhiệm vụ chính c�
  configuration register */
 ```
 
-```
 ## define TELEMETRY_REQUEST_WRITE 0x0D
+
 /* The vendor-defined bRequestType */
+
 ## define TELEMETRY_REQUEST_WRITE_REGISTER 0x0E
+
 /* Open method */
 static int
 tele_open(struct inode *inode, struct file *file)
 {
- struct completion tele_config_done;
- tele_device_t *tele_device;
- void *tele_ctrl_context;
- char *tmp;
- __le16 tele_config_index = TELEMETRY_CONFIG_REG_OFFSET;
- unsigned int tele_ctrl_pipe;
- struct usb_interface *interface;
- /* Obtain the pointer to the device-specific structure.
- We saved it using usb_set_intfdata() in tele_probe() */
- interface = usb_find_interface(&tele_driver, iminor(inode));
- tele_device = usb_get_intfdata(interface);
- /* Allocate a URB for the control transfer */
- tele_device->ctrl_urb = usb_alloc_urb(0, GFP_KERNEL);
- if (!tele_device->ctrl_urb) {
- return -EIO;
- }
- /* Populate the Control Request */
- tele_device->ctrl_req.bRequestType = TELEMETRY_REQUEST_WRITE;
- tele_device->ctrl_req.bRequest =
- TELEMETRY_REQUEST_WRITE_REGISTER;
- tele_device->ctrl_req.wValue =
- cpu_to_le16(TELEMETRY_CONFIG_REG_VALUE);
- tele_device->ctrl_req.wIndex =
- cpu_to_le16p(&tele_config_index);
- tele_device->ctrl_req.wLength = cpu_to_le16(1);
- tele_device->ctrl_urb->transfer_buffer_length = 1;
- tmp = kmalloc(1, GFP_KERNEL);
- *tmp = TELEMETRY_CONFIG_REG_VALUE;
- /* Create a control pipe attached to endpoint 0 */
- tele_ctrl_pipe = usb_sndctrlpipe(tele_device->usbdev, 0);
- /* Initialize the completion mechanism */
- init_completion(&tele_config_done);
- /* Set URB context. The context is part of the URB that is passed
- to the callback function as an argument. In this case, the
- context is the completion structure, tele_config_done */
- tele_ctrl_context = (void *)&tele_config_done;
- /* Initialize the fields in the control URB */
- usb_fill_control_urb(tele_device->ctrl_urb, tele_device->usbdev,
- tele_ctrl_pipe,
- (char *) &tele_device->ctrl_req,
- tmp, 1, tele_ctrl_callback,
- tele_ctrl_context);
- /* Submit the URB */
+struct completion tele_config_done;
+tele_device_t *tele_device;
+void *tele_ctrl_context;
+char *tmp;
+__le16 tele_config_index = TELEMETRY_CONFIG_REG_OFFSET;
+unsigned int tele_ctrl_pipe;
+struct usb_interface *interface;
+/* Obtain the pointer to the device-specific structure.
+We saved it using usb_set_intfdata() in tele_probe() */
+interface = usb_find_interface(&tele_driver, iminor(inode));
+tele_device = usb_get_intfdata(interface);
+/* Allocate a URB for the control transfer */
+tele_device->ctrl_urb = usb_alloc_urb(0, GFP_KERNEL);
+if (!tele_device->ctrl_urb) {
+return -EIO;
+}
+/* Populate the Control Request */
+tele_device->ctrl_req.bRequestType = TELEMETRY_REQUEST_WRITE;
+tele_device->ctrl_req.bRequest =
+TELEMETRY_REQUEST_WRITE_REGISTER;
+tele_device->ctrl_req.wValue =
+cpu_to_le16(TELEMETRY_CONFIG_REG_VALUE);
+tele_device->ctrl_req.wIndex =
+cpu_to_le16p(&tele_config_index);
+tele_device->ctrl_req.wLength = cpu_to_le16(1);
+tele_device->ctrl_urb->transfer_buffer_length = 1;
+tmp = kmalloc(1, GFP_KERNEL);
+*tmp = TELEMETRY_CONFIG_REG_VALUE;
+/* Create a control pipe attached to endpoint 0 */
+tele_ctrl_pipe = usb_sndctrlpipe(tele_device->usbdev, 0);
+/* Initialize the completion mechanism */
+init_completion(&tele_config_done);
+/* Set URB context. The context is part of the URB that is passed
+to the callback function as an argument. In this case, the
+context is the completion structure, tele_config_done */
+tele_ctrl_context = (void *)&tele_config_done;
+/* Initialize the fields in the control URB */
+usb_fill_control_urb(tele_device->ctrl_urb, tele_device->usbdev,
+tele_ctrl_pipe,
+(char *) &tele_device->ctrl_req,
+tmp, 1, tele_ctrl_callback,
+tele_ctrl_context);
+/* Submit the URB */
+
 ```
 
 ```
- usb_submit_urb(tele_device->ctrl_urb, GFP_ATOMIC);
- /* Wait until the callback returns indicating that the telemetry
- configuration register has been successfully initialized */
- wait_for_completion(&tele_config_done);
- /* Release our reference to the URB */
- usb_free_urb(urb);
- kfree(tmp);
- /* Save the device-specific object to the file's private_data
- so that you can directly retrieve it from other entry points
- such as tele_read() and tele_write() */
- file->private_data = tele_device;
- /* Return the URB transfer status */
- return(tele_device->ctrl_urb->status);
+
+usb_submit_urb(tele_device->ctrl_urb, GFP_ATOMIC);
+/* Wait until the callback returns indicating that the telemetry
+configuration register has been successfully initialized */
+wait_for_completion(&tele_config_done);
+/* Release our reference to the URB */
+usb_free_urb(urb);
+kfree(tmp);
+/* Save the device-specific object to the file's private_data
+so that you can directly retrieve it from other entry points
+such as tele_read() and tele_write() */
+file->private_data = tele_device;
+/* Return the URB transfer status */
+return(tele_device->ctrl_urb->status);
 }
 /* Callback function */
 static void
 tele_ctrl_callback(struct urb *urb)
 {
- complete((struct completion *)urb->context);
+complete((struct completion *)urb->context);
 }
+
 ```
 
 Bạn có thể làm cho hàm `tele_open()` trở nên đơn giản hơn bằng cách sử dụng `usb_control_msg()`, một phiên bản chặn (blocking version) của `usb_submit_urb()` có tác dụng ẩn đi các chi tiết về đồng bộ hóa (synchronization) và hàm gọi lại (callback) cho các control URB (USB Request Block) ở mức bên dưới. Chúng ta ưu tiên cách tiếp cận bất đồng bộ (asynchronous approach) ở đây nhằm mục đích học tập.
@@ -804,101 +809,107 @@ Vì các tệp truyền bất đồng bộ luôn đi kèm với một hàm gọi
 ### Đoạn mã 11.5. Trao đổi dữ liệu với Thẻ Telemetry
 
 ```c
+
 /* Read entry point */
 static ssize_t
 tele_read(struct file *file, char *buffer,
- size_t count, loff_t *ppos)
+size_t count, loff_t *ppos)
 {
+
 ```
 
 ```c
- int retval, bytes_read;
- tele_device_t *tele_device;
- /* Get the address of tele_device */
- tele_device = (tele_device_t *)file->private_data;
- /* ... */
- /* Synchronous read */
- retval = usb_bulk_msg(tele_device->usbdev, /* usb_device */
- usb_rcvbulkpipe(tele_device->usbdev,
- tele_device->bulk_in_addr), /* Pipe */
- tele_device->bulk_in_buf, /* Read buffer */
- min(tele_device->bulk_in_len, count), /* Bytes to read */
- &bytes_read, /* Bytes read */
- 5000); /* Timeout in 5 sec */
- /* Copy telemetry data to user space */
- if (!retval) {
- if (copy_to_user(buffer, tele_device->bulk_in_buf,
- bytes_read)) {
- return -EFAULT;
- } else {
- return bytes_read;
- }
- }
- return retval;
+
+int retval, bytes_read;
+tele_device_t *tele_device;
+/* Get the address of tele_device */
+tele_device = (tele_device_t *)file->private_data;
+/* ... */
+/* Synchronous read */
+retval = usb_bulk_msg(tele_device->usbdev, /* usb_device */
+usb_rcvbulkpipe(tele_device->usbdev,
+tele_device->bulk_in_addr), /* Pipe */
+tele_device->bulk_in_buf, /* Read buffer */
+min(tele_device->bulk_in_len, count), /* Bytes to read */
+&bytes_read, /* Bytes read */
+5000); /* Timeout in 5 sec */
+/* Copy telemetry data to user space */
+if (!retval) {
+if (copy_to_user(buffer, tele_device->bulk_in_buf,
+bytes_read)) {
+return -EFAULT;
+} else {
+return bytes_read;
+}
+}
+return retval;
 }
 /* Write entry point */
 static ssize_t
 tele_write(struct file *file, const char *buffer,
- size_t write_count, loff_t *ppos)
+size_t write_count, loff_t *ppos)
 {
- char *tele_buf = NULL;
- struct urb *urb = NULL;
- tele_device_t *tele_device;
- /* Get the address of tele_device */
- tele_device = (tele_device_t *)file->private_data;
- /* ... */
- /* Allocate a bulk URB */
- urb = usb_alloc_urb(0, GFP_KERNEL);
- if (!urb) {
- return -ENOMEM;
- }
- /* Allocate a DMA-consistent transfer buffer and copy in
- data from user space. On return, tele_buf contains
- the buffer's CPU address, while urb->transfer_dma
- contains the DMA address */
- tele_buf = usb_buffer_alloc(tele_dev->usbdev, write_count,
- GFP_KERNEL, &urb->transfer_dma);
- if (copy_from_user(tele_buf, buffer, write_count)) {
- usb_buffer_free(tele_device->usbdev, write_count,
- tele_buf, urb->transfer_dma);
- usb_free_urb(urb);
+char *tele_buf = NULL;
+struct urb *urb = NULL;
+tele_device_t *tele_device;
+/* Get the address of tele_device */
+tele_device = (tele_device_t *)file->private_data;
+/* ... */
+/* Allocate a bulk URB */
+urb = usb_alloc_urb(0, GFP_KERNEL);
+if (!urb) {
+return -ENOMEM;
+}
+/* Allocate a DMA-consistent transfer buffer and copy in
+data from user space. On return, tele_buf contains
+the buffer's CPU address, while urb->transfer_dma
+contains the DMA address */
+tele_buf = usb_buffer_alloc(tele_dev->usbdev, write_count,
+GFP_KERNEL, &urb->transfer_dma);
+if (copy_from_user(tele_buf, buffer, write_count)) {
+usb_buffer_free(tele_device->usbdev, write_count,
+tele_buf, urb->transfer_dma);
+usb_free_urb(urb);
+
 ```
 
 ```c
- return -EFAULT
- }
- /* Populate bulk URB fields */
- usb_fill_bulk_urb(urb, tele_device->usbdev,
- usb_sndbulkpipe(tele_device->usbdev,
- tele_device->bulk_out_addr),
- tele_buf, write_count, tele_write_callback,
- tele_device);
- /* urb->transfer_dma is valid, so preferably utilize
- that for data transfer */
- urb->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
- /* Submit URB asynchronously */
- usb_submit_urb(urb, GFP_KERNEL);
- /* Release URB reference */
- usb_free_urb(urb);
- return(write_count);
+
+return -EFAULT
+}
+/* Populate bulk URB fields */
+usb_fill_bulk_urb(urb, tele_device->usbdev,
+usb_sndbulkpipe(tele_device->usbdev,
+tele_device->bulk_out_addr),
+tele_buf, write_count, tele_write_callback,
+tele_device);
+/* urb->transfer_dma is valid, so preferably utilize
+that for data transfer */
+urb->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
+/* Submit URB asynchronously */
+usb_submit_urb(urb, GFP_KERNEL);
+/* Release URB reference */
+usb_free_urb(urb);
+return(write_count);
 }
 /* Write callback */
 static void
 tele_write_callback(struct urb *urb)
 {
- tele_device_t *tele_device;
- /* Get the address of tele_device */
- tele_device = (tele_device_t *)urb->context;
- /* urb->status contains the submission status. It's 0 if
- successful. Resubmit the URB in case of errors other than
- -ENOENT, -ECONNRESET, and -ESHUTDOWN */
- /* ... */
- /* Free the transfer buffer. usb_buffer_free() is the
- release-counterpart of usb_buffer_alloc() called
- from tele_write() */
- usb_buffer_free(urb->dev, urb->transfer_buffer_length,
- urb->transfer_buffer, urb->transfer_dma);
+tele_device_t *tele_device;
+/* Get the address of tele_device */
+tele_device = (tele_device_t *)urb->context;
+/* urb->status contains the submission status. It's 0 if
+successful. Resubmit the URB in case of errors other than
+-ENOENT, -ECONNRESET, and -ESHUTDOWN */
+/* ... */
+/* Free the transfer buffer. usb_buffer_free() is the
+release-counterpart of usb_buffer_alloc() called
+from tele_write() */
+usb_buffer_free(urb->dev, urb->transfer_buffer_length,
+urb->transfer_buffer, urb->transfer_dma);
 }
+
 ```
 
 ## Trình điều khiển theo lớp (Class Drivers)
@@ -911,7 +922,7 @@ Hãy cùng xem xét một số class driver quan trọng.
 
 ## Thiết bị lưu trữ dung lượng lớn (Mass Storage)
 
-Trong thuật ngữ USB, thiết bị lưu trữ dung lượng lớn (mass storage) đề cập đến các ổ cứng USB, ổ đĩa flash (pen drive), ổ CD-ROM, ổ đĩa mềm và các thiết bị lưu trữ tương tự. Các thiết bị lưu trữ dung lượng lớn qua USB tuân thủ theo giao thức *Small Computer System Interface* (SCSI) để giao tiếp với hệ thống máy chủ (host system). Do đó, quyền truy cập khối (block access) vào các thiết bị lưu trữ USB được địnhเส้น dẫn (route) thông qua phân hệ SCSI (SCSI subsystem) của kernel. Hình 11.4 cung cấp cho bạn một cái nhìn tổng quan về sự tương tác giữa lưu trữ USB và các phân hệ SCSI. Như được minh họa trong hình, phân hệ SCSI được kiến trúc thành ba tầng:
+Trong thuật ngữ USB, thiết bị lưu trữ dung lượng lớn (mass storage) đề cập đến các ổ cứng USB, ổ đĩa flash (pen drive), ổ CD-ROM, ổ đĩa mềm và các thiết bị lưu trữ tương tự. Các thiết bị lưu trữ dung lượng lớn qua USB tuân thủ theo giao thức *Small Computer System Interface* (SCSI) để giao tiếp với hệ thống máy chủ (host system). Do đó, quyền truy cập khối (block access) vào các thiết bị lưu trữ USB được định tuyến (routed) thông qua hệ thống con SCSI (SCSI subsystem) của kernel. Hình 11.4 cung cấp cho bạn một cái nhìn tổng quan về sự tương tác giữa lưu trữ USB và các phân hệ SCSI. Như được minh họa trong hình, phân hệ SCSI được kiến trúc thành ba tầng:
 
 - **1.** Các trình điều khiển tầng trên (top-level drivers) dành cho các thiết bị như đĩa cứng (*sd.c*) và ổ CD-ROM (*sr.c*)
 - **2.** Tầng trung gian (middle-level layer) có nhiệm vụ quét bus, cấu hình thiết bị và liên kết các trình điều khiển tầng trên với các trình điều khiển tầng dưới
@@ -922,49 +933,58 @@ Trong thuật ngữ USB, thiết bị lưu trữ dung lượng lớn (mass stora
 [Xem hình kích thước đầy đủ]
 
 ```
-                        User Space
+
+User Space
 -----------------------------------------------------------------
-           "mount /dev/sda1 /mnt"
-                         |
-                         v
-                    /dev/sd*, /dev/sr*
-                         ^
-                         |
-                         v
+"mount /dev/sda1 /mnt"
+
+|
+v
+/dev/sd*, /dev/sr*
+^
+
+|
+v
 +---------------------------------------------------------------+
 |          Disk (sd), CDROM (sr) drivers                        |--> Upper-level SCSI
 +---------------------------------------------------------------+
-                         ^
-                         |
-                         v
+^
+
+|
+v
 +---------------------------------------------------------------+
 |          Scan, Configure, Glue logic                          |--> Mid-level SCSI
 +---------------------------------------------------------------+
-                         ^
-                         |
-                 SCSI Command Queue
-                         |
-                         v
+^
 
-          ---------------- Mass Storage Driver -------------
-          |                                                |
-          |   [ USB Mass Storage                           |
-          |     Virtual SCSI Adapter ]  --> Low-level SCSI |
-          |            ^        |          Adapter Driver  |
-          |            |        |                          |
-          |            |        |                          |
-          |            |        v                          |
-          |        [ Transport Layer ]                     |<------> [ USB Core ] 
-          |                                                |
-          --------------------------------------------------
-                         ^
-                         |
-                        URBs
-                         v
+|
+SCSI Command Queue
+
+|
+v
+
+---------------- Mass Storage Driver -------------
+
+|                                                |
+|   [ USB Mass Storage                           |
+|     Virtual SCSI Adapter ]  --> Low-level SCSI |
+|            ^        |          Adapter Driver  |
+|            |        |                          |
+|            |        |                          |
+|            |        v                          |
+|        [ Transport Layer ]                     |<------> [ USB Core ]
+|                                                |
+--------------------------------------------------
+^
+
+|
+URBs
+v
 -----------------------------------------------------------------
-                        Kernel Space / Hardware
+Kernel Space / Hardware
 -----------------------------------------------------------------
-                      [ USB Storage Device ]
+[ USB Storage Device ]
+
 ```
 
 Trình điều khiển lưu trữ dung lượng lớn (mass storage driver) tự đăng ký như một bộ điều hợp SCSI ảo (virtual SCSI adapter). Bộ điều hợp ảo này giao tiếp hướng lên (upstream) thông qua các lệnh SCSI và hướng xuống (downstream) bằng cách sử dụng các URB (USB Request Block). Một đĩa USB xuất hiện đối với các tầng cao hơn như một thiết bị SCSI được gắn vào bộ điều hợp ảo này.
@@ -974,98 +994,113 @@ Trình điều khiển lưu trữ dung lượng lớn (mass storage driver) tự
 ### Liệt kê 11.6. Thêm Tên** */dev* **của ổ đĩa vào usbfs
 
 ```
+
 include/scsi/scsi_host.h:
 struct Scsi_Host {
- /* ... */
- void *shost_data;
-+ char snam[8]; /* /dev node name for this disk */
- /* ... */
+/* ... */
+void *shost_data;
+
+- char snam[8]; /* /dev node name for this disk */
+/* ... */
 };
 drivers/usb/storage/usb.h:
 struct us_data {
- /* ... */
-+ char magic[4];
+/* ... */
+
+- char magic[4];
 };
 include/linux/usb.h:
 struct usb_interface {
- /* ... */
-+ void *private_data;
+/* ... */
+
+- void *private_data;
 };
 drivers/usb/storage/usb.c:
 static int storage_probe(struct usb_interface *intf,
- const struct usb_device_id *id)
+const struct usb_device_id *id)
 {
- /* ... */
- memset(us, 0, sizeof(struct us_data));
-+ intf->private_data = (void *) us;
-+ strncpy(us->magic, "disk", 4);
- mutex_init(&(us->dev_mutex));
- /* ... */
+/* ... */
+memset(us, 0, sizeof(struct us_data));
+
+- intf->private_data = (void *) us;
+- strncpy(us->magic, "disk", 4);
+mutex_init(&(us->dev_mutex));
+/* ... */
 }
 drivers/scsi/sd.c:
 static int sd_probe(struct device *dev)
 {
- /* ... */
- add_disk(gd);
-+ memset(sdp->host->snam,0, sizeof(sdp->host->snam));
-+ strncpy(sdp->host->snam, gd->disk_name, 3);
- sdev_printk(KERN_NOTICE, sdp, "Attached scsi %sdisk %s\n",
- sdp->removable ? "removable " : "", gd->disk_name);
- /* ... */
+/* ... */
+add_disk(gd);
+
+- memset(sdp->host->snam,0, sizeof(sdp->host->snam));
+- strncpy(sdp->host->snam, gd->disk_name, 3);
+sdev_printk(KERN_NOTICE, sdp, "Attached scsi %sdisk %s\n",
+sdp->removable ? "removable " : "", gd->disk_name);
+/* ... */
 }
 drivers/scsi/sr.c:
 static int sr_probe(struct device *dev)
 {
+
 ```
 
 ```
- /* ... */
- add_disk(disk);
-+ memset(sdev->host->snam,0, sizeof(sdev->host->snam));
-+ strncpy(sdev->host->snam, cd->cdi.name, 3);
- sdev_printk(KERN_DEBUG, sdev, "Attached scsi CD-ROM %s\n",
- cd->cdi.name);
- /* ... */
+
+/* ... */
+add_disk(disk);
+
+- memset(sdev->host->snam,0, sizeof(sdev->host->snam));
+- strncpy(sdev->host->snam, cd->cdi.name, 3);
+sdev_printk(KERN_DEBUG, sdev, "Attached scsi CD-ROM %s\n",
+cd->cdi.name);
+/* ... */
 }
 drivers/usb/core/devices.c:
- /* ... */
+/* ... */
+
 ## include <asm/uaccess.h>
-+ #include <scsi/scsi_host.h>
-+ #include "../storage/usb.h"
+
+- #include <scsi/scsi_host.h>
+- #include "../storage/usb.h"
 static ssize_t usb_device_dump(char __user **buffer, size_t *nbytes,
- loff_t *skip_bytes, loff_t *file_offset,
- struct usb_device *usbdev,
- struct usb_bus *bus, int level,
- int index, int count)
+loff_t *skip_bytes, loff_t *file_offset,
+struct usb_device *usbdev,
+struct usb_bus *bus, int level,
+int index, int count)
 {
- /* ... */
- ssize_t total_written = 0;
-+ struct us_data *us_d;
-+ struct Scsi_Host *s_h;
- /* ... */
- data_end = pages_start + sprintf(pages_start, format_topo,
- bus->busnum, level,
- parent_devnum,
- index, count, usbdev->devnum,
- speed, usbdev->maxchild);
-+ /* Assume this device supports only one interface */
-+ us_d = (struct us_data *)
-+ (usbdev->actconfig->interface[0]->private_data);
+/* ... */
+ssize_t total_written = 0;
+
+- struct us_data *us_d;
+- struct Scsi_Host *s_h;
+/* ... */
+data_end = pages_start + sprintf(pages_start, format_topo,
+bus->busnum, level,
+parent_devnum,
+index, count, usbdev->devnum,
+speed, usbdev->maxchild);
+
+- /* Assume this device supports only one interface */
+- us_d = (struct us_data *)
+- (usbdev->actconfig->interface[0]->private_data);
 +
-+ if ((us_d) && (!strncmp(us_d->magic, "disk", 4))) {
-+ s_h = (struct Scsi_Host *) container_of((void *)us_d,
-+ struct Scsi_Host,
-+ hostdata);
-+ data_end += sprintf(data_end, "N: ");
-+ data_end += sprintf(data_end, "Device=%.100s",s_h->snam);
-+ if (!strncmp(s_h->snam, "sr", 2)) {
-+ data_end += sprintf(data_end, " (CDROM)\n");
-+ } else if (!strncmp(s_h->snam, "sd", 2)) {
-+ data_end += sprintf(data_end, " (Disk)\n");
-+ }
-+ }
- /* ... */
+
+- if ((us_d) && (!strncmp(us_d->magic, "disk", 4))) {
+- s_h = (struct Scsi_Host *) container_of((void *)us_d,
+- struct Scsi_Host,
+- hostdata);
+- data_end += sprintf(data_end, "N: ");
+- data_end += sprintf(data_end, "Device=%.100s",s_h->snam);
+- if (!strncmp(s_h->snam, "sr", 2)) {
+- data_end += sprintf(data_end, " (CDROM)\n");
+- } else if (!strncmp(s_h->snam, "sd", 2)) {
+- data_end += sprintf(data_end, " (Disk)\n");
+- }
+- }
+/* ... */
 }
+
 ```
 
 Để hiểu rõ Liệt kê 11.6, trước tiên chúng ta hãy Lần vết (trace) luồng mã nguồn, tiếp tục từ phần chúng ta đã dừng lại ở mục "Đánh số thiết bị" (Enumeration). Trong phần đó, chúng ta đã cắm một thiết bị USB pen drive và theo dõi chuỗi thực thi cho đến khi hàm `storage_probe()` được gọi, đây là phương thức `probe()` của driver lưu trữ dung lượng lớn (mass storage driver). Tiến xa hơn nữa:
@@ -1087,6 +1122,7 @@ Dưới đây là kết quả đầu ra của */proc/bus/usb/devices* sau khi t�
 ### bash> cat /proc/bus/usb/devices
 
 ```
+
 ...
 T: Bus=04 Lev=02 Prnt=02 Port=00 Cnt=01 Dev#= 3 Spd=480 MxCh= 0
 N: Device=sda(Disk)
@@ -1097,7 +1133,7 @@ S: Product=USB 2.0 FD
 S: SerialNumber=6E5C07005B4F
 C:* #Ifs= 1 Cfg#= 1 Atr=80 MxPwr= 0mA
 I:* If#= 0 Alt= 0 #EPs= 2 Cls=08(stor.) Sub=06 Prot=50 Driver=usb-
- storage
+storage
 E: Ad=81(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
 E: Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
 T: Bus=04 Lev=02 Prnt=02 Port=01 Cnt=02 Dev#= 5 Spd=480 MxCh= 0
@@ -1105,14 +1141,16 @@ N: Device=sr0(CDROM)
 D: Ver= 2.00 Cls=00(>ifc ) Sub=00 Prot=00 MxPS=64 #Cfgs= 1
 P: Vendor=0bf6 ProdID=a002 Rev= 3.00
 S: Manufacturer=Addonics
+
 ```
 
 ```
+
 S: Product=USB to IDE Cable
 S: SerialNumber=1301011002A9AFA9
 C:* #Ifs= 1 Cfg#= 2 Atr=c0 MxPwr= 98mA
 I:* If#= 0 Alt= 0 #EPs= 3 Cls=08(stor.) Sub=06 Prot=50 Driver=usb-
- storage
+storage
 E: Ad=01(O) Atr=02(Bulk) MxPS= 512 Ivl=125us
 E: Ad=82(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
 E: Ad=83(I) Atr=03(Int.) MxPS= 2 Ivl=32ms
@@ -1125,10 +1163,11 @@ S: Product=USB Mass Storage
 S: SerialNumber=000000062459
 C:* #Ifs= 1 Cfg#= 1 Atr=c0 MxPwr= 0mA
 I:* If#= 0 Alt= 0 #EPs= 2 Cls=08(stor.) Sub=06 Prot=50 Driver=usb-
- storage
+storage
 E: Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
 E: Ad=88(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
 ...
+
 ```
 
 Như bạn có thể thấy, hệ thống con SCSI (SCSI subsystem) đã phân bổ *sda* cho ổ flash, *sr0* cho ổ CD-ROM, và *sdb* cho ổ cứng. Các ứng dụng không gian người dùng (user-space applications) thao tác trên các node này để giao tiếp với các thiết bị tương ứng. Tuy nhiên, như bạn đã thấy ở Chương 4, với sự xuất hiện của `udev`, bạn có tùy chọn tạo ra các lớp trừu tượng (abstraction) cấp cao hơn để nhận diện từng thiết bị mà không cần phụ thuộc vào định danh của các tên */dev* do hệ thống con SCSI cấp phát.
@@ -1144,25 +1183,30 @@ Trong Chương 6, "Trình điều khiển Serial" (Serial Drivers), bạn đã t
 [Xem hình kích thước đầy đủ]
 
 ```
-               Ứng dụng Người dùng (Giao diện System Call)
+
+Ứng dụng Người dùng (Giao diện System Call)
 -----------------------------------------------------------------
 
-                  [ N_TTY (n_tty.c) ]   -----------> [ Trình điều khiển Bộ chuyển đổi USB-Serial ]  <---- [ Bộ chuyển đổi USB-Serial ]
-                            ^                                   |             |
-                            |       Lớp Line Discipline         v             |
-                            |                             [ usb_serial.c ]    |
-                     [ serial_core.c ]                                        |
-                            ^                                                 |
-                            |           Lớp TTY                               |
-                            |                                                 |
-                        [ 8250.c ]                                            |
-                            ^                                                 v
-                            |        Trình điều khiển Cấp thấp                [USB Core]
-                            |
-                   [ UART loại 16550 ]
-                            ^
-                            |
-                     Lớp Vật lý
+[ N_TTY (n_tty.c) ]   -----------> [ Trình điều khiển Bộ chuyển đổi USB-Serial ]  <---- [ Bộ chuyển đổi USB-Serial ]
+^                                   |             |
+
+|       Lớp Line Discipline         v             |
+|                             [ usb_serial.c ]    |
+[ serial_core.c ]                                        |
+^                                                 |
+
+|           Lớp TTY                               |
+|                                                 |
+[ 8250.c ]                                            |
+^                                                 v
+|        Trình điều khiển Cấp thấp                [USB Core]
+|
+[ UART loại 16550 ]
+^
+
+|
+Lớp Vật lý
+
 ```
 
 Một trình điều khiển USB-serial cũng tương tự như các trình điều khiển client USB khác, ngoại trừ việc nó tận dụng các dịch vụ của một USB-Serial core (lõi USB-Serial) bên cạnh USB core. USB-Serial core cung cấp các tính năng sau:
@@ -1182,48 +1226,50 @@ Liệt kê 11.7 chứa các đoạn mã nguồn từ FTDI driver (*drivers/usb/s
 **Liệt kê 11.7. Một đoạn mã từ FTDI Driver**
 
 ```
+
 /* Cấu trúc usb_driver */
 static struct usb_driver ftdi_driver = {
- .name = "ftdi_sio", /* Tên */
- .probe = usb_serial_probe, /* Được cung cấp bởi
- USB-Serial core */
- .disconnect = usb_serial_disconnect,/* Được cung cấp bởi
- USB-Serial core */
- .id_table = id_table_combined, /* Danh sách các thiết bị được hỗ trợ
- xây dựng
- quanh chip FTDI */
- .no_dynamic_id = 1, /* ID được hỗ trợ không thể được
- thêm một cách động */
+.name = "ftdi_sio", /* Tên */
+.probe = usb_serial_probe, /* Được cung cấp bởi
+USB-Serial core */
+.disconnect = usb_serial_disconnect,/* Được cung cấp bởi
+USB-Serial core */
+.id_table = id_table_combined, /* Danh sách các thiết bị được hỗ trợ
+xây dựng
+quanh chip FTDI */
+.no_dynamic_id = 1, /* ID được hỗ trợ không thể được
+thêm một cách động */
 };
 /* Cấu trúc usb_serial_driver */
 static struct usb_serial_driver ftdi_sio_device = {
- /* ... */
- .num_ports = 1,
- .probe = ftdi_sio_probe,
- .port_probe = ftdi_sio_port_probe,
- .port_remove = ftdi_sio_port_remove,
- .open = ftdi_open,
- .close = ftdi_close,
- .throttle = ftdi_throttle,
- .unthrottle = ftdi_unthrottle,
- .write = ftdi_write,
- .write_room = ftdi_write_room,
- .chars_in_buffer = ftdi_chars_in_buffer,
- .read_bulk_callback = ftdi_read_bulk_callback,
- .write_bulk_callback = ftdi_write_bulk_callback,
- /* ... */
+/* ... */
+.num_ports = 1,
+.probe = ftdi_sio_probe,
+.port_probe = ftdi_sio_port_probe,
+.port_remove = ftdi_sio_port_remove,
+.open = ftdi_open,
+.close = ftdi_close,
+.throttle = ftdi_throttle,
+.unthrottle = ftdi_unthrottle,
+.write = ftdi_write,
+.write_room = ftdi_write_room,
+.chars_in_buffer = ftdi_chars_in_buffer,
+.read_bulk_callback = ftdi_read_bulk_callback,
+.write_bulk_callback = ftdi_write_bulk_callback,
+/* ... */
 };
 /* Khởi tạo Driver */
 static int __init ftdi_init(void)
 {
- /* ... */
- /* Đăng ký với USB-Serial core */
- retval = usb_serial_register(&ftdi_sio_device);
- /* ... */
- /* Đăng ký với USB core */
- retval = usb_register(&ftdi_driver);
- /* ... */
+/* ... */
+/* Đăng ký với USB-Serial core */
+retval = usb_serial_register(&ftdi_sio_device);
+/* ... */
+/* Đăng ký với USB core */
+retval = usb_register(&ftdi_driver);
+/* ... */
 }
+
 ```
 
 ## Thiết bị Giao diện Người dùng (Human Interface Devices)
@@ -1259,12 +1305,15 @@ Một bộ phân tích bus USB (USB bus analyzer) giúp phóng to các hoạt đ
 Ví dụ, hãy xem xét một ổ đĩa USB được kết nối với PC. Từ dòng "T:" tương ứng trong */proc/bus/usb/devices*, bạn có thể thấy ổ đĩa được gắn vào bus 1:
 
 ```
+
 T: Bus=01 Lev=01 Prnt=01 Port=03 Cnt=01 Dev#= 2 Spd=480 MxCh= 0
+
 ```
 
 Đảm bảo rằng bạn đã bật hỗ trợ *debugfs* (CONFIG\_DEBUG\_FS) và usbmon (CONFIG\_USB\_MON) trong kernel của mình. Đây là một bản chụp (snapshot) của đầu ra usbmon khi đang sao chép một tệp từ ổ đĩa:
 
 ```
+
 bash> mount -t debugfs none_debugs /sys/kernel/debug/
 bash> cat /sys/kernel/debug/usbmon/1u
 ...
@@ -1278,6 +1327,7 @@ ee6a5cc0 3718800994 C Bi:1:002:1 0 65536 = 118498fe 15c60500\ 01680106 5e846801
 ee6a5d40 3718801001 C Bi:1:002:1 0 36864 = 13608498 fe4f4a01\ 00514a01 006f2800
 87680000 00008848 00000100 b7f00100
 ...
+
 ```
 
 Mỗi dòng đầu ra bắt đầu bằng địa chỉ URB, tiếp theo là dấu thời gian sự kiện (event timestamp). Ký tự *S* ở cột tiếp theo biểu thị việc gửi URB (URB submission), và *C* thông báo một lệnh gọi lại (callback). Trường tiếp theo có định dạng URBType:Bus#:DeviceAddress:Endpoint#. Trong phần đầu ra ở trên, URBType là Bi viết tắt cho một bulk URB theo hướng IN. Sau phần này, usbmon kết xuất (dump) trạng thái URB, độ dài dữ liệu, thẻ dữ liệu (data tag, là `=` hoặc `<` trong đầu ra trước đó), và các từ dữ liệu (data words) (nếu thẻ là `=`). Ba dòng cuối cùng trong phần đầu ra trước đó là các callback liên kết với các bulk URB được gửi ở các dòng trước đó. Bạn có thể khớp các callback với các lượt gửi liên quan bằng cách sử dụng địa chỉ URB. *Documentation/usb/usbmon.txt* trình bày chi tiết cú pháp của usbmon và chứa mã nguồn mẫu để phân tích đầu ra thành dạng con người có thể đọc được (human readable form).
@@ -1292,7 +1342,7 @@ Trang chủ của dự án Linux-USB là www.linux-usb.org. Bạn có thể tả
 
 ## Xem xét Mã nguồn (Looking at the Sources)
 
-Tầng lõi USB (USB core layer) nằm trong *drivers/usb/core/*. Thư mục này cũng chứa các quy routine thao tác URB và việc triển khai usbfs. Trình điều khiển hub và khubd là một phần của *drivers/usb/core/hub.c*. Thư mục *drivers/usb/host/* chứa các trình điều khiển thiết bị bộ điều khiển máy chủ (host controller device driver). Các định nghĩa tệp tiêu đề (header definition) liên quan đến USB nằm trong *include/linux/usb\*.h*. Bộ theo dõi usbmon nằm ở *drivers/usb/mon/*. Hãy tìm bên trong *Documentation/usb/* để có tài liệu về Linux-USB.
+Tầng lõi USB (USB core layer) nằm trong *drivers/usb/core/*. Thư mục này cũng chứa các hàm (routines) thao tác URB và phần triển khai usbfs. Trình điều khiển hub và khubd là một phần của *drivers/usb/core/hub.c*. Thư mục *drivers/usb/host/* chứa các trình điều khiển thiết bị bộ điều khiển máy chủ (host controller device driver). Các định nghĩa tệp tiêu đề (header definition) liên quan đến USB nằm trong *include/linux/usb\*.h*. Bộ theo dõi usbmon nằm ở *drivers/usb/mon/*. Hãy tìm bên trong *Documentation/usb/* để có tài liệu về Linux-USB.
 
 Các trình điều khiển lớp USB (USB class driver) nằm trong các thư mục con khác nhau dưới *drivers/usb/*. Trình điều khiển lưu trữ dung lượng lớn (mass storage driver) *drivers/usb/storage/*, song hành với hệ thống con SCSI *drivers/scsi/*, triển khai giao thức lưu trữ dung lượng lớn USB (USB mass storage protocol). Cây thư mục *drivers/input/*[4] bao gồm các trình điều khiển cho các thiết bị đầu vào USB như bàn phím và chuột; *drivers/usb/serial/* có các trình điều khiển cho bộ chuyển đổi USB sang nối tiếp (USB-to-serial converter); *drivers/usb/media/* hỗ trợ các thiết bị đa phương tiện USB; *drivers/net/usb/*[5] có các trình điều khiển cho các thiết bị USB Ethernet (Ethernet dongle); và *drivers/usb/misc/* chứa các trình điều khiển cho các thiết bị USB hỗn hợp như đèn LED, màn hình LCD và cảm biến vân tay. Hãy xem *drivers/usb/usb-skeleton.c* để tìm mẫu trình điều khiển khởi đầu (driver template) nếu bạn không thể tìm thấy một kết quả khớp sát hơn.
 
@@ -1304,9 +1354,8 @@ Hệ thống con tiện ích USB (USB gadget subsystem) nằm trong *drivers/usb
 
 Bảng 11.3 chứa các cấu trúc dữ liệu chính được sử dụng trong chương này và vị trí của chúng trong cây mã nguồn. Bảng 11.4 liệt kê các giao diện lập trình kernel (kernel programming interface) chính mà bạn đã sử dụng trong chương này cùng với vị trí định nghĩa của chúng.
 
-|                                                                                                       | Bảng 11.3. Tóm tắt các Cấu trúc Dữ liệu                   |                                                         |
-
-|-------------------------------------------------------------------------------------------------------|----------------------------------------------------------|---------------------------------------------------------|
+| Bảng 11.3. Tóm tắt các Cấu trúc Dữ liệu | | |
+|-----------------------------------|----------|---------------------------------------------------------|
 | Cấu trúc dữ liệu (Data Structure)                                                                     | Vị trí (Location)                                        | Mô tả (Description)                                     |
 | urb                                                                                                   | include/linux/usb.h                                      | Tâm điểm của cơ chế truyền dữ liệu USB<br>(USB data transfer mechanism) |
 | pipe                                                                                                  | include/linux/usb.h                                      | Thành phần địa chỉ của một URB                          |

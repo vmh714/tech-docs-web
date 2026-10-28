@@ -1,4 +1,4 @@
-# Chương 22: TÍN HIỆU: CÁC TÍNH NĂNG NÂNG CAO
+# Chương 22: Tín hiệu: Các tính năng nâng cao (Signals: Advanced Features)
 
 Chương này hoàn thiện phần thảo luận về tín hiệu (signal) mà chúng ta đã bắt đầu ở Chương 20, bao gồm một số chủ đề nâng cao hơn, cụ thể như sau:
 
@@ -32,6 +32,7 @@ Trong ví dụ này, thông báo `Quit (core dumped)` được in ra bởi shell
 
 Tệp core dump được tạo ra trong thư mục làm việc (working directory) của tiến trình, với tên gọi là `core`. Đây là vị trí và tên mặc định cho một tệp core dump; ngay sau đây, chúng ta sẽ giải thích cách các giá trị mặc định này có thể được thay đổi.
 
+> [!NOTE]
 > Nhiều hệ thống cung cấp một công cụ (ví dụ: `gcore` trên FreeBSD và Solaris) để lấy core dump của một tiến trình đang chạy. Tính năng tương tự cũng có sẵn trên Linux bằng cách gắn (attach) vào một tiến trình đang chạy sử dụng `gdb` và sau đó dùng lệnh `gcore`.
 
 ### Các trường hợp tệp core dump không được tạo ra
@@ -58,6 +59,7 @@ Bắt đầu từ Linux 2.6, chuỗi định dạng (format string) nằm trong 
 
 Kể từ kernel 2.6.19, Linux hỗ trợ thêm một cú pháp trong tệp `core_pattern`. Nếu tệp này chứa một chuỗi bắt đầu bằng ký tự ống dẫn (pipe symbol `|`), thì các ký tự còn lại trong tệp sẽ được diễn giải là một chương trình — kèm theo các đối số tùy chọn có thể bao gồm các bộ định dạng `%` được hiển thị trong Bảng 22-1 — sẽ được thực thi khi một tiến trình (process) thực hiện core dump. Tệp core dump được ghi vào đầu vào chuẩn (standard input) của chương trình đó thay vì ghi vào một tệp. Xem trang hướng dẫn (manual page) `core(5)` để biết thêm chi tiết.
 
+> [!NOTE]
 > Một số hệ triển khai UNIX khác cung cấp các tính năng tương tự như `core_pattern`. Ví dụ, trong các hệ phái sinh BSD, tên chương trình được nối vào tên tệp, do đó có dạng `core.progname`. Solaris cung cấp một công cụ (`coreadm`) cho phép người dùng chọn tên tệp và thư mục nơi các tệp core dump được đặt.
 
 **Bảng 22-1:** Các bộ định dạng cho `/proc/sys/kernel/core_pattern`
@@ -88,6 +90,7 @@ Như đã lưu ý trước đó, tín hiệu SIGCONT được sử dụng để 
 
 Nếu một tiến trình hiện đang dừng, sự xuất hiện của tín hiệu SIGCONT sẽ luôn khiến tiến trình tiếp tục chạy, ngay cả khi tiến trình đó hiện đang chặn hoặc bỏ qua SIGCONT. Tính năng này là cần thiết vì nếu không thì sẽ không thể tiếp tục các tiến trình đã dừng đó. (Nếu tiến trình bị dừng đang chặn SIGCONT và đã thiết lập một trình xử lý - handler cho SIGCONT, thì sau khi tiến trình tiếp tục, trình xử lý đó chỉ được gọi khi SIGCONT được bỏ chặn sau đó).
 
+> [!NOTE]
 > Nếu bất kỳ tín hiệu nào khác được gửi đến một tiến trình đang dừng, tín hiệu đó sẽ không thực sự được gửi (deliver) đến tiến trình cho đến khi nó được tiếp tục thông qua việc nhận tín hiệu SIGCONT. Ngoại lệ duy nhất là SIGKILL, tín hiệu này luôn tiêu diệt một tiến trình—ngay cả tiến trình đang dừng.
 
 Bất cứ khi nào SIGCONT được gửi đến một tiến trình, bất kỳ tín hiệu dừng đang chờ xử lý (pending) nào đối với tiến trình đó sẽ bị hủy bỏ (tức là tiến trình không bao giờ nhìn thấy chúng). Ngược lại, nếu bất kỳ tín hiệu dừng nào được gửi đến một tiến trình, thì bất kỳ tín hiệu SIGCONT đang chờ xử lý nào sẽ tự động bị hủy bỏ. Các bước này được thực hiện nhằm ngăn chặn hành động của tín hiệu SIGCONT bị hoàn tác sau đó bởi một tín hiệu dừng thực sự đã được gửi trước đó, và ngược lại.
@@ -239,6 +242,7 @@ signal(int sig, sighandler_t handler)
 
 Việc cài đặt hàm thư viện `signal()` của glibc đã thay đổi theo thời gian. Trong các phiên bản thư viện mới hơn (glibc 2 trở về sau), ngữ nghĩa hiện đại (modern semantics) được cung cấp theo mặc định. Trong các phiên bản thư viện cũ hơn, ngữ nghĩa không đáng tin cậy trước đây (tương thích với System V - System V-compatible) được cung cấp.
 
+> [!NOTE]
 > Linux kernel chứa một phần cài đặt `signal()` dưới dạng một System Call. Phần cài đặt này cung cấp ngữ nghĩa cũ, không đáng tin cậy. Tuy nhiên, glibc bỏ qua System Call này bằng cách cung cấp một hàm thư viện `signal()` gọi đến `sigaction()`.
 
 Nếu chúng ta muốn có được ngữ nghĩa tín hiệu không đáng tin cậy (unreliable signal semantics) với các phiên bản glibc hiện đại, chúng ta có thể thay thế rõ ràng các lệnh gọi `signal()` bằng các lệnh gọi đến hàm `sysv_signal()` (không chuẩn - nonstandard).
@@ -270,6 +274,7 @@ Tín hiệu thời gian thực (Realtime signals) được định nghĩa trong 
 
 SUSv3 yêu cầu một hệ thống cài đặt phải cung cấp tối thiểu `_POSIX_RTSIG_MAX` (được định nghĩa là 8) tín hiệu thời gian thực khác nhau. Linux kernel định nghĩa 32 tín hiệu thời gian thực khác nhau, được đánh số từ 32 đến 63. Tệp tiêu đề `<signal.h>` định nghĩa hằng số `RTSIG_MAX` để chỉ ra số lượng tín hiệu thời gian thực khả dụng, và các hằng số `SIGRTMIN` và `SIGRTMAX` để chỉ ra số hiệu tín hiệu thời gian thực khả dụng thấp nhất và cao nhất.
 
+> [!NOTE]
 > Trên các hệ thống sử dụng cơ chế luồng (threading implementation) LinuxThreads, `SIGRTMIN` được định nghĩa là 35 (thay vì 32) để tính đến việc LinuxThreads sử dụng nội bộ ba tín hiệu thời gian thực đầu tiên. Trên các hệ thống sử dụng cơ chế luồng NPTL, `SIGRTMIN` được định nghĩa là 34 để tính đến việc NPTL sử dụng nội bộ hai tín hiệu thời gian thực đầu tiên.
 
 Tín hiệu thời gian thực không được định danh riêng lẻ bằng các hằng số khác nhau theo cách của tín hiệu chuẩn. Tuy nhiên, một ứng dụng không nên mã hóa cứng (hard-code) các giá trị số nguyên cho chúng, vì dải số được sử dụng cho tín hiệu thời gian thực khác nhau giữa các hệ thống cài đặt UNIX. Thay vào đó, số hiệu tín hiệu thời gian thực có thể được tham chiếu bằng cách cộng thêm một giá trị vào `SIGRTMIN`; ví dụ, biểu thức `(SIGRTMIN + 1)` tham chiếu đến tín hiệu thời gian thực thứ hai.
@@ -304,10 +309,12 @@ Bắt đầu từ Linux 2.6.8, mô hình này đã được thay đổi và các
 
 Tiến trình gửi (sending process) gửi tín hiệu cộng với dữ liệu kèm theo bằng cách sử dụng System Call `sigqueue()`.
 
+> [!NOTE]
 > Tín hiệu thời gian thực cũng có thể được gửi bằng cách sử dụng `kill()`, `killpg()`, và `raise()`. Tuy nhiên, SUSv3 để ngỏ việc liệu các tín hiệu thời gian thực được gửi bằng các giao diện này có được xếp hàng đợi hay không là tùy thuộc vào từng bản cài đặt (implementation-dependent). Trên Linux, các giao diện này thực sự xếp hàng đợi các tín hiệu thời gian thực, nhưng trên nhiều bản cài đặt UNIX khác thì không.
 
 Tiến trình nhận (receiving process) thiết lập một trình xử lý (handler) cho tín hiệu bằng cách gọi `sigaction()` và chỉ định cờ `SA_SIGINFO`. Điều này khiến cho trình xử lý tín hiệu (signal handler) được kích hoạt với các đối số bổ sung, trong đó có một đối số chứa dữ liệu đi kèm với tín hiệu thời gian thực.
 
+> [!NOTE]
 > Trên Linux, việc xếp hàng đợi các tín hiệu thời gian thực vẫn có thể thực hiện được ngay cả khi tiến trình nhận không chỉ định cờ `SA_SIGINFO` khi thiết lập trình xử lý tín hiệu (mặc dù trong trường hợp này, không thể lấy được dữ liệu liên quan đến tín hiệu). Tuy nhiên, SUSv3 không yêu cầu các bản cài đặt phải đảm bảo hành vi này, vì vậy mã ứng dụng không nên dựa vào đặc tính này nếu muốn đảm bảo tính khả chuyển (portability).
 
 ### 22.8.1 Gửi Realtime Signal
@@ -364,6 +371,7 @@ union sigval {
 
 Cách diễn giải của đối số này phụ thuộc vào ứng dụng (application-dependent), cũng như việc lựa chọn thiết lập trường `sival_int` hay `sival_ptr` của union. Trường `sival_ptr` hiếm khi hữu ích với `sigqueue()`, vì một giá trị con trỏ có ý nghĩa trong một tiến trình thì hiếm khi có ý nghĩa trong một tiến trình khác. Tuy nhiên, trường này lại hữu ích trong các hàm khác sử dụng union `sigval`, như chúng ta sẽ thấy khi xem xét POSIX timer ở Mục 23.6 và thông báo qua POSIX message queue ở Mục 52.6.
 
+> [!NOTE]
 > Một số cài đặt UNIX, bao gồm cả Linux, định nghĩa kiểu dữ liệu `sigval_t` như một từ đồng nghĩa cho `union sigval`. Tuy nhiên, kiểu này không được chỉ định trong SUSv3 và không có sẵn trên một số hệ thống cài đặt. Các ứng dụng có tính di động (portable applications) nên tránh sử dụng nó.
 
 Một lời gọi đến `sigqueue()` có thể thất bại nếu giới hạn về số lượng signal được đưa vào hàng đợi (queued signals) đã đạt tới. Trong trường hợp này, `errno` được thiết lập thành `EAGAIN`, cho biết rằng chúng ta cần gửi lại signal (vào một thời điểm sau đó khi một số signal hiện đang nằm trong hàng đợi đã được chuyển giao - delivered).

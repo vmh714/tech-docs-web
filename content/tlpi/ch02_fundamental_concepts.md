@@ -1,6 +1,4 @@
-## Chapter 2
-
-## CÁC KHÁI NIỆM CƠ BẢN
+# Chương 2: Các khái niệm cơ bản (Fundamental Concepts)
 
 Chương này giới thiệu một loạt các khái niệm liên quan đến lập trình hệ thống Linux (Linux system programming). Chương này dành cho độc giả đã quen làm việc chủ yếu với các hệ điều hành khác, hoặc chỉ có ít kinh nghiệm với Linux hoặc một hệ thống tương thích UNIX khác.
 
@@ -219,6 +217,7 @@ Thông thường, một process (tiến trình) sẽ kế thừa ba file descrip
 
 Để thực hiện I/O trên tệp, các chương trình C thường sử dụng các hàm I/O có trong thư viện chuẩn của ngôn ngữ C. Tập hợp các hàm này, được gọi là thư viện stdio, bao gồm `fopen()`, `fclose()`, `scanf()`, `printf()`, `fgets()`, `fputs()`, v.v. Các hàm stdio được xây dựng phân tầng dựa trên các system call I/O (`open()`, `close()`, `read()`, `write()`, v.v.).
 
+> [!NOTE]
 > Chúng tôi giả định rằng bạn đọc đã quen thuộc với các hàm I/O chuẩn (stdio) của C và sẽ không đề cập chi tiết đến chúng trong cuốn sách này. Thông tin thêm về thư viện stdio có thể được tìm thấy trong [Kernighan & Ritchie, 1988], [Harbison & Steele, 2002], [Plauger, 1992], và [Stevens & Rago, 2005].
 
 ## 2.6 Chương trình
@@ -393,7 +392,7 @@ Một cách để các tiến trình giao tiếp là đọc và ghi thông tin t
 
 ```
 
-``` Khi một tiến trình thay đổi nội dung của vùng nhớ chia sẻ, tất cả các tiến trình khác có thể thấy ngay lập tức các thay đổi đó.
+Khi một tiến trình thay đổi nội dung của vùng nhớ chia sẻ, tất cả các tiến trình khác có thể thấy ngay lập tức các thay đổi đó.
 
 Sự đa dạng lớn của các cơ chế IPC trên hệ thống UNIX, đôi khi có chức năng chồng chéo nhau, một phần là do quá trình phát triển của chúng dưới các biến thể khác nhau của hệ thống UNIX và các yêu cầu từ nhiều tiêu chuẩn khác nhau. Ví dụ, FIFO và UNIX domain socket thực chất thực hiện cùng một chức năng là cho phép các tiến trình không liên quan trên cùng một hệ thống trao đổi dữ liệu. Cả hai đều tồn tại trong các hệ thống UNIX hiện đại vì FIFO xuất phát từ System V, trong khi socket xuất phát từ BSD.
 
@@ -436,7 +435,7 @@ Mỗi chương trình được thực thi bởi shell đều được khởi ch�
 
 ```
 
-``` Ví dụ, shell tạo ra ba process để thực thi chuỗi lệnh pipeline sau (hiển thị danh sách các file trong thư mục làm việc hiện tại được sắp xếp theo kích thước file):
+Ví dụ, shell tạo ra ba process để thực thi chuỗi lệnh pipeline sau (hiển thị danh sách các file trong thư mục làm việc hiện tại được sắp xếp theo kích thước file):
 
 \$ **ls -l | sort -k5n | less**
 

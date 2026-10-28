@@ -1,6 +1,4 @@
-## Chapter 53
-
-## POSIX SEMAPHORES
+# Chương 53: Semaphore POSIX (POSIX Semaphores)
 
 Chương này mô tả các semaphore POSIX (POSIX semaphores), cho phép các tiến trình (process) và luồng (thread) đồng bộ hóa quyền truy cập vào các tài nguyên dùng chung (shared resources). Trong Chương 47, chúng ta đã mô tả semaphore System V (System V semaphores), và chúng tôi giả định rằng bạn đọc đã quen thuộc với các khái niệm chung về semaphore cũng như lý do sử dụng semaphore được trình bày ở phần đầu của chương đó. Trong suốt chương này, chúng ta sẽ so sánh giữa semaphore POSIX và semaphore System V để làm rõ những điểm giống và khác nhau giữa hai API semaphore này.
 
@@ -15,6 +13,7 @@ Semaphore POSIX hoạt động theo cách tương tự như semaphore System V; 
 
 Một số hệ thống không cung cấp bản cài đặt đầy đủ của semaphore POSIX. Một giới hạn điển hình là chỉ hỗ trợ semaphore không tên dùng chung cho luồng (thread-shared semaphores). Đó là tình trạng trên Linux 2.4; kể từ Linux 2.6 và glibc cung cấp NPTL, bản cài đặt đầy đủ của semaphore POSIX đã có sẵn.
 
+> [!NOTE]
 > Trên Linux 2.6 với NPTL, các thao tác semaphore (tăng và giảm) được thực hiện bằng cách sử dụng System Call `futex(2)`.
 
 ## 53.2 Semaphore có tên (Named Semaphores)
@@ -35,13 +34,16 @@ Semaphore có tên được hỗ trợ trên Linux kể từ kernel phiên bản
 
 Hàm `sem_open()` tạo và mở một semaphore có tên mới hoặc mở một semaphore đã tồn tại.
 
-```
 ## include <fcntl.h> /* Định nghĩa các hằng số O_* */
+
 ## include <sys/stat.h> /* Định nghĩa các hằng số chế độ (mode) */
+
 ## include <semaphore.h>
+
 sem_t *sem_open(const char *name, int oflag, ...
- /* mode_t mode, unsigned int value */ );
-              Trả về con trỏ đến semaphore khi thành công, hoặc SEM_FAILED khi lỗi
+/* mode_t mode, unsigned int value */ );
+Trả về con trỏ đến semaphore khi thành công, hoặc SEM_FAILED khi lỗi
+
 ```
 
 Đối số `name` xác định semaphore. Nó được chỉ định theo các quy tắc được nêu tại Mục [51.1.](#page-1-0)
@@ -58,10 +60,12 @@ Bất kể chúng ta đang tạo semaphore mới hay mở semaphore đã tồn t
 SUSv3 nêu rõ rằng kết quả sẽ không xác định nếu chúng ta cố gắng thực hiện các thao tác (`sem_post()`, `sem_wait()`, v.v.) trên một bản sao của biến `sem_t` mà con trỏ trả về từ hàm `sem_open()` hướng tới. Nói cách khác, việc sử dụng `sem2` dưới đây là không hợp lệ:
 
 ```
+
 sem_t *sp, sem2
 sp = sem_open(...);
 sem2 = *sp;
 sem_wait(&sem2);
+
 ```
 
 Khi một tiến trình con (Child Process) được tạo ra thông qua hàm `fork()`, nó sẽ kế thừa các tham chiếu đến tất cả các semaphore có tên đang mở ở tiến trình cha (Parent Process). Sau hàm `fork()`, tiến trình cha và con có thể sử dụng các semaphore này để đồng bộ hóa các hành động của chúng.
@@ -73,10 +77,12 @@ Chương trình trong [Liệt kê 53-1](#page-35-0) cung cấp một giao diện
 Nhật ký phiên làm việc trên shell sau đây minh họa cách sử dụng chương trình này. Đầu tiên, chúng ta sử dụng lệnh `umask` để tước bỏ mọi quyền của nhóm người dùng `other`. Sau đó, chúng ta tạo độc quyền một semaphore và kiểm tra nội dung của thư mục ảo đặc trưng của Linux chứa các semaphore có tên.
 
 ```
+
 $ umask 007
 $ ./psem_create -cx /demo 666 666 có nghĩa là đọc+viết cho tất cả người dùng
 $ ls -l /dev/shm/sem.*
 -rw-rw---- 1 mtk users 16 Jul 6 12:09 /dev/shm/sem.demo
+
 ```
 
 Kết quả đầu ra của lệnh `ls` cho thấy umask của tiến trình đã ghi đè lên các quyền đọc và viết đã chỉ định đối với nhóm người dùng `other`.
@@ -84,64 +90,74 @@ Kết quả đầu ra của lệnh `ls` cho thấy umask của tiến trình đ�
 Nếu chúng ta thử tạo độc quyền một lần nữa với cùng một tên semaphore, thao tác sẽ thất bại vì tên này đã tồn tại.
 
 ```
+
 $ ./psem_create -cx /demo 666
 ERROR [EEXIST File exists] sem_open Thất bại do O_EXCL
+
 ```
 
 **Liệt kê 53-1:** Sử dụng `sem_open()` để mở hoặc tạo một POSIX named semaphore
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– psem/psem_create.c
+
 ## include <semaphore.h>
+
 ## include <sys/stat.h>
+
 ## include <fcntl.h>
+
 ## include "tlpi_hdr.h"
+
 static void
 usageError(const char *progName)
 {
- fprintf(stderr, "Cách dùng: %s [-cx] name [octal-perms [value]]\n", progName);
- fprintf(stderr, " -c Tạo semaphore (O_CREAT)\n");
- fprintf(stderr, " -x Tạo độc quyền (O_EXCL)\n");
- exit(EXIT_FAILURE);
+fprintf(stderr, "Cách dùng: %s [-cx] name [octal-perms [value]]\n", progName);
+fprintf(stderr, " -c Tạo semaphore (O_CREAT)\n");
+fprintf(stderr, " -x Tạo độc quyền (O_EXCL)\n");
+exit(EXIT_FAILURE);
 }
 int
 main(int argc, char *argv[])
 {
- int flags, opt;
- mode_t perms;
- unsigned int value;
- sem_t *sem;
- flags = 0;
- while ((opt = getopt(argc, argv, "cx")) != -1) {
- switch (opt) {
- case 'c': flags |= O_CREAT; break;
- case 'x': flags |= O_EXCL; break;
- default: usageError(argv[0]);
- }
- }
+int flags, opt;
+mode_t perms;
+unsigned int value;
+sem_t *sem;
+flags = 0;
+while ((opt = getopt(argc, argv, "cx")) != -1) {
+switch (opt) {
+case 'c': flags |= O_CREAT; break;
+case 'x': flags |= O_EXCL; break;
+default: usageError(argv[0]);
+}
+}
+
 ```
 
 ```c
- if (optind >= argc)
- usageError(argv[0]);
- /* Default permissions are rw-------; default semaphore initialization
- value is 0 */
- perms = (argc <= optind + 1) ? (S_IRUSR | S_IWUSR) :
- getInt(argv[optind + 1], GN_BASE_8, "octal-perms");
- value = (argc <= optind + 2) ? 0 : getInt(argv[optind + 2], 0, "value");
- sem = sem_open(argv[optind], flags, perms, value);
- if (sem == SEM_FAILED)
- errExit("sem_open");
- exit(EXIT_SUCCESS);
+
+if (optind >= argc)
+usageError(argv[0]);
+/* Default permissions are rw-------; default semaphore initialization
+value is 0 */
+perms = (argc <= optind + 1) ? (S_IRUSR | S_IWUSR) :
+getInt(argv[optind + 1], GN_BASE_8, "octal-perms");
+value = (argc <= optind + 2) ? 0 : getInt(argv[optind + 2], 0, "value");
+sem = sem_open(argv[optind], flags, perms, value);
+if (sem == SEM_FAILED)
+errExit("sem_open");
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– psem/psem_create.c
+
 ```
 
 ### 53.2.2 Đóng một Semaphore (Closing a Semaphore)
 
 Khi một Process ( tiến trình) mở một named semaphore (semaphore có tên), hệ thống sẽ ghi lại mối liên kết giữa tiến trình đó và semaphore. Hàm `sem_close()` chấm dứt mối liên kết này (tức là đóng semaphore), giải phóng bất kỳ tài nguyên nào mà hệ thống đã liên kết với semaphore cho tiến trình này, đồng thời giảm số lượng tiến trình đang tham chiếu đến semaphore đó.
 
-```
 ## include <semaphore.h>
 int sem_close(sem_t *sem);
                                              Thành công trả về 0, lỗi trả về –1
@@ -155,28 +171,34 @@ Việc đóng semaphore không đồng nghĩa với việc xóa nó. Để thự
 
 Hàm `sem_unlink()` xóa semaphore được xác định bởi `name` và đánh dấu semaphore đó để tiêu hủy ngay khi tất cả các tiến trình ngừng sử dụng nó (điều này có thể xảy ra ngay lập tức, nếu tất cả các tiến trình đã mở semaphore trước đó đã đóng nó lại).
 
-```
 ## include <semaphore.h>
+
 int sem_unlink(const char *name);
-                                            Thành công trả về 0, lỗi trả về –1
+Thành công trả về 0, lỗi trả về –1
+
 ```
 
 [Liệt kê 53-2](#page-37-0) minh họa cách sử dụng hàm `sem_unlink()`.
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– psem/psem_unlink.c
+
 ## include <semaphore.h>
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- if (argc != 2 || strcmp(argv[1], "--help") == 0)
- usageErr("%s sem-name\n", argv[0]);
- if (sem_unlink(argv[1]) == -1)
- errExit("sem_unlink");
-   exit(EXIT_SUCCESS);
+if (argc != 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s sem-name\n", argv[0]);
+if (sem_unlink(argv[1]) == -1)
+errExit("sem_unlink");
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– psem/psem_unlink.c
+
 ```
 
 ## 53.3 Các thao tác trên Semaphore (Semaphore Operations)
@@ -270,11 +292,11 @@ Tham số `abs_timeout` là một cấu trúc `timespec` (Mục 23.4.2) chỉ đ
 
 Hàm `sem_timedwait()` ban đầu được quy định trong POSIX.1d (1999) và không có sẵn trên tất cả các hệ thống UNIX.
 
-### 53.3.2 Thao tác ký hiệu (Posting a Semaphore)
+### 53.3.2 Tăng giá trị Semaphore (Posting a Semaphore)
 
 Hàm `sem_post()` thực hiện tăng (tăng thêm 1) giá trị của semaphore được tham chiếu bởi `sem`.
 
-```
+```c
 
 ## include <semaphore.h>
 
@@ -285,13 +307,14 @@ Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
 
 Nếu giá trị của semaphore bằng 0 trước khi gọi `sem_post()`, và một process (hoặc thread) khác đang bị chặn (blocked) chờ để giảm giá trị semaphore, thì process đó sẽ được đánh thức (awoken), và lời gọi `sem_wait()` của nó sẽ tiếp tục thực hiện việc giảm giá trị semaphore. Nếu có nhiều process (hoặc thread) đang bị chặn trong `sem_wait()`, thì nếu các process này được lên lịch (scheduled) theo chính sách chia sẻ thời gian vòng tròn (round-robin time-sharing policy) mặc định, việc xác định process nào được đánh thức và cho phép giảm giá trị semaphore là không xác định (indeterminate). (Giống như các semaphore tương đương trong System V, POSIX semaphore chỉ là một cơ chế đồng bộ hóa (synchronization mechanism), không phải là cơ chế hàng đợi - queuing mechanism).
 
+> [!NOTE]
 > SUSv3 quy định rằng nếu các process hoặc thread đang được thực thi theo chính sách lập lịch thời gian thực (realtime scheduling policy), thì process hoặc thread sẽ được đánh thức là tiến trình có ưu tiên cao nhất và đã chờ đợi lâu nhất.
 
 Cũng giống như System V semaphore, việc tăng giá trị một POSIX semaphore tương ứng với việc giải phóng một tài nguyên chia sẻ (shared resource) nào đó để process hoặc thread khác sử dụng.
 
 Chương trình trong [Listing 53-4](#page-40-0) cung cấp một giao diện dòng lệnh (command-line interface) cho hàm `sem_post()`. Chúng ta sẽ minh họa việc sử dụng chương trình này ngay sau đây.
 
-```
+```c
 
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––– psem/psem_post.c
 
@@ -303,13 +326,17 @@ int
 main(int argc, char *argv[])
 {
 sem_t *sem;
+
 if (argc != 2)
 usageErr("%s sem-name\n", argv[0]);
+
 sem = sem_open(argv[1], 0);
 if (sem == SEM_FAILED)
 errExit("sem_open");
+
 if (sem_post(sem) == -1)
 errExit("sem_post");
+
 exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––– psem/psem_post.c
@@ -331,6 +358,7 @@ Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
 
 Nếu một hoặc nhiều process (hoặc thread) hiện đang bị chặn chờ để giảm giá trị của semaphore, thì giá trị được trả về trong `sval` sẽ tùy thuộc vào từng cài đặt (implementation). SUSv3 cho phép hai khả năng: 0 hoặc một số âm mà giá trị tuyệt đối của nó chính là số lượng các tiến trình đang chờ bị chặn trong `sem_wait()`. Linux và một số cài đặt khác áp dụng hành vi đầu tiên; một số ít cài đặt khác áp dụng hành vi thứ hai.
 
+> [!NOTE]
 > Mặc dù việc trả về một giá trị `sval` âm khi có các tiến trình đang chờ bị chặn có thể hữu ích, đặc biệt cho các mục đích gỡ lỗi (debugging), SUSv3 không bắt buộc hành vi này vì các kỹ thuật mà một số hệ thống sử dụng để cài đặt hiệu quả các POSIX semaphore không (trên thực tế là không thể) ghi lại số lượng các process đang chờ bị chặn.
 
 Lưu ý rằng vào thời điểm `sem_getvalue()` trả về, giá trị được trả về trong `sval` có thể đã lỗi thời. Một chương trình phụ thuộc vào thông tin do `sem_getvalue()` trả về mà không thay đổi vào thời điểm của một thao tác tiếp theo sẽ dễ gặp phải các điều kiện tranh chấp dạng kiểm tra thời điểm – sử dụng thời điểm (time-of-check, time-of-use race conditions) (Mục 38.6).
@@ -421,8 +449,8 @@ Semaphore vô danh (còn được gọi là semaphore dựa trên bộ nhớ - m
 
 Các thao tác trên semaphore vô danh sử dụng các hàm tương tự (`sem_wait()`, `sem_post()`, `sem_getvalue()`, v.v.) được sử dụng cho semaphore có tên (named semaphore). Ngoài ra, cần có thêm hai hàm nữa:
 
--  Hàm `sem_init()` khởi tạo một semaphore và thông báo cho hệ thống biết liệu semaphore đó sẽ được chia sẻ giữa các tiến trình hay giữa các luồng của một tiến trình đơn lẻ.
--  Hàm `sem_destroy(sem)` hủy một semaphore.
+- Hàm `sem_init()` khởi tạo một semaphore và thông báo cho hệ thống biết liệu semaphore đó sẽ được chia sẻ giữa các tiến trình hay giữa các luồng của một tiến trình đơn lẻ.
+- Hàm `sem_destroy(sem)` hủy một semaphore.
 
 Các hàm này không nên được sử dụng với semaphore có tên.
 
@@ -430,8 +458,8 @@ Các hàm này không nên được sử dụng với semaphore có tên.
 
 Sử dụng semaphore vô danh giúp chúng ta tránh được công sức tạo tên cho semaphore. Điều này có thể hữu ích trong các trường hợp sau:
 
--  Một semaphore được chia sẻ giữa các luồng không cần tên. Việc biến một semaphore vô danh thành một biến chia sẻ (biến toàn cục - global hoặc trên vùng nhớ heap) sẽ tự động làm cho nó có thể truy cập được đối với tất cả các luồng.
--  Một semaphore được chia sẻ giữa các tiến trình có liên quan (related processes) không cần tên. Nếu một tiến trình cha (parent process) cấp phát một semaphore vô danh trong một vùng nhớ chia sẻ (ví dụ: một ánh xạ ẩn danh chia sẻ - shared anonymous mapping), thì tiến trình con (child process) sẽ tự động kế thừa ánh xạ đó và do đó kế thừa luôn semaphore như một phần của hoạt động hàm `fork()`.
+- Một semaphore được chia sẻ giữa các luồng không cần tên. Việc biến một semaphore vô danh thành một biến chia sẻ (biến toàn cục - global hoặc trên vùng nhớ heap) sẽ tự động làm cho nó có thể truy cập được đối với tất cả các luồng.
+- Một semaphore được chia sẻ giữa các tiến trình có liên quan (related processes) không cần tên. Nếu một tiến trình cha (parent process) cấp phát một semaphore vô danh trong một vùng nhớ chia sẻ (ví dụ: một ánh xạ ẩn danh chia sẻ - shared anonymous mapping), thì tiến trình con (child process) sẽ tự động kế thừa ánh xạ đó và do đó kế thừa luôn semaphore như một phần của hoạt động hàm `fork()`.
 
 Nếu chúng ta đang xây dựng một cấu trúc dữ liệu động (ví dụ: cây nhị phân - binary tree), trong đó mỗi mục (item) yêu cầu một semaphore liên kết, thì phương pháp đơn giản nhất là cấp phát một semaphore vô danh bên trong mỗi mục. Việc mở một semaphore có tên cho mỗi mục sẽ đòi hỏi chúng ta phải thiết kế một quy ước để tạo tên semaphore (duy nhất) cho từng mục và quản lý các tên đó (ví dụ: hủy liên kết - unlink chúng khi không còn cần thiết).
 
@@ -450,15 +478,16 @@ Trả về 0 khi thành công, hoặc –1 khi lỗi
 
 Đối số `pshared` cho biết semaphore sẽ được chia sẻ giữa các luồng hay giữa các tiến trình.
 
--  Nếu `pshared` bằng 0, thì semaphore sẽ được chia sẻ giữa các luồng của tiến trình gọi hàm. Trong trường hợp này, `sem` thường được chỉ định là địa chỉ của một biến toàn cục hoặc một biến được cấp phát trên heap. Semaphore được chia sẻ theo luồng có tính bền vững theo tiến trình (process persistence); nó bị hủy khi tiến trình kết thúc.
--  Nếu `pshared` khác 0, thì semaphore sẽ được chia sẻ giữa các tiến trình. Trong trường hợp này, `sem` phải là địa chỉ của một vị trí trong vùng nhớ chia sẻ (một đối tượng bộ nhớ chia sẻ POSIX - POSIX shared memory object, một ánh xạ chia sẻ được tạo bằng `mmap()`, hoặc một phân đoạn bộ nhớ chia sẻ System V - System V shared memory segment). Semaphore tồn tại chừng nào vùng nhớ chia sẻ mà nó cư trú còn tồn tại. (Các vùng nhớ chia sẻ được tạo bởi hầu hết các kỹ thuật này có tính bền vững trong Kernel Space - kernel persistence. Ngoại lệ là các ánh xạ ẩn danh được chia sẻ, chỉ tồn tại chừng nào ít nhất một tiến trình vẫn duy trì ánh xạ đó). Vì tiến trình con được tạo ra thông qua `fork()` kế thừa các ánh xạ bộ nhớ của tiến trình cha, nên các semaphore chia sẻ theo tiến trình được kế thừa bởi tiến trình con của hàm `fork()`, và tiến trình cha - con có thể sử dụng các semaphore này để đồng bộ hóa các hoạt động của chúng.
+- Nếu `pshared` bằng 0, thì semaphore sẽ được chia sẻ giữa các luồng của tiến trình gọi hàm. Trong trường hợp này, `sem` thường được chỉ định là địa chỉ của một biến toàn cục hoặc một biến được cấp phát trên heap. Semaphore được chia sẻ theo luồng có tính bền vững theo tiến trình (process persistence); nó bị hủy khi tiến trình kết thúc.
+- Nếu `pshared` khác 0, thì semaphore sẽ được chia sẻ giữa các tiến trình. Trong trường hợp này, `sem` phải là địa chỉ của một vị trí trong vùng nhớ chia sẻ (một đối tượng bộ nhớ chia sẻ POSIX - POSIX shared memory object, một ánh xạ chia sẻ được tạo bằng `mmap()`, hoặc một phân đoạn bộ nhớ chia sẻ System V - System V shared memory segment). Semaphore tồn tại chừng nào vùng nhớ chia sẻ mà nó cư trú còn tồn tại. (Các vùng nhớ chia sẻ được tạo bởi hầu hết các kỹ thuật này có tính bền vững trong Kernel Space - kernel persistence. Ngoại lệ là các ánh xạ ẩn danh được chia sẻ, chỉ tồn tại chừng nào ít nhất một tiến trình vẫn duy trì ánh xạ đó). Vì tiến trình con được tạo ra thông qua `fork()` kế thừa các ánh xạ bộ nhớ của tiến trình cha, nên các semaphore chia sẻ theo tiến trình được kế thừa bởi tiến trình con của hàm `fork()`, và tiến trình cha - con có thể sử dụng các semaphore này để đồng bộ hóa các hoạt động của chúng.
 
 Đối số `pshared` là cần thiết vì những lý do sau:
 
--  Một số hệ thống không hỗ trợ semaphore chia sẻ theo tiến trình. Trên các hệ thống này, việc chỉ định một giá trị khác 0 cho `pshared` khiến `sem_init()` trả về lỗi. Linux không hỗ trợ semaphore chia sẻ theo tiến trình dạng vô danh cho đến tận kernel 2.6 và sự ra đời của cơ chế thực thi luồng NPTL. (Phiên bản LinuxThreads cũ hơn của hàm `sem_init()` thất bại với lỗi `ENOSYS` nếu một giá trị khác 0 được chỉ định cho `pshared`).
--  Trên các hệ thống hỗ trợ cả semaphore chia sẻ theo tiến trình và chia sẻ theo luồng, việc chỉ định loại chia sẻ nào là cần thiết vì hệ thống phải thực hiện các thao tác đặc biệt để hỗ trợ kiểu chia sẻ được yêu cầu. Việc cung cấp thông tin này cũng có thể cho phép hệ thống thực hiện các tối ưu hóa tùy thuộc vào loại chia sẻ.
+- Một số hệ thống không hỗ trợ semaphore chia sẻ theo tiến trình. Trên các hệ thống này, việc chỉ định một giá trị khác 0 cho `pshared` khiến `sem_init()` trả về lỗi. Linux không hỗ trợ semaphore chia sẻ theo tiến trình dạng vô danh cho đến tận kernel 2.6 và sự ra đời của cơ chế thực thi luồng NPTL. (Phiên bản LinuxThreads cũ hơn của hàm `sem_init()` thất bại với lỗi `ENOSYS` nếu một giá trị khác 0 được chỉ định cho `pshared`).
+- Trên các hệ thống hỗ trợ cả semaphore chia sẻ theo tiến trình và chia sẻ theo luồng, việc chỉ định loại chia sẻ nào là cần thiết vì hệ thống phải thực hiện các thao tác đặc biệt để hỗ trợ kiểu chia sẻ được yêu cầu. Việc cung cấp thông tin này cũng có thể cho phép hệ thống thực hiện các tối ưu hóa tùy thuộc vào loại chia sẻ.
 
 Triển khai `sem_init()` của NPTL bỏ qua `pshared`, vì không có thao tác đặc biệt nào được yêu cầu cho cả hai loại chia sẻ. Tuy nhiên, các ứng dụng có tính di động (portable) và hướng tới tương lai vẫn nên chỉ định một giá trị thích hợp cho `pshared`.
+
 ```
 
 > Đặc tả SUSv3 cho hàm `sem_init()` định nghĩa giá trị trả về khi thất bại là –1, nhưng không đưa ra tuyên bố nào về giá trị trả về khi thành công. Tuy nhiên, các trang manual page trên hầu hết các cài đặt UNIX hiện đại đều tài liệu hóa giá trị trả về là 0 khi thành công. (Một ngoại lệ đáng chú ý là Solaris, nơi mô tả về giá trị trả về tương tự như đặc tả của SUSv3. Tuy nhiên, việc kiểm tra mã nguồn OpenSolaris cho thấy rằng, trên hệ thống đó, `sem_init()` thực sự trả về 0 khi thành công). SUSv4 đã chỉnh sửa lại vấn đề này, quy định rõ ràng rằng `sem_init()` phải trả về 0 khi thành công.
@@ -475,51 +504,79 @@ Trong Mục 30.1.2, chúng ta đã trình bày một chương trình (Liệt kê
 
 **Liệt kê 53-6:** Sử dụng POSIX semaphore vô danh để bảo vệ quyền truy cập vào một biến toàn cục
 
-––––––––––––––––––––––––––––––––––––––––––––––––––– **psem/thread\_incr\_psem.c** #include <semaphore.h> #include <pthread.h> #include "tlpi\_hdr.h" static int glob = 0; static sem\_t sem; static void \* /\* Lặp 'arg' lần để tăng giá trị của 'glob' \*/ threadFunc(void \*arg) { int loops = \*((int \*) arg); int loc, j; for (j = 0; j < loops; j++) { if (sem\_wait(&sem) == -1) errExit("sem\_wait");
+```c
 
-```
- loc = glob;
- loc++;
- glob = loc;
- if (sem_post(&sem) == -1)
- errExit("sem_post");
- }
- return NULL;
+––––––––––––––––––––––––––––––––––––––––––––––––––– psem/thread_incr_psem.c
+
+## include <semaphore.h>
+
+## include <pthread.h>
+
+## include "tlpi_hdr.h"
+
+static int glob = 0;
+static sem_t sem;
+
+static void *
+threadFunc(void *arg) /* Lặp 'arg' lần để tăng giá trị của 'glob' */
+{
+int loops = *((int *) arg);
+int loc, j;
+
+for (j = 0; j < loops; j++) {
+if (sem_wait(&sem) == -1)
+errExit("sem_wait");
+
+loc = glob;
+loc++;
+glob = loc;
+
+if (sem_post(&sem) == -1)
+errExit("sem_post");
 }
+
+return NULL;
+}
+
 int
 main(int argc, char *argv[])
 {
- pthread_t t1, t2;
- int loops, s;
- loops = (argc > 1) ? getInt(argv[1], GN_GT_0, "num-loops") : 10000000;
- /* Khởi tạo một mutex chia sẻ giữa các luồng với giá trị là 1 */
- if (sem_init(&sem, 0, 1) == -1)
- errExit("sem_init");
-   /* Tạo hai luồng để cùng tăng biến 'glob' */
- s = pthread_create(&t1, NULL, threadFunc, &loops);
- if (s != 0)
- errExitEN(s, "pthread_create");
- s = pthread_create(&t2, NULL, threadFunc, &loops);
- if (s != 0)
- errExitEN(s, "pthread_create");
-   /* Chờ các luồng kết thúc */
- s = pthread_join(t1, NULL);
- if (s != 0)
- errExitEN(s, "pthread_join");
- s = pthread_join(t2, NULL);
- if (s != 0)
- errExitEN(s, "pthread_join");
- printf("glob = %d\n", glob);
- exit(EXIT_SUCCESS);
+pthread_t t1, t2;
+int loops, s;
+
+loops = (argc > 1) ? getInt(argv[1], GN_GT_0, "num-loops") : 10000000;
+
+/* Khởi tạo một semaphore chia sẻ giữa các luồng với giá trị ban đầu là 1 */
+if (sem_init(&sem, 0, 1) == -1)
+errExit("sem_init");
+
+/* Tạo hai luồng để cùng tăng biến 'glob' */
+s = pthread_create(&t1, NULL, threadFunc, &loops);
+if (s != 0)
+errExitEN(s, "pthread_create");
+s = pthread_create(&t2, NULL, threadFunc, &loops);
+if (s != 0)
+errExitEN(s, "pthread_create");
+
+/* Chờ các luồng kết thúc */
+s = pthread_join(t1, NULL);
+if (s != 0)
+errExitEN(s, "pthread_join");
+s = pthread_join(t2, NULL);
+if (s != 0)
+errExitEN(s, "pthread_join");
+
+printf("glob = %d\n", glob);
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––– psem/thread_incr_psem.c
+
 ```
 
 ### 53.4.2 Hủy một Semaphore Không Tên (Unnamed Semaphore)
 
 Hàm `sem_destroy()` dùng để hủy semaphore `sem`. Đây bắt buộc phải là một semaphore không tên đã được khởi tạo trước đó bằng hàm `sem_init()`. Việc hủy một semaphore chỉ an toàn khi không có tiến trình (process) hay luồng (thread) nào đang chờ trên semaphore đó.
 
-```
 ## include <semaphore.h>
 int sem_destroy(sem_t *sem);
                                              Trả về 0 khi thành công, hoặc –1 nếu lỗi

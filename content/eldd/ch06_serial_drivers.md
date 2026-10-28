@@ -1,4 +1,4 @@
-# Chương 6. Trình điều khiển Nối tiếp (Serial Drivers)
+# Chương 6: Trình điều khiển nối tiếp (Serial Drivers)
 
 ```
 Trong chương này
@@ -65,8 +65,8 @@ UART thường thấy trên PC là chip 16550 của National Semiconductor, ho�
 Như bạn vừa thấy, những người dùng của hệ thống con nối tiếp rất nhiều và khác nhau. Điều này đã thúc đẩy các nhà phát triển kernel cấu trúc một kiến trúc nối tiếp phân tầng bằng cách sử dụng các khối xây dựng sau:
 
 - **1.** Các trình điều khiển cấp thấp (low-level driver) quan tâm đến các chi tiết bên trong của UART hoặc phần cứng nối tiếp cơ sở khác.
-- Một tầng trình điều khiển tty giao tiếp với trình điều khiển cấp thấp. Trình điều khiển tty cách ly các tầng cao hơn khỏi sự phức tạp của phần cứng. **2.**
-- Các quy luật đường truyền (line disciplines) "xử lý" (cook) dữ liệu được trao đổi với trình điều khiển tty. Line disciplines định hình hành vi của tầng nối tiếp và giúp tái sử dụng các tầng thấp hơn để hỗ trợ các công nghệ khác nhau. **3.**
+- **2.** Một tầng trình điều khiển tty giao tiếp với trình điều khiển cấp thấp. Trình điều khiển tty cách ly các tầng cao hơn khỏi sự phức tạp của phần cứng.
+- **3.** Các kỷ luật đường truyền (line disciplines) "xử lý" (cook) dữ liệu được trao đổi với trình điều khiển tty. Line disciplines định hình hành vi của tầng nối tiếp và giúp tái sử dụng các tầng thấp hơn để hỗ trợ các công nghệ khác nhau.
 
 Để hỗ trợ việc triển khai trình điều khiển tùy chỉnh, hệ thống con nối tiếp cũng cung cấp các API cốt lõi (core API) nhằm tách biệt các điểm chung ra khỏi các tầng này.
 
@@ -376,341 +376,384 @@ Liệt kê 6.1 sử dụng các chú thích (comment) để giải thích mục 
 
 #### Liệt kê 6.1. Trình điều khiển USB\_UART cho Điện thoại Linux
 
-```
 ## include <linux/console.h>
+
 ## include <linux/platform_device.h>
+
 ## include <linux/tty.h>
+
 ## include <linux/tty_flip.h>
+
 ## include <linux/serial_core.h>
+
 ## include <linux/serial.h>
+
 ## include <asm/irq.h>
+
 ## include <asm/io.h>
+
 ## define USB_UART_MAJOR 200 /* Bạn phải đăng ký số major này */
+
 ## define USB_UART_MINOR_START 70 /* Bắt đầu đánh số minor từ đây */
+
 ## define USB_UART_PORTS 2 /* Điện thoại có 2 cổng USB_UART */
+
 ## define PORT_USB_UART 30 /* Kiểu UART. Thêm giá trị này vào
- include/linux/serial_core.h */
+
+include/linux/serial_core.h */
 /* Mỗi USB_UART có một tập thanh ghi 3 byte bao gồm
- UU_STATUS_REGISTER tại offset 0, UU_READ_DATA_REGISTER tại
- offset 1, và UU_WRITE_DATA_REGISTER tại offset 2 như hiển thị
- trong Bảng 6.1 */
+UU_STATUS_REGISTER tại offset 0, UU_READ_DATA_REGISTER tại
+offset 1, và UU_WRITE_DATA_REGISTER tại offset 2 như hiển thị
+trong Bảng 6.1 */
+
 ## define USB_UART1_BASE 0xe8000000 /* Địa chỉ cơ sở bộ nhớ cho USB_UART1 */
+
 ## define USB_UART2_BASE 0xe9000000 /* Địa chỉ cơ sở bộ nhớ cho USB_UART2 */
+
 ## define USB_UART_REGISTER_SPACE 0x3
+
 /* Ngữ nghĩa của các bit trong thanh ghi trạng thái */
+
 ## define USB_UART_TX_FULL 0x20 /* TX FIFO đã đầy */
+
 ## define USB_UART_RX_EMPTY 0x10 /* TX FIFO đang trống */
+
 ## define USB_UART_STATUS 0x0F /* Lỗi Parity/frame/overrun? */
+
 ## define USB_UART1_IRQ 3 /* Ngắt IRQ của USB_UART1 */
+
 ## define USB_UART2_IRQ 4 /* Ngắt IRQ của USB_UART2 */
+
 ## define USB_UART_FIFO_SIZE 32 /* Kích thước FIFO */
+
 ## define USB_UART_CLK_FREQ 16000000
+
 static struct uart_port usb_uart_port[]; /* Được định nghĩa sau */
 /* Ghi một ký tự vào cổng USB_UART */
 static void
 usb_uart_putc(struct uart_port *port, unsigned char c)
 {
- /* Chờ cho đến khi có không gian trống trong TX FIFO của USB_UART.
- Nhận biết điều này bằng cách quan sát bit USB_UART_TX_FULL trong
- thanh ghi trạng thái */
- while (__raw_readb(port->membase) & USB_UART_TX_FULL);
- /* Ghi ký tự vào cổng dữ liệu */
- __raw_writeb(c, (port->membase+1));
+/* Chờ cho đến khi có không gian trống trong TX FIFO của USB_UART.
+Nhận biết điều này bằng cách quan sát bit USB_UART_TX_FULL trong
+thanh ghi trạng thái */
+while (__raw_readb(port->membase) & USB_UART_TX_FULL);
+/* Ghi ký tự vào cổng dữ liệu */
+__raw_writeb(c, (port->membase+1));
 }
 /* Đọc một ký tự từ USB_UART */
 static unsigned char
 usb_uart_getc(struct uart_port *port)
 {
- /* Chờ cho đến khi có sẵn dữ liệu trong RX_FIFO */
- while (__raw_readb(port->membase) & USB_UART_RX_EMPTY);
- /* Lấy dữ liệu */
+/* Chờ cho đến khi có sẵn dữ liệu trong RX_FIFO */
+while (__raw_readb(port->membase) & USB_UART_RX_EMPTY);
+/* Lấy dữ liệu */
+
 ```
 
 ```
- return(__raw_readb(port->membase+2));
+
+return(__raw_readb(port->membase+2));
 }
 /* Lấy trạng thái của USB_UART */
 static unsigned char
 usb_uart_status(struct uart_port *port)
 {
- return(__raw_readb(port->membase) & USB_UART_STATUS);
+return(__raw_readb(port->membase) & USB_UART_STATUS);
 }
 /*
- * Yêu cầu vùng nhớ (memory region) gắn với cổng USB_UART. Được gọi
- * khi driver thêm một cổng USB_UART thông qua hàm uart_add_one_port().
- */
+
+- Yêu cầu vùng nhớ (memory region) gắn với cổng USB_UART. Được gọi
+- khi driver thêm một cổng USB_UART thông qua hàm uart_add_one_port().
+*/
 static int
 usb_uart_request_port(struct uart_port *port)
 {
- if (!request_mem_region(port->mapbase, USB_UART_REGISTER_SPACE,
- "usb_uart")) {
- return -EBUSY;
- }
- return 0;
+if (!request_mem_region(port->mapbase, USB_UART_REGISTER_SPACE,
+"usb_uart")) {
+return -EBUSY;
+}
+return 0;
 }
 /* Giải phóng vùng nhớ gắn với cổng USB_UART.
- * Được gọi khi driver gỡ bỏ một cổng USB_UART thông qua
- * hàm uart_remove_one_port().
- */
+
+- Được gọi khi driver gỡ bỏ một cổng USB_UART thông qua
+- hàm uart_remove_one_port().
+*/
 static void
 usb_uart_release_port(struct uart_port *port)
 {
- release_mem_region(port->mapbase, USB_UART_REGISTER_SPACE);
+release_mem_region(port->mapbase, USB_UART_REGISTER_SPACE);
 }
 /*
- * Cấu hình USB_UART. Được gọi khi driver thêm một cổng USB_UART.
- */
+
+- Cấu hình USB_UART. Được gọi khi driver thêm một cổng USB_UART.
+*/
 static void
 usb_uart_config_port(struct uart_port *port, int flags)
 {
- if (flags & UART_CONFIG_TYPE && usb_uart_request_port(port) == 0)
- {
- port->type = PORT_USB_UART;
- }
+if (flags & UART_CONFIG_TYPE && usb_uart_request_port(port) == 0)
+{
+port->type = PORT_USB_UART;
+}
 }
 /* Trình xử lý ngắt nhận dữ liệu (Receive interrupt handler) */
 static irqreturn_t
 usb_uart_rxint(int irq, void *dev_id)
 {
- struct uart_port *port = (struct uart_port *) dev_id;
- struct tty_struct *tty = port->info->tty;
- unsigned int status, data;
- /* ... */
- do {
- /* ... */
- /* Đọc dữ liệu */
- data = usb_uart_getc(port);
+struct uart_port *port = (struct uart_port *) dev_id;
+struct tty_struct *tty = port->info->tty;
+unsigned int status, data;
+/* ... */
+do {
+/* ... */
+/* Đọc dữ liệu */
+data = usb_uart_getc(port);
+
 ```
 
 ```c
- /* Normal, overrun, parity, frame error? */
- status = usb_uart_status(port);
- /* Dispatch to the tty layer */
- tty_insert_flip_char(tty, data, status);
- /* ... */
- } while (more_chars_to_be_read()); /* More chars */
- /* ... */
- tty_flip_buffer_push(tty);
- return IRQ_HANDLED;
+
+/* Normal, overrun, parity, frame error? */
+status = usb_uart_status(port);
+/* Dispatch to the tty layer */
+tty_insert_flip_char(tty, data, status);
+/* ... */
+} while (more_chars_to_be_read()); /* More chars */
+/* ... */
+tty_flip_buffer_push(tty);
+return IRQ_HANDLED;
 }
 /* Được gọi khi một ứng dụng mở một USB_UART */
 static int
 usb_uart_startup(struct uart_port *port)
 {
- int retval = 0;
- /* ... */
- /* Yêu cầu IRQ (Request IRQ) */
- if ((retval = request_irq(port->irq, usb_uart_rxint, 0,
- "usb_uart", (void *)port))) {
- return retval;
- }
- /* ... */
- return retval;
+int retval = 0;
+/* ... */
+/* Yêu cầu IRQ (Request IRQ) */
+if ((retval = request_irq(port->irq, usb_uart_rxint, 0,
+"usb_uart", (void *)port))) {
+return retval;
+}
+/* ... */
+return retval;
 }
 /* Được gọi khi một ứng dụng đóng một USB_UART */
 static void
 usb_uart_shutdown(struct uart_port *port)
 {
- /* ... */
- /* Giải phóng IRQ (Free IRQ) */
- free_irq(port->irq, port);
- /* Vô hiệu hóa ngắt (Interrupt) bằng cách ghi vào các thanh ghi
- thích hợp */
- /* ... */
+/* ... */
+/* Giải phóng IRQ (Free IRQ) */
+free_irq(port->irq, port);
+/* Vô hiệu hóa ngắt (Interrupt) bằng cách ghi vào các thanh ghi
+thích hợp */
+/* ... */
 }
 /* Đặt loại UART thành USB_UART */
 static const char *
 usb_uart_type(struct uart_port *port)
 {
- return port->type == PORT_USB_UART ? "USB_UART" : NULL;
+return port->type == PORT_USB_UART ? "USB_UART" : NULL;
 }
 /* Bắt đầu truyền các byte dữ liệu */
 static void
 usb_uart_start_tx(struct uart_port *port)
 {
- while (1) {
- /* Lấy dữ liệu từ bộ đệm vòng (circular buffer) của UART và
- ghi nó vào thanh ghi WRITE_DATA của USB_UART */
- usb_uart_putc(port,
- port->info->xmit.buf[port->info->xmit.tail]);
- /* Điều chỉnh con trỏ cuối (tail) của bộ đệm UART */
- port->info->xmit.tail = (port->info->xmit.tail + 1) &
- (UART_XMIT_SIZE - 1);
- /* Thống kê */
+while (1) {
+/* Lấy dữ liệu từ bộ đệm vòng (circular buffer) của UART và
+ghi nó vào thanh ghi WRITE_DATA của USB_UART */
+usb_uart_putc(port,
+port->info->xmit.buf[port->info->xmit.tail]);
+/* Điều chỉnh con trỏ cuối (tail) của bộ đệm UART */
+port->info->xmit.tail = (port->info->xmit.tail + 1) &
+(UART_XMIT_SIZE - 1);
+/* Thống kê */
+
 ```
 
 ```
- port->icount.tx++;
- /* Kết thúc nếu không còn dữ liệu trong bộ đệm UART */
- if (uart_circ_empty(&port->info->xmit)) break;
- }
- /* ... */
+
+port->icount.tx++;
+/* Kết thúc nếu không còn dữ liệu trong bộ đệm UART */
+if (uart_circ_empty(&port->info->xmit)) break;
+}
+/* ... */
 }
 /* Cấu trúc các thao tác UART (UART operations) */
 static struct uart_ops usb_uart_ops = {
- .start_tx = usb_uart_start_tx, /* Bắt đầu truyền */
- .startup = usb_uart_startup, /* Ứng dụng mở USB_UART */
- .shutdown = usb_uart_shutdown, /* Ứng dụng đóng USB_UART */
- .type = usb_uart_type, /* Đặt loại UART */
- .config_port = usb_uart_config_port, /* Cấu hình khi trình điều khiển
- thêm một cổng USB_UART */
- .request_port = usb_uart_request_port,/* Yêu cầu cấp phát tài nguyên
- liên quan đến cổng
- USB_UART */
- .release_port = usb_uart_release_port,/* Giải phóng tài nguyên
- liên quan đến cổng
- USB_UART */
+.start_tx = usb_uart_start_tx, /* Bắt đầu truyền */
+.startup = usb_uart_startup, /* Ứng dụng mở USB_UART */
+.shutdown = usb_uart_shutdown, /* Ứng dụng đóng USB_UART */
+.type = usb_uart_type, /* Đặt loại UART */
+.config_port = usb_uart_config_port, /* Cấu hình khi trình điều khiển
+thêm một cổng USB_UART */
+.request_port = usb_uart_request_port,/* Yêu cầu cấp phát tài nguyên
+liên quan đến cổng
+USB_UART */
+.release_port = usb_uart_release_port,/* Giải phóng tài nguyên
+liên quan đến cổng
+USB_UART */
+
 ## if 0 /* Để trống (chưa triển khai) cho USB_UART */
- .tx_empty = usb_uart_tx_empty, /* Bộ phát có bận không? */
- .set_mctrl = usb_uart_set_mctrl, /* Đặt điều khiển modem */
- .get_mctrl = usb_uart_get_mctrl, /* Lấy điều khiển modem */
- .stop_tx = usb_uart_stop_tx, /* Dừng truyền */
- .stop_rx = usb_uart_stop_rx, /* Dừng nhận */
- .enable_ms = usb_uart_enable_ms, /* Bật tín hiệu trạng thái modem */
- .set_termios = usb_uart_set_termios, /* Đặt termios */
+
+.tx_empty = usb_uart_tx_empty, /* Bộ phát có bận không? */
+.set_mctrl = usb_uart_set_mctrl, /* Đặt điều khiển modem */
+.get_mctrl = usb_uart_get_mctrl, /* Lấy điều khiển modem */
+.stop_tx = usb_uart_stop_tx, /* Dừng truyền */
+.stop_rx = usb_uart_stop_rx, /* Dừng nhận */
+.enable_ms = usb_uart_enable_ms, /* Bật tín hiệu trạng thái modem */
+.set_termios = usb_uart_set_termios, /* Đặt termios */
+
 ## endif
+
 };
 static struct uart_driver usb_uart_reg = {
- .owner = THIS_MODULE, /* Chủ sở hữu (Owner) */
- .driver_name = "usb_uart", /* Tên trình điều khiển */
- .dev_name = "ttyUU", /* Tên node thiết bị */
- .major = USB_UART_MAJOR, /* Số Major */
- .minor = USB_UART_MINOR_START, /* Số Minor bắt đầu */
- .nr = USB_UART_PORTS, /* Số lượng cổng UART */
- .cons = &usb_uart_console, /* Con trỏ đến cấu trúc console.
- Được thảo luận trong Chương 12,
- "Video Drivers" */
+.owner = THIS_MODULE, /* Chủ sở hữu (Owner) */
+.driver_name = "usb_uart", /* Tên trình điều khiển */
+.dev_name = "ttyUU", /* Tên node thiết bị */
+.major = USB_UART_MAJOR, /* Số Major */
+.minor = USB_UART_MINOR_START, /* Số Minor bắt đầu */
+.nr = USB_UART_PORTS, /* Số lượng cổng UART */
+.cons = &usb_uart_console, /* Con trỏ đến cấu trúc console.
+Được thảo luận trong Chương 12,
+"Video Drivers" */
 };
 /* Được gọi khi trình điều khiển nền tảng (platform driver) bị hủy đăng ký */
 static int
 usb_uart_remove(struct platform_device *dev)
 {
- platform_set_drvdata(dev, NULL);
- /* Xóa cổng USB_UART khỏi serial core */
- uart_remove_one_port(&usb_uart_reg, &usb_uart_port[dev->id]);
- return 0;
+platform_set_drvdata(dev, NULL);
+/* Xóa cổng USB_UART khỏi serial core */
+uart_remove_one_port(&usb_uart_reg, &usb_uart_port[dev->id]);
+return 0;
 }
 /* Sự kiện quản lý nguồn (Power Management) tạm ngưng (Suspend) */
 static int
 usb_uart_suspend(struct platform_device *dev, pm_message_t state)
+
 ```
 
 ```
+
 {
- uart_suspend_port(&usb_uart_reg, &usb_uart_port[dev->id]);
- return 0;
+uart_suspend_port(&usb_uart_reg, &usb_uart_port[dev->id]);
+return 0;
 }
 /* Phục hồi (Resume) sau khi tạm ngưng */
 static int
 usb_uart_resume(struct platform_device *dev)
 {
- uart_resume_port(&usb_uart_reg, &usb_uart_port[dev->id]);
- return 0;
+uart_resume_port(&usb_uart_reg, &usb_uart_port[dev->id]);
+return 0;
 }
 /* Tham số của từng cổng USB_UART được hỗ trợ */
 static struct uart_port usb_uart_port[] = {
- {
- .mapbase = (unsigned int) USB_UART1_BASE,
- .iotype = UPIO_MEM, /* Ánh xạ bộ nhớ (Memory mapped) */
- .irq = USB_UART1_IRQ, /* IRQ */
- .uartclk = USB_UART_CLK_FREQ, /* Tần số xung nhịp HZ */
- .fifosize = USB_UART_FIFO_SIZE, /* Kích thước FIFO */
- .ops = &usb_uart_ops, /* Các thao tác UART */
- .flags = UPF_BOOT_AUTOCONF, /* Cờ cổng UART */
- .line = 0, /* Số thứ tự cổng UART */
- },
- {
- .mapbase = (unsigned int)USB_UART2_BASE,
- .iotype = UPIO_MEM, /* Ánh xạ bộ nhớ (Memory mapped) */
- .irq = USB_UART2_IRQ, /* IRQ */
- .uartclk = USB_UART_CLK_FREQ, /* Tần số xung nhịp HZ */
- .fifosize = USB_UART_FIFO_SIZE, /* Kích thước FIFO */
- .ops = &usb_uart_ops, /* Các thao tác UART */
- .flags = UPF_BOOT_AUTOCONF, /* Cờ cổng UART */
- .line = 1, /* Số thứ tự cổng UART */
- }
+{
+.mapbase = (unsigned int) USB_UART1_BASE,
+.iotype = UPIO_MEM, /* Ánh xạ bộ nhớ (Memory mapped) */
+.irq = USB_UART1_IRQ, /* IRQ */
+.uartclk = USB_UART_CLK_FREQ, /* Tần số xung nhịp HZ */
+.fifosize = USB_UART_FIFO_SIZE, /* Kích thước FIFO */
+.ops = &usb_uart_ops, /* Các thao tác UART */
+.flags = UPF_BOOT_AUTOCONF, /* Cờ cổng UART */
+.line = 0, /* Số thứ tự cổng UART */
+},
+{
+.mapbase = (unsigned int)USB_UART2_BASE,
+.iotype = UPIO_MEM, /* Ánh xạ bộ nhớ (Memory mapped) */
+.irq = USB_UART2_IRQ, /* IRQ */
+.uartclk = USB_UART_CLK_FREQ, /* Tần số xung nhịp HZ */
+.fifosize = USB_UART_FIFO_SIZE, /* Kích thước FIFO */
+.ops = &usb_uart_ops, /* Các thao tác UART */
+.flags = UPF_BOOT_AUTOCONF, /* Cờ cổng UART */
+.line = 1, /* Số thứ tự cổng UART */
+}
 };
 /* Hàm thăm dò (Probe) của platform driver */
 static int __init
 usb_uart_probe(struct platform_device *dev)
 {
- /* ... */
- /* Thêm một cổng USB_UART. Hàm này cũng đăng ký thiết bị này
- với tầng tty (tty layer) và kích hoạt việc gọi điểm vào (entry point) config_port() */
- uart_add_one_port(&usb_uart_reg, &usb_uart_port[dev->id]);
- platform_set_drvdata(dev, &usb_uart_port[dev->id]);
- return 0;
+/* ... */
+/* Thêm một cổng USB_UART. Hàm này cũng đăng ký thiết bị này
+với tầng tty (tty layer) và kích hoạt việc gọi điểm vào (entry point) config_port() */
+uart_add_one_port(&usb_uart_reg, &usb_uart_port[dev->id]);
+platform_set_drvdata(dev, &usb_uart_port[dev->id]);
+return 0;
 }
 struct platform_device *usb_uart_plat_device1; /* Thiết bị nền tảng
- cho USB_UART 1 */
+cho USB_UART 1 */
 struct platform_device *usb_uart_plat_device2; /* Thiết bị nền tảng
- cho USB_UART 2 */
+cho USB_UART 2 */
 static struct platform_driver usb_uart_driver = {
- .probe = usb_uart_probe, /* Phương thức probe */
- .remove = __exit_p(usb_uart_remove), /* Phương thức gỡ bỏ */
+.probe = usb_uart_probe, /* Phương thức probe */
+.remove = __exit_p(usb_uart_remove), /* Phương thức gỡ bỏ */
+
 ```
 
 ```c
- .suspend = usb_uart_suspend, /* Power suspend */
- .resume = usb_uart_resume, /* Resume after a suspend */
- .driver = {
- .name = "usb_uart", /* Driver name */
- },
+
+.suspend = usb_uart_suspend, /* Power suspend */
+.resume = usb_uart_resume, /* Resume after a suspend */
+.driver = {
+.name = "usb_uart", /* Driver name */
+},
 };
 /* Driver Initialization */
 static int __init
 usb_uart_init(void)
 {
- int retval;
- /* Register the USB_UART driver with the serial core */
- if ((retval = uart_register_driver(&usb_uart_reg))) {
- return retval;
- }
- /* Register platform device for USB_UART 1. Usually called
- during architecture-specific setup */
- usb_uart_plat_device1 =
- platform_device_register_simple("usb_uart", 0, NULL, 0);
- if (IS_ERR(usb_uart_plat_device1)) {
- uart_unregister_driver(&usb_uart_reg);
- return PTR_ERR(usb_uart_plat_device1);
- }
- /* Register platform device for USB_UART 2. Usually called
- during architecture-specific setup */
- usb_uart_plat_device2 =
- platform_device_register_simple("usb_uart", 1, NULL, 0);
- if (IS_ERR(usb_uart_plat_device2)) {
- uart_unregister_driver(&usb_uart_reg);
- platform_device_unregister(usb_uart_plat_device1);
- return PTR_ERR(usb_uart_plat_device2);
- }
- /* Announce a matching driver for the platform
- devices registered above */
- if ((retval = platform_driver_register(&usb_uart_driver))) {
- uart_unregister_driver(&usb_uart_reg);
- platform_device_unregister(usb_uart_plat_device1);
- platform_device_unregister(usb_uart_plat_device2);
- }
- return 0;
+int retval;
+/* Register the USB_UART driver with the serial core */
+if ((retval = uart_register_driver(&usb_uart_reg))) {
+return retval;
+}
+/* Register platform device for USB_UART 1. Usually called
+during architecture-specific setup */
+usb_uart_plat_device1 =
+platform_device_register_simple("usb_uart", 0, NULL, 0);
+if (IS_ERR(usb_uart_plat_device1)) {
+uart_unregister_driver(&usb_uart_reg);
+return PTR_ERR(usb_uart_plat_device1);
+}
+/* Register platform device for USB_UART 2. Usually called
+during architecture-specific setup */
+usb_uart_plat_device2 =
+platform_device_register_simple("usb_uart", 1, NULL, 0);
+if (IS_ERR(usb_uart_plat_device2)) {
+uart_unregister_driver(&usb_uart_reg);
+platform_device_unregister(usb_uart_plat_device1);
+return PTR_ERR(usb_uart_plat_device2);
+}
+/* Announce a matching driver for the platform
+devices registered above */
+if ((retval = platform_driver_register(&usb_uart_driver))) {
+uart_unregister_driver(&usb_uart_reg);
+platform_device_unregister(usb_uart_plat_device1);
+platform_device_unregister(usb_uart_plat_device2);
+}
+return 0;
 }
 /* Driver Exit */
 static void __exit
 usb_uart_exit(void)
 {
- /* The order of unregistration is important. Unregistering the
- UART driver before the platform driver will crash the system */
- /* Unregister the platform driver */
- platform_driver_unregister(&usb_uart_driver);
- /* Unregister the platform devices */
- platform_device_unregister(usb_uart_plat_device1);
+/* The order of unregistration is important. Unregistering the
+UART driver before the platform driver will crash the system */
+/* Unregister the platform driver */
+platform_driver_unregister(&usb_uart_driver);
+/* Unregister the platform devices */
+platform_device_unregister(usb_uart_plat_device1);
+
 ```
 
 ```c
- platform_device_unregister(usb_uart_plat_device2);
- /* Unregister the USB_UART driver */
- uart_unregister_driver(&usb_uart_reg);
+
+platform_device_unregister(usb_uart_plat_device2);
+/* Unregister the USB_UART driver */
+uart_unregister_driver(&usb_uart_reg);
 }
 module_init(usb_uart_init);
 module_exit(usb_uart_exit);
+
 ```
 
 ## RS-485
@@ -728,37 +771,41 @@ Bây giờ, chúng ta hãy xem xét các cấu trúc và hàm đăng ký cốt l
 Cấu trúc `struct tty_struct` được định nghĩa trong *include/linux/tty.h*. Cấu trúc này chứa tất cả thông tin trạng thái liên quan đến một tty đang mở. Đây là một cấu trúc rất lớn, nhưng dưới đây là một số trường quan trọng: **1.**
 
 ```c
- struct tty_struct {
- int magic; /* Magic marker */
- struct tty_driver *driver; /* Pointer to the tty
- driver */
- struct tty_ldisc ldisc; /* Attached Line
- discipline */
- /* ... */
- struct tty_flip_buffer flip; /* Flip Buffer. See
- below. */
- /* ... */
- wait_queue_head_t write_wait; /* See the section
- "Line Disciplines" */
- wait_queue_head_t read_wait; /* See the section
- "Line Disciplines" */
- /* ... */
- };
+
+struct tty_struct {
+int magic; /* Magic marker */
+struct tty_driver *driver; /* Pointer to the tty
+driver */
+struct tty_ldisc ldisc; /* Attached Line
+discipline */
+/* ... */
+struct tty_flip_buffer flip; /* Flip Buffer. See
+below. */
+/* ... */
+wait_queue_head_t write_wait; /* See the section
+"Line Disciplines" */
+wait_queue_head_t read_wait; /* See the section
+"Line Disciplines" */
+/* ... */
+};
+
 ```
 
 Cấu trúc `struct tty_flip_buffer` hoặc *flip buffer* được nhúng bên trong `tty_struct`. Đây là trung tâm của cơ chế thu thập và xử lý dữ liệu: **2.**
 
 ```c
- struct tty_flip_buffer {
- /* ... */
- struct semaphore pty_sem; /* Serialize */
- char *char_buf_ptr; /* Pointer to the flip
- buffer */
- /* ... */
- unsigned char char_buf[2*TTY_FLIPBUF_SIZE]; /* The flip
- buffer */
- /* ... */
- };
+
+struct tty_flip_buffer {
+/* ... */
+struct semaphore pty_sem; /* Serialize */
+char *char_buf_ptr; /* Pointer to the flip
+buffer */
+/* ... */
+unsigned char char_buf[2*TTY_FLIPBUF_SIZE]; /* The flip
+buffer */
+/* ... */
+};
+
 ```
 
 Trình điều khiển nối tiếp mức thấp (low-level serial driver) sử dụng một nửa của flip buffer để thu thập dữ liệu, trong khi kỷ luật dòng (line discipline) sử dụng nửa còn lại để xử lý dữ liệu đó. Các con trỏ bộ nhớ đệm (buffer pointers) được sử dụng bởi trình điều khiển nối tiếp và kỷ luật dòng sau đó được hoán đổi (flipped), và quá trình tiếp tục diễn ra. Hãy xem hàm `flush_to_ldisc()` trong *drivers/char/tty_io.c* để thấy quá trình hoán đổi này hoạt động thực tế như thế nào.
@@ -766,42 +813,48 @@ Trình điều khiển nối tiếp mức thấp (low-level serial driver) sử 
 Trong các phiên bản kernel gần đây, cấu trúc `tty_flip_buffer` đã được thiết kế lại phần nào. Nó hiện được cấu thành từ một phần đầu bộ đệm (`tty_bufhead`) và một danh sách bộ đệm (`tty_buffer`):
 
 ```
+
 struct tty_bufhead {
- /* ... */
- struct semaphore pty_sem; /* Serialize */
+/* ... */
+struct semaphore pty_sem; /* Serialize */
+
 ```
 
 ```
- struct tty_buffer *head, tail, free; /* Xem bên dưới */
- /* ... */
+
+struct tty_buffer *head, tail, free; /* Xem bên dưới */
+/* ... */
 };
 struct tty_buffer {
- struct tty_buffer *next;
- char *char_buf_ptr; /* Con trỏ tới flip buffer */
- /* ... */
- unsigned long data[0]; /* Flip buffer, vùng nhớ cho nó
- được cấp phát động */
+struct tty_buffer *next;
+char *char_buf_ptr; /* Con trỏ tới flip buffer */
+/* ... */
+unsigned long data[0]; /* Flip buffer, vùng nhớ cho nó
+được cấp phát động */
 };
+
 ```
 
 Cấu trúc `struct tty_driver` được định nghĩa trong *include/linux/tty_driver.h*. Cấu trúc này chỉ định giao diện lập trình giữa các tty driver và các tầng cao hơn: **3.**
 
 ```
+
 struct tty_driver {
- int magic; /* Số Magic */
- /* ... */
- int major; /* Số Major */
- int minor_start; /* Bắt đầu số minor */
- /* ... */
- /* Các hàm giao diện giữa tty driver và các tầng cao hơn */
- int (*open)(struct tty_struct *tty, struct file *filp);
- void (*close)(struct tty_struct *tty, struct file *filp);
- int (*write)(struct tty_struct *tty,
- const unsigned char *buf, int count);
- void (*put_char)(struct tty_struct *tty,
- unsigned char ch);
- /* ... */
+int magic; /* Số Magic */
+/* ... */
+int major; /* Số Major */
+int minor_start; /* Bắt đầu số minor */
+/* ... */
+/* Các hàm giao diện giữa tty driver và các tầng cao hơn */
+int (*open)(struct tty_struct *tty, struct file *filp);
+void (*close)(struct tty_struct *tty, struct file *filp);
+int (*write)(struct tty_struct *tty,
+const unsigned char *buf, int count);
+void (*put_char)(struct tty_struct *tty,
+unsigned char ch);
+/* ... */
 };
+
 ```
 
 Giống như một UART driver, một tty driver cần thực hiện hai bước để đăng ký chính nó với nhân hệ thống (kernel):
@@ -810,9 +863,11 @@ Giống như một UART driver, một tty driver cần thực hiện hai bước
 - **2.** Gọi
 
 ```
+
 tty_register_device(struct tty_driver *tty_d,
- unsigned device_index,
- struct device *device)
+unsigned device_index,
+struct device *device)
+
 ```
 
 để đăng ký từng thiết bị tty riêng lẻ mà nó hỗ trợ.
@@ -845,27 +900,29 @@ Hãy cùng tìm hiểu sâu hơn về hoạt động bên trong của một line
 #### Liệt kê 6.2. Các Thao tác của Line Discipline
 
 ```c
+
 struct tty_ldisc n_touch_ldisc = {
- TTY_LDISC_MAGIC, /* Magic */
- "n_tch", /* Tên của line discipline */
- N_TCH, /* Số định danh ID của line discipline */
- n_touch_open, /* Mở line discipline */
- n_touch_close, /* Đóng line discipline */
- n_touch_flush_buffer, /* Xóa bộ đệm đọc (read buffer) của line discipline */
- n_touch_chars_in_buffer, /* Lấy số lượng ký tự đã xử lý trong bộ đệm đọc của line discipline */
- n_touch_read, /* Được gọi khi dữ liệu được yêu cầu từ không gian người dùng (user space) */
- n_touch_write, /* Phương thức ghi (write method) */
- n_touch_ioctl, /* Các lệnh điều khiển I/O (I/O Control) */
- NULL, /* Chúng ta không có hàm set_termios */
- n_touch_poll, /* Poll */
- n_touch_receive_buf, /* Được gọi bởi trình điều khiển tầng thấp (low-level driver) để truyền dữ liệu tới user space*/
- n_touch_receive_room, /* Trả về dung lượng còn trống trong bộ đệm đọc của line discipline */
- n_touch_write_wakeup /* Được gọi khi trình điều khiển thiết bị tầng thấp sẵn sàng truyền thêm dữ liệu */
+TTY_LDISC_MAGIC, /* Magic */
+"n_tch", /* Tên của line discipline */
+N_TCH, /* Số định danh ID của line discipline */
+n_touch_open, /* Mở line discipline */
+n_touch_close, /* Đóng line discipline */
+n_touch_flush_buffer, /* Xóa bộ đệm đọc (read buffer) của line discipline */
+n_touch_chars_in_buffer, /* Lấy số lượng ký tự đã xử lý trong bộ đệm đọc của line discipline */
+n_touch_read, /* Được gọi khi dữ liệu được yêu cầu từ không gian người dùng (user space) */
+n_touch_write, /* Phương thức ghi (write method) */
+n_touch_ioctl, /* Các lệnh điều khiển I/O (I/O Control) */
+NULL, /* Chúng ta không có hàm set_termios */
+n_touch_poll, /* Poll */
+n_touch_receive_buf, /* Được gọi bởi trình điều khiển tầng thấp (low-level driver) để truyền dữ liệu tới user space*/
+n_touch_receive_room, /* Trả về dung lượng còn trống trong bộ đệm đọc của line discipline */
+n_touch_write_wakeup /* Được gọi khi trình điều khiển thiết bị tầng thấp sẵn sàng truyền thêm dữ liệu */
 };
 /* ... */
 if ((err = tty_register_ldisc(N_TCH, &n_touch_ldisc))) {
- return err;
+return err;
 }
+
 ```
 
 Trong Liệt kê 6.2, `n_tch` là tên của line discipline và `N_TCH` là số định danh của line discipline. Bạn phải chỉ định giá trị của `N_TCH` trong `include/linux/tty.h`, tệp tiêu đề (header file) chứa tất cả các định nghĩa line discipline. Các line discipline đang hoạt động trên hệ thống của bạn có thể được tìm thấy trong `/proc/tty/ldiscs`.
@@ -875,39 +932,41 @@ Các line discipline thu thập dữ liệu từ nửa phần của chúng trong
 #### Liệt kê 6.3. Mở Line Discipline
 
 ```c
-/* Cấu trúc riêng tư được sử dụng để hiện thực hóa Máy trạng thái hữu hạn (FSM) 
-cho bộ điều khiển cảm ứng. Bộ điều khiển và bộ vi xử lý giao tiếp với nhau 
+
+/* Cấu trúc riêng tư được sử dụng để hiện thực hóa Máy trạng thái hữu hạn (FSM)
+cho bộ điều khiển cảm ứng. Bộ điều khiển và bộ vi xử lý giao tiếp với nhau
 bằng một giao thức cụ thể mà FSM hiện thực hóa */
 struct n_touch {
- int current_state; /* Máy trạng thái hữu hạn (Finite State Machine) */
- spinlock_t touch_lock; /* Khóa quay (Spinlock) */
- struct tty_struct *tty; /* Cấu trúc tty liên kết */
- /* Thống kê và các tác vụ quản trị khác */
- /* ... */
+int current_state; /* Máy trạng thái hữu hạn (Finite State Machine) */
+spinlock_t touch_lock; /* Khóa quay (Spinlock) */
+struct tty_struct *tty; /* Cấu trúc tty liên kết */
+/* Thống kê và các tác vụ quản trị khác */
+/* ... */
 } *n_tch;
 /* Mở thiết bị open() */
 static int
 n_touch_open(struct tty_struct *tty)
 {
- /* Cấp phát bộ nhớ cho n_tch */
- if (!(n_tch = kmalloc(sizeof(struct n_touch), GFP_KERNEL))) {
- return -ENOMEM;
- }
- memset(n_tch, 0, sizeof(struct n_touch));
- tty->disc_data = n_tch; /* Các điểm đầu vào khác giờ đây có thể truy cập trực tiếp vào n_tch */
- /* Cấp phát bộ nhớ đệm đọc cục bộ của line discipline 
- được sử dụng để sao chép dữ liệu ra khỏi tty flip buffer */
- tty->read_buf = kmalloc(BUFFER_SIZE, GFP_KERNEL);
- if (!tty->read_buf) return -ENOMEM;
- /* Xóa sạch bộ đệm đọc */
- memset(tty->read_buf, 0, BUFFER_SIZE);
- /* Khởi tạo khóa */
- spin_lock_init(&ntch->touch_lock);
- /* Khởi tạo các trường tty cần thiết khác. 
- Xem drivers/char/n_tty.c để biết ví dụ */
- /* ... */
- return 0;
+/* Cấp phát bộ nhớ cho n_tch */
+if (!(n_tch = kmalloc(sizeof(struct n_touch), GFP_KERNEL))) {
+return -ENOMEM;
 }
+memset(n_tch, 0, sizeof(struct n_touch));
+tty->disc_data = n_tch; /* Các điểm đầu vào khác giờ đây có thể truy cập trực tiếp vào n_tch */
+/* Cấp phát bộ nhớ đệm đọc cục bộ của line discipline
+được sử dụng để sao chép dữ liệu ra khỏi tty flip buffer */
+tty->read_buf = kmalloc(BUFFER_SIZE, GFP_KERNEL);
+if (!tty->read_buf) return -ENOMEM;
+/* Xóa sạch bộ đệm đọc */
+memset(tty->read_buf, 0, BUFFER_SIZE);
+/* Khởi tạo khóa */
+spin_lock_init(&ntch->touch_lock);
+/* Khởi tạo các trường tty cần thiết khác.
+Xem drivers/char/n_tty.c để biết ví dụ */
+/* ... */
+return 0;
+}
+
 ```
 
 Bạn có thể muốn thiết lập `N_TCH` làm line discipline mặc định (thay vì `N_TTY`) bất cứ khi nào cổng nối tiếp được kết nối với bộ điều khiển cảm ứng được mở. Hãy tham khảo phần "Thay đổi Line Discipline" ("Changing Line Disciplines") để xem cách thay đổi các line discipline từ user space.
@@ -923,37 +982,44 @@ Bạn có thể muốn thiết lập `N_TCH` làm line discipline mặc định 
 Hình 6.7 minh họa các luồng này được liên kết với luồng dữ liệu đọc. Trình xử lý ngắt (interrupt handler) đưa phương thức `receive_buf()` (`n_touch_receive_buf()` trong ví dụ của chúng ta) vào hàng đợi như một tác vụ (task). Bạn có thể ghi đè hành vi này bằng cách thiết lập cờ `tty->low_latency`.
 
 ```
-                             read()
 
-        Terminal I/O                           Network I/O
-          (TTY, TCH)                 (PPP, SLIP, Bluetooth, IrDA)
-               \                                  /
-                \                                /
-                 v                              v
-              tty_read()              Networking Protocols
-                 ^                             ^
-                 |                             |
-      ------------ Ranh giới User Space / Kernel Space ------------
+read()
 
-                         Tầng Line Discipline
-      -----------------------------------------------------------------
-      { Bộ đệm đọc cục bộ (tty->read_buf) }          { sk_buff }
+Terminal I/O                           Network I/O
+(TTY, TCH)                 (PPP, SLIP, Bluetooth, IrDA)
+\                                  /
+\                                /
+v                              v
+tty_read()              Networking Protocols
+^                             ^
 
-            ldisc.read()  --read_wait_queue-->  ldisc.receive_buf()
-                    |                             ^         |
-                    | Unthrottle                  |         |Throttle
-                    v                             |         v 
-             ldisc.chars_in_buf()                 |     ldisc.receive_room()
-                                                  |
-                                                  |
-                                  ----------- queue_task -------------
-                                                   ^
-                                                   |
-                                                   |
-                                        tty_flip_buffer_push()      { Bộ đệm lật (tty->flip.char_buf) }
-                                                   ^
-                                                   |
-                                                Serial ISR
+|                             |
+------------ Ranh giới User Space / Kernel Space ------------
+
+Tầng Line Discipline
+-----------------------------------------------------------------
+{ Bộ đệm đọc cục bộ (tty->read_buf) }          { sk_buff }
+
+ldisc.read()  --read_wait_queue-->  ldisc.receive_buf()
+
+|                             ^         |
+| Unthrottle                  |         |Throttle
+v                             |         v
+ldisc.chars_in_buf()                 |     ldisc.receive_room()
+
+|
+|
+----------- queue_task -------------
+^
+
+|
+|
+tty_flip_buffer_push()      { Bộ đệm lật (tty->flip.char_buf) }
+^
+
+|
+Serial ISR
+
 ```
 
 **Hình 6.7. Đường dẫn đọc của line discipline.**
@@ -963,52 +1029,54 @@ Bộ điều khiển cảm ứng (touch controller) và bộ vi xử lý (proces
 **Liệt kê 6.4. Phương thức n_touch_receive_buf()**
 
 ```
+
 static void
 n_touch_receive_buf(struct tty_struct *tty,
- const unsigned char *cp, char *fp, int count)
+const unsigned char *cp, char *fp, int count)
 {
- /* Work on the data in the line discipline's half of
- the flip buffer pointed to by cp */
- /* ... */
- /* Implement the Finite State Machine to interpret commands/data
- arriving from the touch controller and put the processed data
- into the local read buffer */
+/* Work on the data in the line discipline's half of
+the flip buffer pointed to by cp */
+/* ... */
+/* Implement the Finite State Machine to interpret commands/data
+arriving from the touch controller and put the processed data
+into the local read buffer */
 ....................................................................................
- /* Datasheet-dependent Code Region */
- switch (tty->disc_data->current_state) {
- case RESET:
- /* Issue a reset command to the controller */
- tty->driver->write(tty, 0, mode_stream_command,
- sizeof(mode_stream_command));
- tty->disc_data->current_state = STREAM_DATA;
- /* ... */
- break;
- case STREAM_DATA:
- /* ... */
- break;
- case PARSING:
- /* ... */
- tty->disc_data->current_state = PARSED;
- break;
- case PARSED:
- /* ... */
- }
-....................................................................................
- if (tty->disc_data->current_state == PARSED) {
- /* If you have a parsed packet, copy the collected coordinate
- and direction information into the local read buffer */
- spin_lock_irqsave(&tty->disc_data->touch_lock, flags);
- for (i=0; i < PACKET_SIZE; i++) {
- tty->disc_data->read_buf[tty->disc_data->read_head] =
- tty->disc_data->current_pkt[i];
- tty->disc_data->read_head =
- (tty->disc_data->read_head + 1) & (BUFFER_SIZE - 1);
- tty->disc_data->read_cnt++;
- }
- spin_lock_irqrestore(&tty->disc_data->touch_lock, flags);
- /* ... */ /* See Listing 6.5 */
- }
+/* Datasheet-dependent Code Region */
+switch (tty->disc_data->current_state) {
+case RESET:
+/* Issue a reset command to the controller */
+tty->driver->write(tty, 0, mode_stream_command,
+sizeof(mode_stream_command));
+tty->disc_data->current_state = STREAM_DATA;
+/* ... */
+break;
+case STREAM_DATA:
+/* ... */
+break;
+case PARSING:
+/* ... */
+tty->disc_data->current_state = PARSED;
+break;
+case PARSED:
+/* ... */
 }
+....................................................................................
+if (tty->disc_data->current_state == PARSED) {
+/* If you have a parsed packet, copy the collected coordinate
+and direction information into the local read buffer */
+spin_lock_irqsave(&tty->disc_data->touch_lock, flags);
+for (i=0; i < PACKET_SIZE; i++) {
+tty->disc_data->read_buf[tty->disc_data->read_head] =
+tty->disc_data->current_pkt[i];
+tty->disc_data->read_head =
+(tty->disc_data->read_head + 1) & (BUFFER_SIZE - 1);
+tty->disc_data->read_cnt++;
+}
+spin_lock_irqrestore(&tty->disc_data->touch_lock, flags);
+/* ... */ /* See Listing 6.5 */
+}
+}
+
 ```
 
 `n_touch_receive_buf()` xử lý dữ liệu đến từ trình điều khiển nối tiếp (serial driver). Hàm này trao đổi một chuỗi các lệnh và phản hồi với bộ điều khiển cảm ứng, đồng thời đưa thông tin tọa độ và hướng (nhấn/nhả) nhận được vào bộ đệm đọc (read buffer) của line discipline. Các thao tác truy cập vào bộ đệm đọc phải được tuần tự hóa (serialized) bằng cách sử dụng một khóa quay (spinlock) vì nó được sử dụng bởi cả hai luồng (thread) `ldisc.receive_buf()` và `ldisc.read()` được minh họa trong Hình 6.7 (lần lượt là `n_touch_receive_buf()` và `n_touch_read()` trong ví dụ của chúng ta). Như bạn có thể thấy trong Liệt kê 6.4, `n_touch_receive_buf()` gửi các lệnh đến bộ điều khiển cảm ứng bằng cách gọi trực tiếp điểm vào `write()` của trình điều khiển nối tiếp.
@@ -1023,18 +1091,20 @@ Liệt kê 6.5 thực hiện hai thao tác này.
 #### Liệt kê 6.5. Đánh thức luồng đọc và tiết chế trình điều khiển nối tiếp
 
 ```
+
 /* n_touch_receive_buf() continued.. */
 /* Wake up any threads waiting for data */
 if (waitqueue_active(&tty->read_wait) &&
- (tty->read_cnt >= tty->minimum_to_wake))
- wake_up_interruptible(&tty->read_wait);
+(tty->read_cnt >= tty->minimum_to_wake))
+wake_up_interruptible(&tty->read_wait);
 }
 /* If we are running out of buffer space, request the
- serial driver to throttle incoming data */
+serial driver to throttle incoming data */
 if (n_touch_receive_room(tty) < TOUCH_THROTTLE_THRESHOLD) {
- tty->driver.throttle(tty);
+tty->driver.throttle(tty);
 }
 /* ... */
+
 ```
 
 Một hàng đợi chờ (`wait queue` - `tty->read_wait`) được sử dụng để đồng bộ hóa giữa các luồng `ldisc.read()` và `ldisc.receive_buf()`. `ldisc.read()` thêm tiến trình gọi vào hàng đợi chờ khi nó không tìm thấy dữ liệu để đọc, trong khi `n_touch_receive_buf()` đánh thức luồng `ldisc.read()` khi có sẵn dữ liệu để đọc. Do đó, `n_touch_read()` thực hiện các bước sau:
@@ -1070,9 +1140,11 @@ Việc triển khai `ioctl()` cho `N_TCH` nhìn chung là chuẩn hóa. Các l�
 Một thao tác line discipline khác là `flush_buffer()`, được sử dụng để xả (flush) bất kỳ dữ liệu nào đang chờ xử lý trong bộ đệm đọc (read buffer). `flush_buffer()` cũng được gọi khi một line discipline bị đóng. Nó đánh thức bất kỳ tiến trình đọc (read thread) nào đang chờ thêm dữ liệu như sau:
 
 ```c
+
 if (tty->link->packet){
- wake_up_interruptible(&tty->disc_data->read_wait);
+wake_up_interruptible(&tty->disc_data->read_wait);
 }
+
 ```
 
 Một điểm vào khác (không được hỗ trợ bởi `N_TCH`) là `set_termios()`. Line discipline `N_TTY` hỗ trợ giao diện `set_termios()`, được sử dụng để thiết lập các tùy chọn đặc thù cho việc xử lý dữ liệu của line discipline. Ví dụ, bạn có thể sử dụng `set_termios()` để đưa line discipline vào chế độ thô (raw mode) hoặc chế độ đã qua xử lý ("cooked" mode). Một số tùy chọn dành riêng cho bộ điều khiển cảm ứng (chẳng hạn như thay đổi tốc độ baud, độ chẵn lẻ - parity, và số bit dừng - stop bits) được triển khai bởi phương thức `set_termios()` của driver thiết bị bên dưới.
@@ -1082,7 +1154,9 @@ Các điểm vào còn lại như `poll()` khá chuẩn, và bạn có thể qua
 Bạn có thể biên dịch line discipline của mình như một phần của kernel hoặc tải nó động dưới dạng một module. Nếu bạn chọn biên dịch nó dưới dạng module, tất nhiên bạn cũng phải cung cấp các hàm sẽ được gọi trong quá trình khởi tạo và thoát module. Hàm khởi tạo thường giống với phương thức `init()`. Hàm thoát cần phải dọn dẹp các cấu trúc dữ liệu riêng tư (private data structures) và hủy đăng ký (unregister) line discipline. Việc hủy đăng ký line discipline chỉ gồm một dòng lệnh:
 
 ```c
+
 tty_unregister_ldisc(N_TCH);
+
 ```
 
 Một cách dễ dàng hơn để điều khiển một serial touch controller là tận dụng các dịch vụ được cung cấp bởi hệ thống con *input* (input subsystem) của kernel và line discipline tích hợp sẵn *serport*. Chúng ta sẽ tìm hiểu kỹ thuật đó trong chương tiếp theo.
@@ -1094,13 +1168,15 @@ Một cách dễ dàng hơn để điều khiển một serial touch controller 
 #### Bảng liệt kê 6.6. Thay đổi một Line Discipline từ Không gian Người dùng (User Space)
 
 ```c
+
 fd = open("/dev/ttySX", O_RDONLY | O_NOCTTY);
 /* Tại thời điểm này, N_TCH được gắn vào /dev/ttySX, cổng serial được sử dụng
- bởi touch controller. Chuyển sang N_TTY */
+bởi touch controller. Chuyển sang N_TTY */
 ldisc = N_TTY;
 ioctl(fd, TIOCSETD, &ldisc);
 /* Đặt termios sang chế độ raw và kết xuất dữ liệu đi vào */
 /* ... */
+
 ```
 
 Lời gọi `ioctl()` `TIOCSETD` sẽ đóng line discipline hiện tại và mở line discipline mới được yêu cầu.

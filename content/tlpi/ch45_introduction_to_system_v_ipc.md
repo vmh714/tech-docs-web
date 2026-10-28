@@ -1,4 +1,4 @@
-# Chương 45: GIỚI THIỆU VỀ SYSTEM V IPC
+# Chương 45: Giới thiệu về System V IPC (Introduction to System V IPC)
 
 System V IPC là nhãn được dùng để chỉ ba cơ chế khác nhau dành cho giao tiếp giữa các tiến trình (Interprocess Communication - IPC):
 
@@ -10,6 +10,7 @@ Mặc dù ba cơ chế IPC này khá khác biệt về chức năng, nhưng có 
 
 Một lý do quan trọng hơn để thảo luận về các cơ chế System V IPC cùng nhau là các giao diện lập trình (programming interfaces) của chúng có chung một số đặc điểm, do đó nhiều khái niệm tương tự áp dụng cho tất cả các cơ chế này.
 
+> [!NOTE]
 > Do System V IPC được SUSv3 yêu cầu để tuân thủ XSI, nên đôi khi nó còn được gọi thay thế là XSI IPC.
 
 Chương này cung cấp cái nhìn tổng quan về các cơ chế System V IPC và trình bày chi tiết các tính năng chung cho cả ba cơ chế. Ba cơ chế này sau đó sẽ được thảo luận riêng lẻ trong các chương tiếp theo.
@@ -22,7 +23,8 @@ Bảng 45-1 tóm tắt các tệp tiêu đề (header file) và System Call đư
 
 Một số triển khai yêu cầu phải bao gồm (include) tệp `<sys/types.h>` trước khi bao gồm các tệp tiêu đề được hiển thị trong Bảng 45-1. Một số hệ thống UNIX cũ hơn cũng có thể yêu cầu bao gồm `<sys/ipc.h>`. (Không có phiên bản nào của Single UNIX Specification yêu cầu các tệp tiêu đề này).
 
-> Trên hầu hết các kiến trúc phần cứng mà Linux hỗ trợ, một System Call duy nhất (`ipc(2)`) đóng vai trò là điểm vào (entry point) của Kernel (Kernel Space) cho tất cả các thao tác System V IPC, và tất cả các lời gọi được liệt kê trong Bảng 45-1 thực chất được triển khai như các hàm thư viện nằm chồng lên trên System Call này. (Hai ngoại lệ cho cơ chế này là Alpha và IA-64, nơi các hàm được liệt kê trong bảng thực sự được triển khai dưới dạng các System Call riêng lẻ). Cách tiếp cận có phần bất thường này là một hệ quả từ việc triển khai ban đầu của System V IPC dưới dạng một module Kernel có thể tải (loadable kernel module). Mặc dù thực chất chúng là các hàm thư viện trên hầu hết các kiến trúc Linux, nhưng xuyên suốt chương này, chúng ta sẽ gọi các hàm trong Bảng 45-1 là các System Call. Chỉ những nhà phát triển thư viện C mới cần sử dụng `ipc(2)`; bất kỳ việc sử dụng nào khác trong ứng dụng đều không có tính di-port (portable).
+> [!NOTE]
+> Trên hầu hết các kiến trúc phần cứng mà Linux hỗ trợ, một system call duy nhất (`ipc(2)`) đóng vai trò là điểm vào (entry point) của kernel cho tất cả các thao tác System V IPC, và tất cả các lời gọi được liệt kê trong Bảng 45-1 thực chất được triển khai như các hàm thư viện nằm chồng lên trên system call này. (Hai ngoại lệ cho cơ chế này là Alpha và IA-64, nơi các hàm được liệt kê trong bảng thực sự được triển khai dưới dạng các system call riêng lẻ). Cách tiếp cận có phần bất thường này là một hệ quả từ việc triển khai ban đầu của System V IPC dưới dạng một loadable kernel module. Mặc dù thực chất chúng là các hàm thư viện trên hầu hết các kiến trúc Linux, nhưng xuyên suốt chương này, chúng ta sẽ gọi các hàm trong Bảng 45-1 là các system call. Chỉ những nhà phát triển thư viện C mới cần sử dụng `ipc(2)`; bất kỳ việc sử dụng nào khác trong ứng dụng đều không có tính di động (nonportable).
 
 **Bảng 45-1:** Tóm tắt các giao diện lập trình cho các đối tượng System V IPC
 
@@ -44,6 +46,7 @@ Mỗi cơ chế System V IPC đều có một system call (lời gọi hệ th�
 
 Chúng ta sẽ gọi (một cách tương đối) trường hợp thứ hai là mở một đối tượng IPC đã tồn tại. Trong trường hợp này, tất cả những gì mà lời gọi get thực hiện chỉ là chuyển đổi một số này (khóa) thành một số khác (định danh).
 
+> [!NOTE]
 > Trong bối cảnh của System V IPC, từ "đối tượng" (object) không mang bất kỳ hàm ý nào liên quan đến lập trình hướng đối tượng (object-oriented programming). Thuật ngữ này đơn thuần dùng để phân biệt các cơ chế System V IPC với các tệp. Mặc dù có một số điểm tương đồng giữa các tệp và đối tượng System V IPC, nhưng việc sử dụng các đối tượng IPC có những điểm khác biệt quan trọng so với mô hình I/O tệp chuẩn của UNIX, và đây là nguồn gốc gây ra một số phức tạp khi sử dụng các cơ chế System V IPC.
 
 Một định danh IPC (IPC identifier) tương tự như một bộ mô tả tệp (file descriptor) ở chỗ nó được sử dụng trong tất cả các system call tiếp theo để tham chiếu đến đối tượng IPC. Tuy nhiên, có một sự khác biệt quan trọng về mặt ngữ nghĩa. Trong khi file descriptor là một thuộc tính của tiến trình (process attribute), thì định danh IPC lại là một thuộc tính của chính đối tượng đó và có phạm vi hiển thị toàn hệ thống (system-wide). Tất cả các tiến trình truy cập vào cùng một đối tượng đều sử dụng chung một định danh. Điều này có nghĩa là nếu chúng ta biết một đối tượng IPC đã tồn tại, chúng ta có thể bỏ qua lời gọi get, miễn là chúng ta có một cách khác để biết được định danh của đối tượng đó. Ví dụ, tiến trình tạo ra đối tượng có thể ghi định danh vào một tệp mà các tiến trình khác có thể đọc sau đó.
@@ -60,6 +63,7 @@ Giống như tất cả các lời gọi get, khóa (key) là đối số đầu
 
 Mặt nạ umask của tiến trình (Phần 15.4.6) không được áp dụng lên các quyền được gán cho một đối tượng IPC mới được tạo.
 
+> [!NOTE]
 > Một số bản cài đặt UNIX định nghĩa các hằng số mặt nạ bit sau cho quyền IPC: MSG\_R, MSG\_W, SEM\_R, SEM\_A, SHM\_R, và SHM\_W. Chúng tương ứng với quyền đọc và ghi của chủ sở hữu (người dùng) cho từng cơ chế IPC. Để lấy các mặt nạ bit quyền của nhóm (group) và người khác (other) tương ứng, các hằng số này có thể được dịch phải 3 và 6 bit. Những hằng số này không được quy định bởi chuẩn SUSv3 (vốn sử dụng các mặt nạ bit giống như được dùng cho tệp) và không được định nghĩa trong các tệp tiêu đề (header files) của glibc.
 
 Mỗi tiến trình muốn truy cập vào cùng một đối tượng IPC sẽ thực hiện một lời gọi get, chỉ định cùng một khóa để thu được cùng một định danh cho đối tượng đó. Chúng ta sẽ xem xét cách chọn một khóa cho ứng dụng ở Phần [45.2.](#page-48-0)
@@ -114,7 +118,7 @@ Kỹ thuật này đặc biệt hữu ích trong các ứng dụng đa tiến tr
 
 Hàm `ftok()` (file to key) trả về một giá trị khóa (key value) thích hợp để sử dụng trong một lời gọi tiếp theo tới một trong các System V IPC get system call.
 
-```
+```c
 ## include <sys/ipc.h>
 key_t ftok(char *pathname, int proj);
                                   Trả về khóa kiểu số nguyên nếu thành công, hoặc –1 nếu lỗi
@@ -128,6 +132,7 @@ Giá trị khóa này được tạo từ `pathname` và giá trị `proj` đư�
 
 Nói cách khác, `ftok()` sử dụng số i-node thay vì tên của tệp để tạo giá trị khóa. (Do thuật toán của `ftok()` phụ thuộc vào số i-node, tệp không nên bị xóa và tạo lại trong vòng đời của ứng dụng, vì rất có thể tệp đó sẽ được tạo lại với một số i-node khác.) Mục đích của giá trị `proj` đơn giản là cho phép chúng ta tạo ra nhiều khóa từ cùng một tệp, điều này rất hữu ích khi một ứng dụng cần tạo nhiều đối tượng IPC cùng loại. Về mặt lịch sử, tham số `proj` có kiểu `char`, và nó thường được chỉ định như vậy trong các lời gọi đến `ftok()`.
 
+> [!NOTE]
 > SUSv3 không quy định hành vi của `ftok()` nếu `proj` bằng 0. Dưới hệ điều hành AIX 5.1, `ftok()` trả về –1 nếu `proj` được chỉ định là 0. Trên Linux, giá trị này không có ý nghĩa đặc biệt nào. Tuy nhiên, các ứng dụng di động (portable applications) nên tránh chỉ định `proj` bằng 0; chúng ta vẫn còn 255 giá trị khác để lựa chọn.
 
 Thông thường, đường dẫn `pathname` truyền cho `ftok()` trỏ tới một trong các tệp hoặc thư mục tạo thành một phần của, hoặc được tạo bởi, ứng dụng và các tiến trình phối hợp (cooperating processes) sẽ truyền cùng một `pathname` cho `ftok()`.
@@ -220,6 +225,7 @@ msgget(key, S_IRUSR | S_IWUSR);
 
 Người dùng thứ hai có thể bỏ qua bước kiểm tra này bằng cách chỉ định giá trị `0` cho đối số thứ hai của lời gọi `msgget()`, trong trường hợp đó lỗi sẽ chỉ xảy ra khi chương trình cố gắng thực hiện một thao tác yêu cầu quyền ghi (write permission) trên đối tượng IPC (ví dụ: ghi một thông điệp bằng `msgsnd()`).
 
+> [!NOTE]
 > Lời gọi lấy (get call) đại diện cho một trường hợp duy nhất mà quyền thực thi (execute permission) không bị bỏ qua. Mặc dù nó không có ý nghĩa đối với các đối tượng IPC (IPC object), nhưng nếu quyền thực thi được yêu cầu trong một lời gọi get đối với một đối tượng đã tồn tại, thì việc kiểm tra sẽ được thực hiện để xem quyền đó có được cấp hay không.
 
 Các quyền được yêu cầu cho các thao tác phổ biến khác như sau:
@@ -293,6 +299,7 @@ Ngay cả khi một tiến trình server khởi động lại tạo lại các �
 
 Để giải quyết vấn đề này, kernel áp dụng một thuật toán (được mô tả trong phần tiếp theo) nhằm đảm bảo thông thường rằng khi một đối tượng IPC mới được tạo, định danh của đối tượng đó sẽ khác đi, ngay cả khi cùng một key được truyền vào. Do đó, bất kỳ client nào của tiến trình server cũ cố gắng sử dụng định danh cũ sẽ nhận được lỗi từ System Call IPC liên quan.
 
+> [!NOTE]
 > Các giải pháp như được minh họa trong [Listing 45-1](#page-53-0) không giải quyết hoàn toàn vấn đề nhận diện việc server khởi động lại khi sử dụng bộ nhớ chia sẻ System V (System V shared memory), vì một đối tượng bộ nhớ chia sẻ chỉ bị xóa khi tất cả các tiến trình đã ngắt kết nối (detached) nó khỏi không gian địa chỉ ảo (virtual address space) của chúng. Tuy nhiên, các đối tượng bộ nhớ chia sẻ thường được sử dụng kết hợp với semaphore System V (System V semaphores), vốn bị xóa ngay lập tức để đáp ứng lại thao tác `IPC_RMID`. Điều này có nghĩa là một tiến trình client sẽ nhận biết được việc server khởi động lại khi nó cố gắng truy cập đối tượng semaphore đã bị xóa.
 
 ## 45.5 Thuật toán được sử dụng bởi các System Call get của System V IPC
@@ -325,6 +332,7 @@ Lưu ý các điểm sau về thuật toán được sử dụng bởi các lờ
 
 Ngay cả khi một đối tượng IPC mới được tạo với cùng một key, gần như chắc chắn nó sẽ có một định danh khác, vì định danh được tính toán dựa trên giá trị `seq` được lưu trong cấu trúc dữ liệu liên kết, và giá trị này được tăng lên một đơn vị trong quá trình tạo ra mỗi đối tượng thuộc loại này.
 
+> [!NOTE]
 > Thuật toán được sử dụng bên trong kernel sẽ quay vòng (wrap) giá trị `seq` trở về 0 khi nó đạt đến giá trị `(INT_MAX / IPCMNI)`—tức là `2.147.483.647 / 32.768 = 65.535`. Do đó, một đối tượng IPC mới có thể có cùng định danh với một đối tượng trước đó nếu có 65.535 đối tượng được tạo trong khoảng thời gian đó và đối tượng mới tái sử dụng cùng một phần tử trong mảng `entries` giống như đối tượng trước (nghĩa là phần tử này cũng phải được giải phóng trong khoảng thời gian đó). Tuy nhiên, xác suất xảy ra điều này là rất thấp.
 
 - Thuật toán tạo ra một tập hợp các giá trị định danh (identifier) riêng biệt cho mỗi chỉ mục (index) của mảng `entries`.
@@ -390,6 +398,7 @@ Linux cung cấp hai phương pháp phi tiêu chuẩn để lấy danh sách t�
 
 Chúng ta mô tả các tệp trong thư mục `/proc/sysvipc` ở đây, và hoãn thảo luận về các lệnh ctl cho đến Mục [46.6](#page-74-0), nơi chúng tôi cung cấp một chương trình ví dụ liệt kê tất cả các hàng đợi thông điệp System V trên hệ thống.
 
+> [!NOTE]
 > Một số triển khai UNIX khác có các phương pháp phi tiêu chuẩn của riêng chúng để lấy danh sách tất cả các định danh IPC; ví dụ, Solaris cung cấp các system call `msgids()`, `semids()`, và `shmids()` cho mục đích này.
 
 Ba tệp chỉ đọc trong thư mục `/proc/sysvipc` cung cấp cùng một thông tin có thể lấy được thông qua `ipcs`:
@@ -410,6 +419,7 @@ key semid perms nsems uid gid cuid cgid otime ctime
 
 Ba tệp `/proc/sysvipc` cung cấp một phương pháp (không diable - nonportable) cho các chương trình và tập lệnh (script) để duyệt qua danh sách tất cả các đối tượng IPC (IPC object) hiện có thuộc một loại đã cho.
 
+> [!NOTE]
 > Điều tốt nhất chúng ta có thể đạt được đối với cách tiếp cận có tính di động (portable approach) để lấy danh sách tất cả các đối tượng IPC thuộc một loại đã cho là phân tích cú pháp (parse) đầu ra của lệnh `ipcs(1)`.
 
 ## 45.8 Giới hạn IPC (IPC Limits)

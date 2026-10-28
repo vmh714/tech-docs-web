@@ -1,6 +1,4 @@
-## Chapter 21
-
-## SIGNALS: SIGNAL HANDLERS (TÍN HIỆU: BỘ XỬ LÝ TÍN HIỆU)
+# Chương 21: Tín hiệu: Trình xử lý tín hiệu (Signals: Signal Handlers)
 
 Chương này tiếp tục mô tả về tín hiệu (signal) đã được bắt đầu ở chương trước. Nội dung tập trung vào các bộ xử lý tín hiệu (signal handler), đồng thời mở rộng phần thảo luận đã bắt đầu ở Mục 20.4. Các chủ đề mà chúng ta sẽ xem xét bao gồm:
 
@@ -37,6 +35,7 @@ Trong Chương 29, chúng ta sẽ tìm hiểu cách tạo ra các chương trìn
 
 Một hàm được gọi là tái nhập (reentrant) nếu nó có thể được thực thi đồng thời một cách an toàn bởi nhiều luồng thực thi trong cùng một tiến trình. Trong ngữ cảnh này, "an toàn" có nghĩa là hàm đạt được kết quả mong đợi, bất kể trạng thái thực thi của bất kỳ luồng thực thi nào khác.
 
+> [!NOTE]
 > Định nghĩa của SUSv3 về một hàm tái nhập là hàm "có hiệu quả, khi được gọi bởi hai hoặc nhiều luồng, được đảm bảo giống như thể các luồng lần lượt thực thi hàm đó tuần tự theo một thứ tự không xác định, ngay cả khi quá trình thực thi thực tế bị đan xen (interleaved)."
 
 Một hàm có thể không tái nhập (nonreentrant) nếu nó cập nhật các cấu trúc dữ liệu toàn cục (global) hoặc tĩnh (static). (Một hàm chỉ sử dụng các biến cục bộ được đảm bảo là tái nhập). Nếu hai lần gọi (tức là hai luồng cùng thực thi) hàm này đồng thời cố gắng cập nhật cùng một biến toàn cục hoặc cấu trúc dữ liệu, thì các cập nhật này có khả năng cản trở lẫn nhau và tạo ra kết quả sai lệch. Ví dụ, giả sử một luồng thực thi đang trong quá trình cập nhật cấu trúc dữ liệu danh sách liên kết (linked list) để thêm một mục mới vào danh sách, trong khi một luồng khác cũng cố gắng cập nhật cùng danh sách liên kết đó. Vì việc thêm một mục mới vào danh sách đòi hỏi phải cập nhật nhiều con trỏ (pointer), nên nếu một luồng khác ngắt các bước này và cập nhật các con trỏ đó, thảm họa sẽ xảy ra.
@@ -184,6 +183,7 @@ Tiêu chuẩn SUSv3 lưu ý rằng tất cả các hàm không được liệt k
 
 Vấn đề với cách tiếp cận thứ hai là, trong một chương trình phức tạp, rất khó để đảm bảo rằng một trình xử lý tín hiệu (signal handler) sẽ không bao giờ làm gián đoạn chương trình chính trong khi chương trình đang gọi một hàm không an toàn. Vì lý do này, các quy tắc trên thường được đơn giản hóa thành tuyên bố rằng chúng ta tuyệt đối không được gọi các hàm không an toàn (unsafe functions) từ bên trong một trình xử lý tín hiệu.
 
+> [!NOTE]
 > Nếu chúng ta thiết lập cùng một hàm xử lý để xử lý nhiều tín hiệu khác nhau hoặc sử dụng cờ `SA_NODEFER` trong hàm `sigaction()`, thì một trình xử lý có thể tự làm gián đoạn chính nó. Do đó, trình xử lý có thể không tái nhập (nonreentrant) nếu nó cập nhật các biến toàn cục (global) hoặc tĩnh (static), ngay cả khi các biến đó không được sử dụng bởi chương trình chính.
 
 ### Sử dụng `errno` bên trong các trình xử lý tín hiệu
@@ -248,6 +248,7 @@ Tuy nhiên, có một vấn đề khi sử dụng hàm `longjmp()` chuẩn để
 
 Điều gì xảy ra với mặt nạ tín hiệu (signal mask) nếu chúng ta thoát khỏi signal handler bằng `longjmp()`? Câu trả lời phụ thuộc vào nguồn gốc của từng bản cài đặt UNIX cụ thể. Dưới hệ thống System V, `longjmp()` không khôi phục mặt nạ tín hiệu, do đó các tín hiệu bị chặn (blocked signal) sẽ không được bỏ chặn khi rời khỏi handler. Linux tuân theo hành vi của System V. (Điều này thường không phải là điều chúng ta muốn, vì nó để lại tín hiệu gây ra việc gọi handler ở trạng thái bị chặn). Dưới các bản cài đặt có nguồn gốc từ BSD, `setjmp()` lưu mặt nạ tín hiệu trong đối số `env` của nó, và mặt nạ tín hiệu đã lưu sẽ được khôi phục bởi `longjmp()`. (Các bản cài đặt có nguồn gốc từ BSD cũng cung cấp hai hàm khác là `_setjmp()` và `_longjmp()`, mangữ nghĩa của System V). Nói cách khác, chúng ta không thể sử dụng `longjmp()` một cách di port (portably) để thoát khỏi một signal handler.
 
+> [!NOTE]
 > Nếu chúng ta định nghĩa macro kiểm tra tính năng `_BSD_SOURCE` khi biên dịch chương trình, thì `setjmp()` (của glibc) sẽ tuân theo ngữ nghĩa BSD.
 
 Do sự khác biệt này giữa hai biến thể UNIX chính, POSIX.1-1990 đã chọn không chỉ định cách xử lý mặt nạ tín hiệu bởi `setjmp()` và `longjmp()`. Thay vào đó, nó định nghĩa một cặp hàm mới là `sigsetjmp()` và `siglongjmp()`, cung cấp khả năng điều khiển rõ ràng đối với mặt nạ tín hiệu khi thực hiện một lệnh nhảy phi cục bộ (nonlocal goto).
@@ -287,6 +288,7 @@ Quit
 
 Từ đầu ra của chương trình, chúng ta có thể thấy rằng, sau một lời gọi `longjmp()` từ hàm xử lý tín hiệu, mặt nạ tín hiệu (signal mask) vẫn giữ nguyên giá trị đã được thiết lập khi bước vào hàm xử lý tín hiệu.
 
+> [!NOTE]
 > Trong phiên làm việc trên dòng lệnh (shell session) ở trên, chúng ta đã biên dịch chương trình bằng cách sử dụng Makefile đi kèm với mã nguồn phân phối cho cuốn sách này. Tùy chọn `-s` ra lệnh cho `make` không hiển thị các câu lệnh mà nó đang thực thi. Chúng ta sử dụng tùy chọn này để tránh làm rối log của phiên làm việc. ([Mecklenburg, 2005] cung cấp một mô tả chi tiết về chương trình GNU `make`.)
 
 Khi chúng ta biên dịch cùng tệp mã nguồn đó để tạo ra một tệp thực thi sử dụng `siglongjmp()` nhằm thoát khỏi hàm xử lý, chúng ta sẽ thấy kết quả sau:
@@ -749,6 +751,7 @@ SUSv4 quy định hàm psiginfo(), có mục đích tương tự như hàm psign
 
 Đối số cuối cùng được truyền đến một handler được thiết lập với cờ SA\_SIGINFO, ucontext, là một con trỏ trỏ tới một cấu trúc kiểu ucontext\_t (được định nghĩa trong <ucontext.h>). (SUSv3 sử dụng một con trỏ void cho đối số này vì tiêu chuẩn không định nghĩa chi tiết nào về đối số đó.) Cấu trúc này cung cấp thông tin ngữ cảnh người dùng (user-context) mô tả trạng thái tiến trình trước khi gọi signal handler, bao gồm mặt nạ signal (signal mask) trước đó của tiến trình và các giá trị thanh ghi được lưu (ví dụ: bộ đếm chương trình - program counter và con trỏ ngăn xếp - stack pointer). Thông tin này rất hiếm khi được sử dụng trong các signal handler, vì vậy chúng ta sẽ không đi vào chi tiết hơn.
 
+> [!NOTE]
 > Một cách sử dụng khác của các cấu trúc ucontext\_t là thông qua các hàm getcontext(), makecontext(), setcontext(), và swapcontext(), cho phép một tiến trình lần lượt lấy, tạo, thay đổi và hoán đổi các ngữ cảnh thực thi. (Các thao tác này tương tự như setjmp() và longjmp(), nhưng tổng quát hơn.) Các hàm này có thể được sử dụng để cài đặt coroutine, trong đó luồng thực thi (thread of execution) của một tiến trình luân phiên giữa hai (hoặc nhiều) hàm. SUSv3 định nghĩa các hàm này, nhưng đánh dấu chúng là lỗi thời (obsolete). SUSv4 loại bỏ các đặc tả này và đề xuất rằng các ứng dụng nên được viết lại để sử dụng POSIX threads thay thế. Tài liệu hướng dẫn (manual) của glibc cung cấp thêm thông tin về các hàm này.
 
 ## 21.5 Ngắt và Khởi động lại System Call

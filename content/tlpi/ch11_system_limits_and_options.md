@@ -1,4 +1,4 @@
-# Chương 11: GIỚI HẠN VÀ TÙY CHỌN HỆ THỐNG
+# Chương 11: Giới hạn và Tùy chọn hệ thống (System Limits and Options)
 
 Mỗi bản cài đặt (implementation) UNIX đều thiết lập các giới hạn trên nhiều tính năng và tài nguyên hệ thống khác nhau, đồng thời cung cấp—hoặc chọn không cung cấp—các tùy chọn được định nghĩa trong các tiêu chuẩn khác nhau. Các ví dụ bao gồm:
 
@@ -27,8 +27,10 @@ SUSv3 chỉ định một phạm vi giới hạn mà một bản cài đặt tu�
 
 Nếu một ứng dụng tự giới hạn ở các giá trị tối thiểu mà SUSv3 yêu cầu cho mỗi giới hạn, thì ứng dụng đó sẽ có tính di động cao trên tất cả các bản cài đặt tuân thủ tiêu chuẩn. Tuy nhiên, việc làm như vậy ngăn cản ứng dụng tận dụng lợi thế từ các bản cài đặt cung cấp giới hạn cao hơn. Vì lý do này, thường tốt hơn nếu xác định giới hạn trên một hệ thống cụ thể bằng cách sử dụng `<limits.h>`, `sysconf()`, hoặc `pathconf()`.
 
+> [!NOTE]
 > Việc sử dụng chuỗi `_MAX` trong các tên giới hạn do SUSv3 định nghĩa có vẻ gây nhầm lẫn, khi xét đến mô tả của chúng là các giá trị tối thiểu. Lý do cho những cái tên này sẽ trở nên rõ ràng khi chúng ta xem xét rằng mỗi hằng số này định nghĩa một giới hạn trên (upper limit) đối với một số tài nguyên hoặc tính năng nào đó, và các tiêu chuẩn đang nêu rõ rằng giới hạn trên này phải có một giá trị tối thiểu nhất định.
 
+> [!NOTE]
 > Trong một số trường hợp, các giá trị tối đa được cung cấp cho một giới hạn và các giá trị này có tên chứa chuỗi `_MIN`. Đối với các hằng số này, điều ngược lại sẽ đúng: chúng đại diện cho một giới hạn dưới (lower limit) đối với một số tài nguyên, và các tiêu chuẩn đang nêu rõ rằng, trên một bản cài đặt tuân thủ chuẩn, giới hạn dưới này không được lớn hơn một giá trị nhất định. Ví dụ, giới hạn `FLT_MIN` (1E-37) định nghĩa giá trị lớn nhất mà một bản cài đặt có thể thiết lập cho số dấu phẩy động nhỏ nhất có thể được biểu diễn, và tất cả các bản cài đặt tuân thủ sẽ có khả năng biểu diễn các số dấu phẩy động nhỏ ít nhất bằng mức này.
 
 Mỗi giới hạn đều có một tên tương ứng với tên giá trị tối thiểu được mô tả ở trên, nhưng không có tiền tố `_POSIX_`. Một bản cài đặt có thể định nghĩa một hằng số với tên này trong `<limits.h>` để biểu thị giới hạn tương ứng cho bản cài đặt đó. Nếu được định nghĩa, giới hạn này sẽ luôn có kích thước ít nhất bằng giá trị tối thiểu được mô tả ở trên (tức là `XXX_MAX >= _POSIX_XXX_MAX`).
@@ -128,6 +130,7 @@ Tham số `name` là một trong các hằng số `_SC_*` được định nghĩ
 
 Nếu một giới hạn không thể được xác định, sysconf() sẽ trả về –1. Nó cũng có thể trả về –1 nếu có lỗi xảy ra. (Lỗi duy nhất được chỉ định là `EINVAL`, cho biết rằng `name` không hợp lệ). Để phân biệt trường hợp giới hạn không xác định (indeterminate limit) với lỗi, chúng ta phải đặt `errno` về 0 trước khi gọi hàm; nếu lệnh gọi trả về –1 và `errno` được thiết lập sau khi gọi, thì đã xảy ra lỗi.
 
+> [!NOTE]
 > Các giá trị giới hạn được trả về bởi sysconf() (cũng như pathconf() và fpathconf()) luôn là số nguyên kiểu (long). Trong phần tài liệu lý giải (rationale text) cho sysconf(), SUSv3 lưu ý rằng chuỗi (string) đã được xem xét làm giá trị trả về khả dĩ, nhưng đã bị loại bỏ vì độ phức tạp trong việc triển khai và sử dụng.
 
 Liệt kê [11-1](#page-63-0) minh họa việc sử dụng sysconf() để hiển thị các giới hạn hệ thống khác nhau. Chạy chương trình này trên một hệ thống Linux 2.6.31/x86-32 cho kết quả như sau:
@@ -177,6 +180,7 @@ main(int argc, char *argv[])
 
 SUSv3 yêu cầu giá trị do sysconf() trả về cho một giới hạn cụ thể phải là hằng số trong suốt vòng đời của tiến trình gọi (calling process). Ví dụ, chúng ta có thể giả định rằng giá trị trả về cho `_SC_PAGESIZE` sẽ không thay đổi khi một tiến trình đang chạy.
 
+> [!NOTE]
 > Trên Linux, có một số ngoại lệ (hợp lý) đối với nhận định rằng các giá trị giới hạn là hằng số trong suốt vòng đời của một tiến trình (process). Một tiến trình có thể sử dụng setrlimit() (Mục 36.2) để thay đổi các giới hạn tài nguyên tiến trình (process resource limit) khác nhau ảnh hưởng đến các giá trị giới hạn được báo cáo bởi sysconf(): `RLIMIT_NOFILE`, quyết định số lượng tệp mà tiến trình có thể mở (`_SC_OPEN_MAX`); `RLIMIT_NPROC` (một giới hạn tài nguyên thực tế không được quy định trong SUSv3), là giới hạn trên mỗi người dùng (per-user) về số lượng tiến trình có thể được tạo bởi tiến trình này (`_SC_CHILD_MAX`); và `RLIMIT_STACK`, kể từ Linux 2.6.23, quyết định giới hạn về không gian cho phép đối với các tham số dòng lệnh (command-line argument) và biến môi trường (environment) của tiến trình (`_SC_ARG_MAX`; xem trang hướng dẫn thủ công execve(2) để biết thêm chi tiết).
 
 ## 11.3 Truy xuất các giới hạn (và tùy chọn) liên quan đến tệp tại thời điểm chạy (Run Time)
@@ -266,12 +270,14 @@ Mỗi hằng số tùy chọn, nếu được định nghĩa, sẽ mang một tr
 
 Khi một hằng số được định nghĩa với giá trị 0, ứng dụng có thể sử dụng các hàm `sysconf()` và `pathconf()` (hoặc `fpathconf()`) để kiểm tra tại thời điểm chạy xem tùy chọn đó có được hỗ trợ hay không. Các đối số tên được truyền vào các hàm này nhìn chung có hình thức giống như các hằng số tại thời điểm biên dịch tương ứng, nhưng với tiền tố được thay thế bằng `_SC_` hoặc `_PC_`. Bản cài đặt phải cung cấp ít nhất các tệp tiêu đề, hằng số và giao diện hàm cần thiết để thực hiện việc kiểm tra lúc chạy.
 
+> [!NOTE]
 > SUSv3 chưa rõ ràng về việc liệu một hằng số tùy chọn không được định nghĩa có mang ý nghĩa giống như việc định nghĩa hằng số đó với giá trị 0 ("tùy chọn có thể được hỗ trợ") hay với giá trị –1 ("tùy chọn không được hỗ trợ"). Ủy ban tiêu chuẩn sau đó đã đưa ra quyết định rằng trường hợp này phải có ý nghĩa tương đương với việc định nghĩa hằng số có giá trị –1, và SUSv4 đã nêu rõ điều này một cách tường minh.
 
 Bảng [11-3](#page-68-0) liệt kê một số tùy chọn được quy định trong SUSv3. Cột đầu tiên của bảng cung cấp tên của hằng số thời điểm biên dịch (compile-time constant) tương ứng cho tùy chọn (được định nghĩa trong `<unistd.h>`), cũng như đối số tên `sysconf()` (`_SC_*`) hoặc `pathconf()` (`_PC_*`) tương ứng. Lưu ý các điểm sau đây về các tùy chọn cụ thể:
 
 - Một số tùy chọn bắt buộc phải có bởi SUSv3; nghĩa là hằng số thời điểm biên dịch luôn đánh giá ra một giá trị lớn hơn 0. Trước đây, các tùy chọn này thực sự mang tính tùy chọn (optional), nhưng ngày nay thì không. Các tùy chọn này được đánh dấu bằng ký tự `+` trong cột Ghi chú (Notes). (Trong SUSv4, một loạt các tùy chọn vốn mang tính tùy chọn trong SUSv3 đã trở thành bắt buộc).
 
+> [!NOTE]
 > Mặc dù các tùy chọn như vậy là bắt buộc theo SUSv3, một số hệ thống UNIX tuy nhiên vẫn có thể được cài đặt ở cấu hình không tuân thủ (nonconforming). Do đó, đối với các ứng dụng có tính di động (portable applications), việc kiểm tra xem một tùy chọn có ảnh hưởng đến ứng dụng có được hỗ trợ hay không có thể vẫn rất đáng giá, bất kể tiêu chuẩn có yêu cầu tùy chọn đó hay không.
 
 - Đối với một số tùy chọn nhất định, hằng số thời điểm biên dịch phải có giá trị khác –1. Nói cách khác, hoặc tùy chọn phải được hỗ trợ hoặc việc hỗ trợ phải có khả năng kiểm tra được tại thời điểm chạy (run time). Các tùy chọn này được đánh dấu bằng ký tự `*` trong cột Ghi chú (Notes).

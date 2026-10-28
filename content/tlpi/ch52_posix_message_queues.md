@@ -1,6 +1,6 @@
-# Chương 52: HÀNG ĐỢI THÔNG ĐIỆP POSIX (POSIX MESSAGE QUEUES)
+# Chương 52: Hàng đợi thông điệp POSIX (POSIX Message Queues)
 
-Chương trình này mô tả các hàng đợi thông điệp POSIX (POSIX message queues), cho phép các tiến trình (process) trao đổi dữ liệu dưới dạng các thông điệp (message). Hàng đợi thông điệp POSIX tương tự như các đối tác System V của chúng ở điểm dữ liệu được trao đổi theo đơn vị là các thông điệp nguyên vẹn. Tuy nhiên, cũng có một số điểm khác biệt đáng chú ý:
+Chương này mô tả các hàng đợi thông điệp POSIX (POSIX message queues), cho phép các tiến trình (process) trao đổi dữ liệu dưới dạng các thông điệp (message). Hàng đợi thông điệp POSIX tương tự như các đối tác System V của chúng ở điểm dữ liệu được trao đổi theo đơn vị là các thông điệp nguyên vẹn. Tuy nhiên, cũng có một số điểm khác biệt đáng chú ý:
 
 - Hàng đợi thông điệp POSIX được quản lý tham chiếu (reference counted). Một hàng đợi được đánh dấu để xóa chỉ bị gỡ bỏ sau khi nó đã bị đóng bởi tất cả các tiến trình hiện đang sử dụng nó.
 - Mỗi thông điệp System V có một kiểu số nguyên (integer type), và các thông điệp có thể được lựa chọn theo nhiều cách khác nhau bằng cách sử dụng `msgrcv()`. Ngược lại, các thông điệp POSIX có một mức độ ưu tiên (priority) đi kèm, và các thông điệp luôn được xếp hàng một cách nghiêm ngặt (và do đó được nhận) theo thứ tự ưu tiên.
@@ -8,6 +8,7 @@ Chương trình này mô tả các hàng đợi thông điệp POSIX (POSIX mess
 
 Hàng đợi thông điệp POSIX là một bổ sung tương đối gần đây đối với Linux. Hỗ trợ cài đặt cần thiết đã được thêm vào nhân (kernel) 2.6.6 (ngoài ra, cần có glibc 2.3.4 trở lên).
 
+> [!NOTE]
 > Hỗ trợ hàng đợi thông điệp POSIX là một thành phần nhân tùy chọn được cấu hình thông qua tùy chọn `CONFIG_POSIX_MQUEUE`.
 
 ## 52.1 Tổng quan
@@ -33,13 +34,16 @@ Trong phần này, chúng ta xem xét các hàm được sử dụng để mở,
 
 Hàm `mq_open()` tạo một hàng đợi thông điệp mới hoặc mở một hàng đợi đã tồn tại.
 
-```
 ## include <fcntl.h> /* Định nghĩa các hằng số O_* */
+
 ## include <sys/stat.h> /* Định nghĩa các hằng số chế độ (mode) */
+
 ## include <mqueue.h>
+
 mqd_t mq_open(const char *name, int oflag, ...
- /* mode_t mode, struct mq_attr *attr */);
-         Trả về một bộ mô tả hàng đợi thông điệp khi thành công, hoặc (mqd_t) –1 khi lỗi
+/* mode_t mode, struct mq_attr *attr */);
+Trả về một bộ mô tả hàng đợi thông điệp khi thành công, hoặc (mqd_t) –1 khi lỗi
+
 ```
 
 Tham số `name` xác định hàng đợi thông điệp và được chỉ định theo các quy tắc được đưa ra trong Mục [51.1](#page-1-0).
@@ -82,7 +86,6 @@ Khi một tiến trình thực hiện lệnh `exec()` hoặc kết thúc, tất 
 
 Hàm `mq_close()` thực hiện đóng mô tả hàng đợi thông điệp `mqdes`.
 
-```
 ## include <mqueue.h>
 int mq_close(mqd_t mqdes);
                                              Trả về 0 nếu thành công, hoặc –1 nếu lỗi
@@ -98,10 +101,11 @@ Tương tự như hàm `close()` đối với tệp, việc đóng một hàng �
 
 Hàm `mq_unlink()` gỡ bỏ hàng đợi thông điệp được xác định bởi `name`, và đánh dấu hàng đợi đó để bị hủy bỏ ngay khi tất cả các tiến trình ngừng sử dụng nó (điều này có thể xảy ra ngay lập tức, nếu tất cả các tiến trình đã mở hàng đợi đó đều đã đóng nó trước đó).
 
-```
 ## include <mqueue.h>
+
 int mq_unlink(const char *name);
-                                            Trả về 0 nếu thành công, hoặc –1 nếu lỗi
+Trả về 0 nếu thành công, hoặc –1 nếu lỗi
+
 ```
 
 [Liệt kê 52-1 (Listing 52-1)](#page-9-0) minh họa cách sử dụng hàm `mq_unlink()`.
@@ -109,22 +113,29 @@ int mq_unlink(const char *name);
 **Liệt kê 52-1 (Listing 52-1):** Sử dụng `mq_unlink()` để hủy liên kết (unlink) một hàng đợi thông điệp POSIX
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– pmsg/pmsg_unlink.c
+
 ## include <mqueue.h>
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
+
 ```
 
 ```
- if (argc != 2 || strcmp(argv[1], "--help") == 0)
- usageErr("%s mq-name\n", argv[0]);
- if (mq_unlink(argv[1]) == -1)
- errExit("mq_unlink");
- exit(EXIT_SUCCESS);
+
+if (argc != 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s mq-name\n", argv[0]);
+if (mq_unlink(argv[1]) == -1)
+errExit("mq_unlink");
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– pmsg/pmsg_unlink.c
+
 ```
 
 ## 52.3 Mối quan hệ giữa Descriptor và Hàng đợi Thông điệp (Message Queue)
@@ -148,16 +159,18 @@ Mối quan hệ giữa một descriptor của hàng đợi thông điệp (messa
 Các hàm `mq_open()`, `mq_getattr()`, và `mq_setattr()` đều cho phép một đối số là con trỏ trỏ đến một cấu trúc `mq_attr`. Cấu trúc này được định nghĩa trong `<mqueue.h>` như sau:
 
 ```c
+
 struct mq_attr {
- long mq_flags; /* Các cờ mô tả hàng đợi thông điệp: 0 hoặc
- O_NONBLOCK [mq_getattr(), mq_setattr()] */
- long mq_maxmsg; /* Số lượng thông điệp tối đa trên hàng đợi
- [mq_open(), mq_getattr()] */
- long mq_msgsize; /* Kích thước thông điệp tối đa (tính bằng byte)
- [mq_open(), mq_getattr()] */
- long mq_curmsgs; /* Số lượng thông điệp hiện có trong hàng đợi
- [mq_getattr()] */
+long mq_flags; /* Các cờ mô tả hàng đợi thông điệp: 0 hoặc
+O_NONBLOCK [mq_getattr(), mq_setattr()] */
+long mq_maxmsg; /* Số lượng thông điệp tối đa trên hàng đợi
+[mq_open(), mq_getattr()] */
+long mq_msgsize; /* Kích thước thông điệp tối đa (tính bằng byte)
+[mq_open(), mq_getattr()] */
+long mq_curmsgs; /* Số lượng thông điệp hiện có trong hàng đợi
+[mq_getattr()] */
 };
+
 ```
 
 Trước khi đi sâu tìm hiểu cấu trúc `mq_attr`, chúng ta cần lưu ý các điểm sau:
@@ -185,74 +198,82 @@ Hai tùy chọn dòng lệnh cho phép chỉ định các thuộc tính của h�
 **Liệt kê 52-2:** Tạo một hàng đợi thông điệp POSIX (POSIX message queue)
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– pmsg/pmsg_create.c
+
 ## include <mqueue.h>
+
 ## include <sys/stat.h>
+
 ## include <fcntl.h>
+
 ## include "tlpi_hdr.h"
+
 static void
 usageError(const char *progName)
 {
- fprintf(stderr, "Usage: %s [-cx] [-m maxmsg] [-s msgsize] mq-name "
- "[octal-perms]\n", progName);
- fprintf(stderr, " -c Create queue (O_CREAT)\n");
- fprintf(stderr, " -m maxmsg Set maximum # of messages\n");
- fprintf(stderr, " -s msgsize Set maximum message size\n");
- fprintf(stderr, " -x Create exclusively (O_EXCL)\n");
- exit(EXIT_FAILURE);
+fprintf(stderr, "Usage: %s [-cx] [-m maxmsg] [-s msgsize] mq-name "
+"[octal-perms]\n", progName);
+fprintf(stderr, " -c Create queue (O_CREAT)\n");
+fprintf(stderr, " -m maxmsg Set maximum # of messages\n");
+fprintf(stderr, " -s msgsize Set maximum message size\n");
+fprintf(stderr, " -x Create exclusively (O_EXCL)\n");
+exit(EXIT_FAILURE);
 }
 int
 main(int argc, char *argv[])
 {
- int flags, opt;
- mode_t perms;
- mqd_t mqd;
- struct mq_attr attr, *attrp;
- attrp = NULL;
- attr.mq_maxmsg = 50;
- attr.mq_msgsize = 2048;
- flags = O_RDWR;
+int flags, opt;
+mode_t perms;
+mqd_t mqd;
+struct mq_attr attr, *attrp;
+attrp = NULL;
+attr.mq_maxmsg = 50;
+attr.mq_msgsize = 2048;
+flags = O_RDWR;
+
 ```
 
 ```
- /* Phân tích các tùy chọn dòng lệnh (command-line options) */
- while ((opt = getopt(argc, argv, "cm:s:x")) != -1) {
- switch (opt) {
- case 'c':
- flags |= O_CREAT;
- break;
- case 'm':
- attr.mq_maxmsg = atoi(optarg);
- attrp = &attr;
- break;
- case 's':
- attr.mq_msgsize = atoi(optarg);
- attrp = &attr;
- break;
- case 'x':
- flags |= O_EXCL;
- break;
- default: 
-         usageError(argv[0]);
- }
- }
- if (optind >= argc)
- usageError(argv[0]);
- perms = (argc <= optind + 1) ? (S_IRUSR | S_IWUSR) :
- getInt(argv[optind + 1], GN_BASE_8, "octal-perms");
- mqd = mq_open(argv[ind], flags, perms, attrp);
- if (mqd == (mqd_t) -1)
- errExit("mq_open");
- exit(EXIT_SUCCESS);
+
+/* Phân tích các tùy chọn dòng lệnh (command-line options) */
+while ((opt = getopt(argc, argv, "cm:s:x")) != -1) {
+switch (opt) {
+case 'c':
+flags |= O_CREAT;
+break;
+case 'm':
+attr.mq_maxmsg = atoi(optarg);
+attrp = &attr;
+break;
+case 's':
+attr.mq_msgsize = atoi(optarg);
+attrp = &attr;
+break;
+case 'x':
+flags |= O_EXCL;
+break;
+default:
+usageError(argv[0]);
+}
+}
+if (optind >= argc)
+usageError(argv[0]);
+perms = (argc <= optind + 1) ? (S_IRUSR | S_IWUSR) :
+getInt(argv[optind + 1], GN_BASE_8, "octal-perms");
+mqd = mq_open(argv[optind], flags, perms, attrp);
+if (mqd == (mqd_t) -1)
+errExit("mq_open");
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– pmsg/pmsg_create.c
+
 ```
 
 ## Truy xuất các thuộc tính của hàng đợi thông điệp
 
 Hàm `mq_getattr()` trả về một cấu trúc `mq_attr` chứa thông tin về mô tả hàng đợi thông điệp (message queue description) và hàng đợi thông điệp liên kết với bộ mô tả (descriptor) `mqdes`.
 
-```
 ## include <mqueue.h>
 int mq_getattr(mqd_t mqdes, struct mq_attr *attr);
                                              Trả về 0 nếu thành công, hoặc –1 nếu lỗi
@@ -315,11 +336,12 @@ Có sự dao động lớn về các giá trị mặc định do cài đặt đ�
 
 Hàm `mq_setattr()` thiết lập các thuộc tính của mô tả hàng đợi thông điệp được liên kết với bộ mô tả hàng đợi thông điệp `mqdes`, và tùy chọn trả về thông tin về hàng đợi thông điệp đó.
 
-```
 ## include <mqueue.h>
+
 int mq_setattr(mqd_t mqdes, const struct mq_attr *newattr,
- struct mq_attr *oldattr);
-                                         Trả về 0 nếu thành công, hoặc –1 nếu lỗi
+struct mq_attr *oldattr);
+Trả về 0 nếu thành công, hoặc –1 nếu lỗi
+
 ```
 
 Hàm `mq_setattr()` thực hiện các tác vụ sau:
@@ -332,11 +354,13 @@ Thuộc tính duy nhất mà SUSv3 quy định có thể được thay đổi b�
 Để tính đến khả năng một cài đặt (implementation) cụ thể có thể định nghĩa các cờ có thể sửa đổi khác, hoặc SUSv3 có thể bổ sung các cờ mới trong tương lai, một ứng dụng di động (portable application) nên thay đổi trạng thái của cờ `O_NONBLOCK` bằng cách sử dụng `mq_getattr()` để truy xuất giá trị `mq_flags`, sửa đổi bit `O_NONBLOCK`, và gọi `mq_setattr()` để thay đổi các thiết lập `mq_flags`. Ví dụ, để bật `O_NONBLOCK`, chúng ta sẽ thực hiện như sau:
 
 ```
+
 if (mq_getattr(mqd, &attr) == -1)
- errExit("mq_getattr");
+errExit("mq_getattr");
 attr.mq_flags |= O_NONBLOCK;
 if (mq_setattr(mqd, &attr, NULL) == -1)
- errExit("mq_getattr");
+errExit("mq_getattr");
+
 ```
 
 ## 52.5 Trao đổi Thông điệp (Exchanging Messages)
@@ -347,7 +371,6 @@ Trong phần này, chúng ta sẽ xem xét các hàm được sử dụng để 
 
 Hàm `mq_send()` thêm thông điệp trong vùng đệm (buffer) được trỏ bởi `msg_ptr` vào hàng đợi thông điệp do bộ mô tả `mqdes` tham chiếu đến.
 
-```
 ## include <mqueue.h>
 int mq_send(mqd_t mqdes, const char *msg_ptr, size_t msg_len,
  unsigned int msg_prio);
@@ -358,6 +381,7 @@ int mq_send(mqd_t mqdes, const char *msg_ptr, size_t msg_len,
 
 Mỗi thông điệp có một độ ưu tiên (priority) là số nguyên không âm, được chỉ định bởi đối số `msg_prio`. Các thông điệp được sắp xếp trong hàng đợi theo thứ tự giảm dần của độ ưu tiên (tức là 0 là độ ưu tiên thấp nhất). Khi một thông điệp mới được thêm vào hàng đợi, nó được đặt sau bất kỳ thông điệp nào khác có cùng độ ưu tiên. Nếu một ứng dụng không cần sử dụng độ ưu tiên thông điệp, việc luôn chỉ định `msg_prio` là 0 là đủ dùng.
 
+> [!NOTE]
 > Như đã lưu ý ở đầu chương này, thuộc tính kiểu (type attribute) của thông điệp System V cung cấp chức năng khác. Thông điệp System V luôn được xếp hàng theo thứ tự FIFO, nhưng `msgrcv()` cho phép chúng ta chọn thông điệp theo nhiều cách khác nhau: theo thứ tự FIFO, theo đúng kiểu chính xác (exact type), hoặc theo kiểu cao nhất nhỏ hơn hoặc bằng một giá trị nào đó.
 
 SUSv3 cho phép một bản cài đặt công bố giới hạn trên của nó đối với các độ ưu tiên thông điệp, hoặc thông qua việc định nghĩa hằng số `MQ_PRIO_MAX` hoặc thông qua giá trị trả về từ `sysconf(_SC_MQ_PRIO_MAX)`. SUSv3 yêu cầu giới hạn này phải có ít nhất là 32 (`_POSIX_MQ_PRIO_MAX`); nghĩa là, các độ ưu tiên ít nhất trong phạm vi từ 0 đến 31 là khả dụng. Tuy nhiên, phạm vi thực tế trên các hệ thống cài đặt là rất khác nhau. Ví dụ, trên Linux, hằng số này có giá trị là 32.768; trên Solaris, nó là 32; và trên Tru64, nó là 256.
@@ -408,11 +432,12 @@ main(int argc, char *argv[])
 
 Hàm `mq_receive()` lấy thông điệp cũ nhất có độ ưu tiên cao nhất từ hàng đợi thông điệp (message queue) được trỏ bởi `mqdes` và trả về thông điệp đó trong vùng đệm (buffer) do `msg_ptr` trỏ tới.
 
-```
 ## include <mqueue.h>
+
 ssize_t mq_receive(mqd_t mqdes, char *msg_ptr, size_t msg_len,
- unsigned int *msg_prio);
-       Trả về số byte trong thông điệp nhận được khi thành công, hoặc –1 khi có lỗi
+unsigned int *msg_prio);
+Trả về số byte trong thông điệp nhận được khi thành công, hoặc –1 khi có lỗi
+
 ```
 
 Đối số `msg_len` được sử dụng bởi tiến trình gọi (caller) để chỉ định số byte không gian có sẵn trong vùng đệm được trỏ bởi `msg_ptr`.
@@ -428,15 +453,18 @@ Chương trình trong [Liệt kê 52-5](#page-17-0) cung cấp giao diện dòng
 Phiên shell sau đây minh họa việc sử dụng các chương trình trong [Liệt kê 52-4](#page-17-0) và Liệt kê 52-5. Chúng ta bắt đầu bằng cách tạo một hàng đợi thông điệp và gửi một vài thông điệp với các độ ưu tiên khác nhau:
 
 ```
+
 $ ./pmsg_create -cx /mq
 $ ./pmsg_send /mq msg-a 5
 $ ./pmsg_send /mq msg-b 0
 $ ./pmsg_send /mq msg-c 10
+
 ```
 
 Sau đó, chúng ta thực thi một chuỗi các lệnh để lấy thông điệp từ hàng đợi:
 
 ```
+
 $ ./pmsg_receive /mq
 Read 5 bytes; priority = 10
 msg-c
@@ -446,6 +474,7 @@ msg-a
 $ ./pmsg_receive /mq
 Read 5 bytes; priority = 0
 msg-b
+
 ```
 
 Như chúng ta có thể thấy từ kết quả đầu ra ở trên, các thông điệp đã được lấy ra theo thứ tự độ ưu tiên.
@@ -453,8 +482,10 @@ Như chúng ta có thể thấy từ kết quả đầu ra ở trên, các thôn
 Tại thời điểm này, hàng đợi bây giờ đã trống. Khi chúng ta thực hiện một lệnh nhận chặn (blocking receive) khác, thao tác sẽ bị chặn lại:
 
 ```
+
 $ ./pmsg_receive /mq
 Blocks; we type Control-C to terminate the program
+
 ```
 
 Mặt khác, nếu chúng ta thực hiện một lệnh nhận phi chặn (nonblocking receive), lời gọi hàm sẽ trả về ngay lập tức với trạng thái lỗi:
@@ -464,63 +495,70 @@ Mặt khác, nếu chúng ta thực hiện một lệnh nhận phi chặn (nonbl
 **Liệt kê 52-5:** Đọc một thông điệp từ hàng đợi thông điệp POSIX (POSIX message queue)
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– pmsg/pmsg_receive.c
+
 ## include <mqueue.h>
+
 ## include <fcntl.h> /* Cho định nghĩa của O_NONBLOCK */
+
 ## include "tlpi_hdr.h"
+
 static void
 usageError(const char *progName)
 {
- fprintf(stderr, "Usage: %s [-n] name\n", progName);
- fprintf(stderr, " -n Sử dụng cờ O_NONBLOCK\n");
- exit(EXIT_FAILURE);
+fprintf(stderr, "Usage: %s [-n] name\n", progName);
+fprintf(stderr, " -n Sử dụng cờ O_NONBLOCK\n");
+exit(EXIT_FAILURE);
 }
 int
 main(int argc, char *argv[])
 {
- int flags, opt;
- mqd_t mqd;
- unsigned int prio;
- void *buffer;
- struct mq_attr attr;
- ssize_t numRead;
- flags = O_RDONLY;
- while ((opt = getopt(argc, argv, "n")) != -1) {
- switch (opt) {
- case 'n': flags |= O_NONBLOCK; break;
- default: usageError(argv[0]);
- }
- }
- if (optind >= argc)
- usageError(argv[0]);
- mqd = mq_open(argv[optind], flags);
- if (mqd == (mqd_t) -1)
- errExit("mq_open");
- if (mq_getattr(mqd, &attr) == -1)
- errExit("mq_getattr");
- buffer = malloc(attr.mq_msgsize);
- if (buffer == NULL)
- errExit("malloc");
+int flags, opt;
+mqd_t mqd;
+unsigned int prio;
+void *buffer;
+struct mq_attr attr;
+ssize_t numRead;
+flags = O_RDONLY;
+while ((opt = getopt(argc, argv, "n")) != -1) {
+switch (opt) {
+case 'n': flags |= O_NONBLOCK; break;
+default: usageError(argv[0]);
+}
+}
+if (optind >= argc)
+usageError(argv[0]);
+mqd = mq_open(argv[optind], flags);
+if (mqd == (mqd_t) -1)
+errExit("mq_open");
+if (mq_getattr(mqd, &attr) == -1)
+errExit("mq_getattr");
+buffer = malloc(attr.mq_msgsize);
+if (buffer == NULL)
+errExit("malloc");
+
 ```
 
 ```
- numRead = mq_receive(mqd, buffer, attr.mq_msgsize, &prio);
- if (numRead == -1)
- errExit("mq_receive");
- printf("Read %ld bytes; priority = %u\n", (long) numRead, prio);
- if (write(STDOUT_FILENO, buffer, numRead) == -1)
- errExit("write");
- write(STDOUT_FILENO, "\n", 1);
- exit(EXIT_SUCCESS);
+
+numRead = mq_receive(mqd, buffer, attr.mq_msgsize, &prio);
+if (numRead == -1)
+errExit("mq_receive");
+printf("Read %ld bytes; priority = %u\n", (long) numRead, prio);
+if (write(STDOUT_FILENO, buffer, numRead) == -1)
+errExit("write");
+write(STDOUT_FILENO, "\n", 1);
+exit(EXIT_SUCCESS);
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– pmsg/pmsg_receive.c
+
 ```
 
 ### 52.5.3 Gửi và Nhận Thông điệp với Thời gian chờ (Timeout)
 
 Các hàm `mq_timedsend()` và `mq_timedreceive()` hoàn toàn giống với `mq_send()` và `mq_receive()`, ngoại trừ việc nếu thao tác không thể thực hiện ngay lập tức và cờ `O_NONBLOCK` không được bật cho mô tả hàng đợi thông điệp (message queue description), thì tham số `abs_timeout` sẽ chỉ định giới hạn thời gian mà lời gọi (call) sẽ bị chặn (block).
 
-```
 ## define _XOPEN_SOURCE 600
 ## include <mqueue.h>
 ## include <time.h>
@@ -544,14 +582,16 @@ Các hàm `mq_timedsend()` và `mq_timedreceive()` ban đầu bắt nguồn từ
 
 Một tính năng phân biệt hàng đợi thông điệp POSIX (POSIX message queues) với các đối tác System V của chúng là khả năng nhận thông báo bất đồng bộ (asynchronous notification) về sự sẵn có của một thông điệp trên một hàng đợi trước đó đang trống (nghĩa là khi hàng đợi chuyển đổi từ trạng thái trống sang không trống). Tính năng này có nghĩa là thay vì thực hiện lời gọi `mq_receive()` bị chặn hoặc đánh dấu mô tả hàng đợi thông điệp là không chặn (nonblocking) và thực hiện các lời gọi `mq_receive()` định kỳ ("thăm dò" - poll) trên hàng đợi, một tiến trình (process) có thể yêu cầu thông báo về sự đến của thông điệp và sau đó thực hiện các tác vụ khác cho đến khi nó được thông báo. Một tiến trình có thể chọn nhận thông báo thông qua tín hiệu (signal) hoặc thông qua việc gọi một hàm trong một luồng (thread) riêng biệt.
 
+> [!NOTE]
 > Tính năng thông báo của hàng đợi thông điệp POSIX tương tự như cơ chế thông báo mà chúng tôi đã mô tả cho các bộ định thời POSIX (POSIX timers) trong Mục 23.6. (Cả hai API này đều bắt nguồn từ POSIX.1b.)
 
 Hàm `mq_notify()` đăng ký tiến trình gọi để nhận thông báo khi một thông điệp đến hàng đợi trống do mô tả `mqdes` trỏ tới.
 
-```
 ## include <mqueue.h>
+
 int mq_notify(mqd_t mqdes, const struct sigevent *notification);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Tham số `notification` chỉ định cơ chế mà tiến trình sẽ được thông báo. Trước khi đi vào chi tiết của tham số `notification`, chúng ta lưu ý một số điểm về thông báo thông điệp:
@@ -565,22 +605,26 @@ Tham số `notification` chỉ định cơ chế mà tiến trình sẽ được
 Chúng tôi đã trình bày cấu trúc `sigevent` được sử dụng để định kiểu cho tham số `notification` trong Mục 23.6.1. Ở đây, chúng tôi trình bày cấu trúc dưới dạng đơn giản hóa, chỉ hiển thị các trường liên quan đến thảo luận về `mq_notify()`:
 
 ```
+
 union sigval {
- int sival_int; /* Giá trị số nguyên cho dữ liệu đi kèm */
- void *sival_ptr; /* Giá trị con trỏ cho dữ liệu đi kèm */
+int sival_int; /* Giá trị số nguyên cho dữ liệu đi kèm */
+void *sival_ptr; /* Giá trị con trỏ cho dữ liệu đi kèm */
 };
+
 ```
 
 ```c
+
 struct sigevent {
- int sigev_notify; /* Notification method */
- int sigev_signo; /* Notification signal for SIGEV_SIGNAL */
- union sigval sigev_value; /* Value passed to signal handler or
- thread function */
- void (*sigev_notify_function) (union sigval);
- /* Thread notification function */
- void *sigev_notify_attributes; /* Really 'pthread_attr_t' */
+int sigev_notify; /* Notification method */
+int sigev_signo; /* Notification signal for SIGEV_SIGNAL */
+union sigval sigev_value; /* Value passed to signal handler or
+thread function */
+void (*sigev_notify_function) (union sigval);
+/* Thread notification function */
+void *sigev_notify_attributes; /* Really 'pthread_attr_t' */
 };
+
 ```
 
 Trường `sigev_notify` của cấu trúc này được thiết lập thành một trong các giá trị sau:
@@ -612,65 +656,75 @@ Thông báo cho tiến trình bằng cách gọi hàm được chỉ định tro
 **Listing 52-6:** Nhận thông báo thông điệp thông qua tín hiệu
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– pmsg/mq_notify_sig.c
+
 ## include <signal.h>
+
 ## include <mqueue.h>
+
 ## include <fcntl.h> /* For definition of O_NONBLOCK */
+
 ## include "tlpi_hdr.h"
+
 ## define NOTIFY_SIG SIGUSR1
-  static void
-  handler(int sig)
-  {
-   /* Just interrupt sigsuspend() */
-  }
-  int
-  main(int argc, char *argv[])
-  {
-   struct sigevent sev;
-   mqd_t mqd;
-   struct mq_attr attr;
-   void *buffer;
-   ssize_t numRead;
-   sigset_t blockMask, emptyMask;
-   struct sigaction sa;
-   if (argc != 2 || strcmp(argv[1], "--help") == 0)
-   usageErr("%s mq-name\n", argv[0]);
-q mqd = mq_open(argv[1], O_RDONLY | O_NONBLOCK);
-   if (mqd == (mqd_t) -1)
-   errExit("mq_open");
-w if (mq_getattr(mqd, &attr) == -1)
-   errExit("mq_getattr");
-e buffer = malloc(attr.mq_msgsize);
-   if (buffer == NULL)
-   errExit("malloc");
-r sigemptyset(&blockMask);
-   sigaddset(&blockMask, NOTIFY_SIG);
-   if (sigprocmask(SIG_BLOCK, &blockMask, NULL) == -1)
-   errExit("sigprocmask");
+
+static void
+handler(int sig)
+{
+/* Just interrupt sigsuspend() */
+}
+int
+main(int argc, char *argv[])
+{
+struct sigevent sev;
+mqd_t mqd;
+struct mq_attr attr;
+void *buffer;
+ssize_t numRead;
+sigset_t blockMask, emptyMask;
+struct sigaction sa;
+if (argc != 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s mq-name\n", argv[0]);
+/* [1] */ mqd = mq_open(argv[1], O_RDONLY | O_NONBLOCK);
+if (mqd == (mqd_t) -1)
+errExit("mq_open");
+/* [2] */ if (mq_getattr(mqd, &attr) == -1)
+errExit("mq_getattr");
+/* [3] */ buffer = malloc(attr.mq_msgsize);
+if (buffer == NULL)
+errExit("malloc");
+/* [4] */ sigemptyset(&blockMask);
+sigaddset(&blockMask, NOTIFY_SIG);
+if (sigprocmask(SIG_BLOCK, &blockMask, NULL) == -1)
+errExit("sigprocmask");
+
 ```
 
 ```
- sigemptyset(&sa.sa_mask);
-   sa.sa_flags = 0;
-   sa.sa_handler = handler;
-   if (sigaction(NOTIFY_SIG, &sa, NULL) == -1)
-   errExit("sigaction");
+
+sigemptyset(&sa.sa_mask);
+sa.sa_flags = 0;
+sa.sa_handler = handler;
+if (sigaction(NOTIFY_SIG, &sa, NULL) == -1)
+errExit("sigaction");
 t sev.sigev_notify = SIGEV_SIGNAL;
-   sev.sigev_signo = NOTIFY_SIG;
-   if (mq_notify(mqd, &sev) == -1)
-   errExit("mq_notify");
-   sigemptyset(&emptyMask);
-   for (;;) {
+sev.sigev_signo = NOTIFY_SIG;
+if (mq_notify(mqd, &sev) == -1)
+errExit("mq_notify");
+sigemptyset(&emptyMask);
+for (;;) {
 y sigsuspend(&emptyMask); /* Wait for notification signal */
 u if (mq_notify(mqd, &sev) == -1)
-   errExit("mq_notify");
+errExit("mq_notify");
 i while ((numRead = mq_receive(mqd, buffer, attr.mq_msgsize, NULL)) >= 0)
-   printf("Read %ld bytes\n", (long) numRead);
-   if (errno != EAGAIN) /* Unexpected error */
-   errExit("mq_receive");
-   }
-  }
-  –––––––––––––––––––––––––––––––––––––––––––––––––––––– pmsg/mq_notify_sig.c
+printf("Read %ld bytes\n", (long) numRead);
+if (errno != EAGAIN) /* Unexpected error */
+errExit("mq_receive");
+}
+}
+–––––––––––––––––––––––––––––––––––––––––––––––––––––– pmsg/mq_notify_sig.c
+
 ```
 
 Các khía cạnh khác nhau của chương trình trong [Listing 52-6](#page-23-0) rất đáng được bình luận thêm:
@@ -893,13 +947,13 @@ Mục [51.2](#page-4-0) đã liệt kê các ưu điểm khác nhau của giao d
 
 Hàng đợi thông điệp POSIX cũng có các ưu điểm cụ thể sau so với hàng đợi thông điệp System V:
 
--  Tính năng thông báo thông điệp (message notification) cho phép một (duy nhất) Process được thông báo một cách bất đồng bộ (asynchronously) thông qua một Signal hoặc việc khởi tạo một Thread khi có thông điệp đến một hàng đợi trước đó đang trống.
--  Trên Linux (nhưng không áp dụng cho các cài đặt UNIX khác), hàng đợi thông điệp POSIX có thể được giám sát (monitor) bằng các hàm `poll()`, `select()` và `epoll`. Hàng đợi thông điệp System V không cung cấp tính năng này.
+- Tính năng thông báo thông điệp (message notification) cho phép một (duy nhất) Process được thông báo một cách bất đồng bộ (asynchronously) thông qua một Signal hoặc việc khởi tạo một Thread khi có thông điệp đến một hàng đợi trước đó đang trống.
+- Trên Linux (nhưng không áp dụng cho các cài đặt UNIX khác), hàng đợi thông điệp POSIX có thể được giám sát (monitor) bằng các hàm `poll()`, `select()` và `epoll`. Hàng đợi thông điệp System V không cung cấp tính năng này.
 
 Tuy nhiên, hàng đợi thông điệp POSIX cũng có một số nhược điểm so với hàng đợi thông điệp System V:
 
--  Hàng đợi thông điệp POSIX ít tính di động (portable) hơn. Vấn đề này thậm chí áp dụng ngay cả giữa các hệ thống Linux, vì hỗ trợ hàng đợi thông điệp chỉ có từ phiên bản kernel 2.6.6 trở đi.
--  Khả năng lựa chọn thông điệp System V theo loại (type) mang lại sự linh hoạt cao hơn một chút so với thứ tự ưu tiên nghiêm ngặt của thông điệp POSIX.
+- Hàng đợi thông điệp POSIX ít tính di động (portable) hơn. Vấn đề này thậm chí áp dụng ngay cả giữa các hệ thống Linux, vì hỗ trợ hàng đợi thông điệp chỉ có từ phiên bản kernel 2.6.6 trở đi.
+- Khả năng lựa chọn thông điệp System V theo loại (type) mang lại sự linh hoạt cao hơn một chút so với thứ tự ưu tiên nghiêm ngặt của thông điệp POSIX.
 
 Có sự khác biệt lớn về cách thức triển khai hàng đợi thông điệp POSIX trên các hệ thống UNIX. Một số hệ thống cung cấp các bản cài đặt ở User Space, và trên ít nhất một hệ thống như vậy (Solaris 10), trang hướng dẫn (manual page) của `mq_open()` lưu ý rõ rằng bản cài đặt không thể được coi là bảo mật. Trên Linux, một trong những động lực để chọn cách cài đặt hàng đợi thông điệp ở Kernel Space là do người ta cho rằng không thể cung cấp một bản cài đặt an toàn ở User Space.
 

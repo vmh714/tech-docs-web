@@ -757,48 +757,129 @@ body
 /* ==========================================================================
    CODE & ASCII DIAGRAM CARDS (BOOK TECHNICAL PLATE)
    ========================================================================== */
+/* ==========================================================================
+   CODE & ASCII DIAGRAM CARDS (MODERN IDE / OBSIDIAN EDITOR PLATE)
+   ========================================================================== */
 .code-editor-card
 {
     background: var(--code-bg);
-    border: 1.5px solid var(--code-border);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    margin: 18px 0;
+    margin: 22px 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.16);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.code-editor-card:hover
+{
+    border-color: var(--accent-blue);
+    box-shadow: 0 6px 24px rgba(56, 189, 248, 0.14);
 }
 
 .code-editor-header
 {
     background: var(--code-header-bg);
-    border-bottom: 1.5px solid var(--code-border);
-    padding: 8px 14px;
+    border-bottom: 1px solid var(--code-border);
+    padding: 10px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-family: var(--font-mono);
-    font-size: 0.74rem;
-    color: var(--text-primary);
-    font-weight: 700;
-    letter-spacing: 0.04em;
+}
+
+.code-header-left,
+.mermaid-header-left,
+.ascii-header-left
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Window Control Dots (macOS Style) */
+.editor-dot
+{
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    opacity: 0.85;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.code-editor-header:hover .editor-dot,
+.mermaid-card-header:hover .editor-dot,
+.ascii-diagram-header:hover .editor-dot
+{
+    opacity: 1;
+}
+
+.dot-red { background: #ff5f56; box-shadow: 0 0 6px rgba(255, 95, 86, 0.4); }
+.dot-yellow { background: #ffbd2e; box-shadow: 0 0 6px rgba(255, 189, 46, 0.4); }
+.dot-green { background: #27c93f; box-shadow: 0 0 6px rgba(39, 201, 63, 0.4); }
+
+/* Language Badges */
+.code-lang-badge,
+.mermaid-lang-badge,
+.ascii-lang-badge
+{
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-tertiary);
+    margin-left: 4px;
+}
+
+[data-theme="light"] .code-lang-badge,
+[data-theme="light"] .mermaid-lang-badge,
+[data-theme="light"] .ascii-lang-badge
+{
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-secondary);
 }
 
 .btn-copy-code
 {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background: var(--bg-surface);
-    border: 1.5px solid var(--border-medium);
-    color: var(--text-primary);
-    padding: 3px 10px;
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-medium);
+    color: var(--text-secondary);
+    padding: 4px 11px;
+    border-radius: 5px;
     font-size: 0.72rem;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
     font-family: var(--font-mono);
-    transition: all 0.15s ease;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-copy-code:hover
 {
-    border-color: var(--border-contrast);
     background: var(--bg-surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-contrast);
+    transform: translateY(-1px);
+}
+
+.btn-copy-code.copied
+{
+    border-color: var(--accent-emerald);
+    color: var(--accent-emerald);
+    background: var(--accent-emerald-bg);
+}
+
+.btn-copy-icon
+{
+    font-size: 0.85em;
 }
 
 pre
@@ -811,11 +892,11 @@ pre
 pre code
 {
     display: block;
-    padding: 14px 16px;
+    padding: 16px 18px;
     color: var(--code-text);
     font-family: var(--font-mono);
-    font-size: 0.84rem;
-    line-height: 1.6;
+    font-size: 0.85rem;
+    line-height: 1.65;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     white-space: pre;
@@ -834,35 +915,38 @@ pre code
 .ascii-diagram-card
 {
     background: var(--code-bg);
-    border: 2px solid var(--border-contrast); /* Viền kép / đậm như bản vẽ kỹ thuật */
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    margin: 18px 0;
+    margin: 22px 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.16);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ascii-diagram-card:hover
+{
+    border-color: var(--accent-amber);
+    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.15);
 }
 
 .ascii-diagram-header
 {
     background: var(--code-header-bg);
-    border-bottom: 2px solid var(--border-contrast);
-    padding: 8px 14px;
+    border-bottom: 1px solid var(--code-border);
+    padding: 10px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-family: var(--font-mono);
-    font-size: 0.74rem;
-    color: var(--text-primary);
-    font-weight: 800;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
 }
 
 .ascii-art
 {
     margin: 0;
-    padding: 16px 18px;
+    padding: 18px 20px;
     font-family: Consolas, 'Cascadia Code', 'Segoe UI Mono', monospace !important;
-    font-size: 0.83rem;
-    line-height: 1.3;
+    font-size: 0.84rem;
+    line-height: 1.35;
     letter-spacing: 0px !important;
     font-variant-east-asian: normal !important;
     font-feature-settings: normal !important;
@@ -875,18 +959,231 @@ pre code
 }
 
 /* ==========================================================================
-   CALLOUTS & ALERTS (BOOK MARGINALIA & CHÚ GIẢI)
+   MERMAID DIAGRAM CARD (INTERACTIVE HIGH-CONTRAST VECTOR SCHEMATICS)
+   ========================================================================== */
+.mermaid-card
+{
+    background: var(--code-bg);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin: 24px 0;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mermaid-card:hover
+{
+    border-color: var(--accent-blue);
+    box-shadow: 0 8px 30px rgba(56, 189, 248, 0.18);
+}
+
+.mermaid-card-header
+{
+    background: var(--code-header-bg);
+    border-bottom: 1px solid var(--code-border);
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-mono);
+}
+
+.mermaid-header-actions
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-mermaid-toggle
+{
+    background: transparent;
+    border: 1px solid var(--border-medium);
+    border-radius: 5px;
+    padding: 4px 11px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-mermaid-toggle:hover
+{
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-contrast);
+}
+
+.btn-mermaid-toggle.active
+{
+    background: var(--accent-blue-bg);
+    color: var(--accent-blue);
+    border-color: var(--accent-blue);
+}
+
+.mermaid-body
+{
+    position: relative;
+    width: 100%;
+}
+
+.mermaid-viewport
+{
+    position: relative;
+    padding: 30px 20px;
+    background-color: var(--code-bg);
+    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 18px 18px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 140px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-medium) transparent;
+}
+
+[data-theme="light"] .mermaid-viewport
+{
+    background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+}
+
+.mermaid-viewport::-webkit-scrollbar
+{
+    height: 6px;
+}
+
+.mermaid-viewport::-webkit-scrollbar-track
+{
+    background: transparent;
+}
+
+.mermaid-viewport::-webkit-scrollbar-thumb
+{
+    background: var(--border-medium);
+    border-radius: var(--radius-full);
+}
+
+.mermaid-render-target
+{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.mermaid-render-target svg
+{
+    display: block;
+    max-width: 100%;
+    height: auto !important;
+    transition: transform 0.2s ease;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+}
+
+/* Cho phép sơ đồ giữ kích thước đọc được trên màn hình điện thoại và cuộn ngang */
+@media (max-width: 768px)
+{
+    .mermaid-viewport
+    {
+        justify-content: flex-start;
+        padding: 18px 12px;
+    }
+
+    .mermaid-render-target
+    {
+        justify-content: flex-start;
+        min-width: max-content;
+    }
+
+    .mermaid-render-target svg
+    {
+        max-width: none;
+    }
+}
+
+.mermaid-loading
+{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding: 24px;
+}
+
+.mermaid-spinner
+{
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-medium);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: mermaidSpin 0.8s linear infinite;
+}
+
+@keyframes mermaidSpin
+{
+    to { transform: rotate(360deg); }
+}
+
+.mermaid-source-wrapper
+{
+    border-top: 1px solid var(--border-subtle);
+    background: var(--code-bg);
+}
+
+.mermaid-render-error
+{
+    padding: 18px;
+    background: var(--accent-amber-bg);
+    border: 1px dashed var(--accent-amber);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    text-align: left;
+    width: 100%;
+}
+
+.mermaid-err-title
+{
+    font-weight: 700;
+    color: var(--accent-amber);
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+}
+
+.mermaid-err-desc
+{
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ==========================================================================
+   CALLOUTS & ALERTS (OBSIDIAN TRANSLUCENT CARDS & MARGINALIA)
    ========================================================================== */
 .callout-box
 {
-    border-radius: var(--radius-sm);
-    padding: 14px 18px;
-    margin: 18px 0;
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin: 22px 0;
     font-size: 0.92rem;
     line-height: 1.7;
     background: var(--bg-card);
-    border: 1.5px solid var(--border-medium);
-    border-left: 5px solid var(--border-contrast);
+    border: 1px solid var(--border-subtle);
+    border-left: 4px solid var(--border-contrast);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.callout-box:hover
+{
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 
 .callout-header
@@ -905,24 +1202,28 @@ pre code
 .callout-note
 {
     border-left-color: var(--accent-blue);
+    background: var(--accent-blue-bg);
 }
 .callout-note .callout-header { color: var(--accent-blue); }
 
 .callout-important
 {
     border-left-color: var(--accent-amber);
+    background: var(--accent-amber-bg);
 }
 .callout-important .callout-header { color: var(--accent-amber); }
 
 .callout-caution, .callout-warning
 {
     border-left-color: var(--accent-red);
+    background: var(--accent-red-bg);
 }
 .callout-caution .callout-header, .callout-warning .callout-header { color: var(--accent-red); }
 
 .callout-tip
 {
     border-left-color: var(--accent-emerald);
+    background: var(--accent-emerald-bg);
 }
 .callout-tip .callout-header { color: var(--accent-emerald); }
 

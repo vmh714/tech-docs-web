@@ -1,4 +1,4 @@
-# Chương 12. Trình điều khiển Video (Video Drivers)
+# Chương 12: Trình điều khiển Video (Video Drivers)
 
 ```
 Trong chương này
@@ -98,7 +98,7 @@ Do đó, giao diện frame buffer của kernel cho phép các ứng dụng độ
 
 Ngày nay, một số ứng dụng, chẳng hạn như trình duyệt web và trình phát Phim, hoạt động trực tiếp trên giao diện frame buffer. Các ứng dụng như vậy có thể thực hiện đồ họa mà không cần sự trợ giúp từ hệ thống cửa sổ (windowing system).
 
-X Windows server (`Xfbdev`) có khả năng hoạt động thông qua giao diện khung đệm khung hình (frame buffer interface), như được minh họa trong Hình 12.5.
+X Windows server (`Xfbdev`) có khả năng hoạt động thông qua giao diện bộ đệm khung hình (frame buffer interface), như được minh họa trong Hình 12.5.
 
 [Xem hình kích thước đầy đủ]
 
@@ -1261,7 +1261,7 @@ AC'97 có các giới hạn liên quan đến số lượng kênh được hỗ 
 
 ## Hệ thống con Linux-Sound (Linux-Sound Subsystem)
 
-*Advanced Linux Sound Architecture* (ALSA) là hệ thống con âm thanh (sound subsystem) được lựa chọn trong kernel 2.6. *Open Sound System* (OSS), tầng âm thanh trong kernel 2.4, nay đã lỗi thời và không còn được khuyến用的 (deprecated). Để hỗ trợ quá trình chuyển đổi từ OSS sang ALSA, ALSA cung cấp tính năng mô phỏng OSS (OSS emulation) cho phép các ứng dụng tuân thủ API của OSS có thể chạy mà không cần sửa đổi trên nền ALSA. Các framework âm thanh trên Linux như ALSA và OSS giúp các ứng dụng âm thanh độc lập với phần cứng bên dưới, giống như các tiêu chuẩn codec như AC'97 và I2S loại bỏ nhu cầu phải viết các trình điều khiển (driver) âm thanh riêng biệt cho từng card âm thanh.
+*Advanced Linux Sound Architecture* (ALSA) là hệ thống con âm thanh (sound subsystem) được lựa chọn trong kernel 2.6. *Open Sound System* (OSS), tầng âm thanh trong kernel 2.4, nay đã lỗi thời và không còn được khuyến nghị sử dụng (deprecated). Để hỗ trợ quá trình chuyển đổi từ OSS sang ALSA, ALSA cung cấp tính năng mô phỏng OSS (OSS emulation) cho phép các ứng dụng tuân thủ API của OSS có thể chạy mà không cần sửa đổi trên nền ALSA. Các framework âm thanh trên Linux như ALSA và OSS giúp các ứng dụng âm thanh độc lập với phần cứng bên dưới, giống như các tiêu chuẩn codec như AC'97 và I2S loại bỏ nhu cầu phải viết các trình điều khiển (driver) âm thanh riêng biệt cho từng card âm thanh.
 
 Hãy quan sát Hình 13.3 để hiểu rõ kiến trúc của hệ thống con Linux-Sound. Các thành phần cấu thành của hệ thống con này bao gồm:
 
@@ -1843,55 +1843,66 @@ numid=3,iface=MIXER,name="MP3 Volume"
 
 Trong ứng dụng điều khiển âm lượng, trước tiên hãy cấp phát bộ nhớ (allocate space) cho các đối tượng `alsa-lib` cần thiết để thực hiện thao tác điều khiển âm lượng:
 
-```
 ## include <alsa/asoundlib.h>
+
 snd_ctl_elem_value_t *nav_control;
 snd_ctl_elem_id_t *nav_id;
 snd_ctl_elem_info_t *nav_info;
 snd_ctl_elem_value_alloca(&nav_control);
 snd_ctl_elem_id_alloca(&nav_id);
 snd_ctl_elem_info_alloca(&nav_info);
+
 ```
 
 Tiếp theo, đặt loại giao diện (interface type) thành `SND_CTL_ELEM_IFACE_MIXER` như được chỉ định trong cấu trúc `mycard_playback_vol` trong Liệt kê 13.1:
 
 ```
+
 snd_ctl_elem_id_set_interface(nav_id, SND_CTL_ELEM_IFACE_MIXER);
+
 ```
 
 Bây giờ, hãy thiết lập `numid` cho âm lượng MP3 lấy từ đầu ra của lệnh `amixer` ở trên:
 
 ```
+
 snd_ctl_elem_id_set_numid(nav_id, 3); /* num_id=3 */
+
 ```
 
 Mở nút mixer (mixer node), `/dev/snd/controlC0`. Đối số thứ ba của hàm `snd_ctl_open()` chỉ định số hiệu card (card number) trong tên nút:
 
 ```
+
 snd_ctl_open(&nav_handle, card, 0);
 /* Connect data structures */
 snd_ctl_elem_info_set_id(nav_info, nav_id);
 snd_ctl_elem_info(nav_handle, nav_info);
+
 ```
 
 Truy xuất trường `type` trong cấu trúc `snd_ctl_elem_info` được định nghĩa trong `mycard_pb_vol_info()` tại Liệt kê 13.1 như sau:
 
 ```
+
 if (snd_ctl_elem_info_get_type(nav_info) !=
- SND_CTL_ELEM_TYPE_INTEGER) {
- printk("Mismatch in control type\n");
+SND_CTL_ELEM_TYPE_INTEGER) {
+printk("Mismatch in control type\n");
 }
+
 ```
 
 Lấy dải âm lượng (volume range) của codec được hỗ trợ bằng cách giao tiếp với phương thức driver `mycard_pb_vol_info()`:
 
 ```
+
 long desired_volume = 5;
 long min_volume = snd_ctl_elem_info_get_min(nav_info);
 long max_volume = snd_ctl_elem_info_get_max(nav_info);
 /* Ensure that the desired_volume is within min_volume and
- max_volume */
+max_volume */
 /* ... */
+
 ```
 
 Theo định nghĩa của `mycard_pb_vol_info()` trong Liệt kê 13.1, các giá trị tối thiểu và tối đa được trả về bởi các hàm hỗ trợ `alsa-lib` ở trên lần lượt là 0 và 10.
@@ -1899,8 +1910,10 @@ Theo định nghĩa của `mycard_pb_vol_info()` trong Liệt kê 13.1, các gi�
 Cuối cùng, thiết lập mức âm lượng mong muốn và ghi nó vào codec:
 
 ```
+
 snd_ctl_elem_value_set_integer(nav_control, 0, desired_volume);
 snd_ctl_elem_write(nav_handle, nav_control);
+
 ```
 
 Lời gọi hàm `snd_ctl_elem_write()` dẫn đến việc kích hoạt hàm `mycard_pb_vol_put()`, hàm này sẽ ghi độ lợi âm lượng mong muốn vào thanh ghi `VOLUME_REGISTER` của codec.
@@ -2375,7 +2388,8 @@ netdev->mem_end = netdev->mem_start + pci_resource_len(pdev, 0);
 
 Chúng ta đã thảo luận về các hàm tài nguyên PCI (PCI resource functions) trong Chương 10.
 
-## 
+##
+
 ## **Trong Chương này (In This Chapter)** Cấu trúc dữ liệu của Trình điều khiển (Driver Data Structures) 440 Giao tiếp với các Tầng Giao thức (Talking with Protocol Layers) 448 Quản lý Bộ đệm và Kiểm soát Tương tranh (Buffer Management and Concurrency Control) 450 Ví dụ về Thiết bị: Ethernet NIC (Device Example: Ethernet NIC) 451 Trình điều khiển Mạng ISA (ISA Network Drivers) 457 Chế độ Truyền không đồng bộ (Asynchronous Transfer Mode) 458 Lưu lượng mạng (Network Throughput) 459 Xem xét Mã nguồn (Looking at the Sources) 461
 
 Khả năng kết nối mang lại sự thông minh. Bạn hiếm khi bắt gặp một hệ thống máy tính nào ngày nay mà không hỗ trợ một hình thức mạng nào đó. Trong chương này, chúng ta hãy tập trung vào các trình điều khiển thiết bị (device drivers) cho các *thẻ giao diện mạng* (network interface cards - NIC) truyền lưu lượng *Giao thức Internet* (Internet Protocol - IP) trên *mạng cục bộ* (local area network - LAN). Phần lớn chương này không phụ thuộc vào bus (bus agnostic), nhưng bất cứ nơi nào cần các chi tiết cụ thể về bus, nó sẽ giả định là PCI. Để mang lại cho bạn cái nhìn về các công nghệ mạng khác, chúng ta cũng đề cập đến *Chế độ Truyền không đồng bộ* (Asynchronous Transfer Mode - ATM). Chúng ta kết thúc chương này bằng việc suy ngẫm về hiệu năng và thông lượng (throughput).
@@ -3650,6 +3664,7 @@ Nếu bây giờ bạn nhìn vào đầu ra của lệnh ifconfig trên cả hai
 
 **Bảng 16.2. Kết nối mạng giữa hai máy tính xách tay sử dụng Bluetooth PAN**
 
+> [!NOTE]
 > [1] Một tùy chọn dòng lệnh (command-line option) hữu ích cho lệnh pand là --persist, tùy chọn này sẽ tự động thử kết nối lại khi kết nối bị rớt. Hãy đào sâu vào các trang hướng dẫn (man pages) để biết thêm các tùy chọn gọi lệnh khác.
 
 ## Thiết bị Giao diện Người dùng (Human Interface Devices)
@@ -3702,7 +3717,7 @@ Bảng 15.1. Tóm tắt các Cấu trúc Dữ liệu (Data Structures)
 Cấu trúc Dữ liệu      Vị trí                          Mô tả
 ----------------      --------                        -----------
 sk_buff               include/linux/skbuff.h          sk_buff cung cấp cơ chế xử lý bộ đệm hiệu quả và
-                                                    điều khiển luồng cho các tầng mạng Linux.
+điều khiển luồng cho các tầng mạng Linux.
 
 net_device            include/linux/netdevice.h       Giao diện giữa các driver NIC và ngăn xếp TCP/IP.
 
@@ -3728,41 +3743,41 @@ register_netdev()           net/core/dev.c                      Đăng ký một
 unregister_netdev()         net/core/dev.c                      Hủy đăng ký một net_device
 
 dev_alloc_skb()             include/linux/skbuff.h              Cấp phát bộ nhớ cho một sk_buff và
-                                                                liên kết nó với một bộ đệm payload gói tin
+liên kết nó với một bộ đệm payload gói tin
 
 dev_kfree_skb()             include/linux/skbuff.h              Hàm ngược lại của dev_alloc_skb()
-                            net/core/skbuff.c
+net/core/skbuff.c
 
 skb_reserve()               include/linux/skbuff.h              Thêm một khoảng đệm (padding) giữa điểm bắt
-                                                                đầu của bộ đệm gói tin (packet buffer) và phần
-                                                                bắt đầu của dữ liệu tải trọng (payload)
+đầu của bộ đệm gói tin (packet buffer) và phần
+bắt đầu của dữ liệu tải trọng (payload)
 
 skb_clone()                 net/core/skbuff.c                   Tạo một bản sao (copy) của một sk_buff được
-                                                                cung cấp mà không cần sao chép nội dung của
-                                                                bộ đệm gói tin đi kèm
+cung cấp mà không cần sao chép nội dung của
+bộ đệm gói tin đi kèm
 
 skb_put()                   include/linux/skbuff.h              Cho phép dữ liệu gói tin đi đến cuối (tail)
-                                                                của gói tin
+của gói tin
 
 netif_rx()                  net/core/dev.c                      Chuyển một gói tin mạng (network packet) cho
-                                                                stack TCP/IP
+stack TCP/IP
 
 netif_rx_schedule_prep()    include/linux/netdevice.h           Chuyển một gói tin mạng cho stack TCP/IP
 __netif_rx_schedule()       net/core/dev.c                      (NAPI)
 
 netif_receive_skb()         net/core/dev.c                      Đưa gói tin lên tầng giao thức (protocol layer)
-                                                                từ phương thức poll() (NAPI)
+từ phương thức poll() (NAPI)
 
 netif_rx_complete()         include/linux/netdevice.h           Gỡ thiết bị khỏi danh sách được polling (NAPI)
 
 netif_device_detach()       net/core/dev.c                      Ngắt kết nối thiết bị (thường được gọi trong
-                                                                quá trình chuyển sang chế độ ngủ - power suspend)
+quá trình chuyển sang chế độ ngủ - power suspend)
 
 netif_device_attach()       net/core/dev.c                      Kết nối lại thiết bị (thường được gọi trong
-                                                                quá trình phục hồi nguồn - power resume)
+quá trình phục hồi nguồn - power resume)
 
 netif_start_queue()         include/linux/netdevice.h           Thông báo trạng thái sẵn sàng nhận dữ liệu từ
-                                                                stack mạng (networking stack)
+stack mạng (networking stack)
 
 netif_stop_queue()          include/linux/netdevice.h           Yêu cầu stack mạng dừng gửi dữ liệu xuống
 
@@ -3770,7 +3785,8 @@ netif_wake_queue()          include/linux/netdevice.h           Khởi động l
 
 netif_queue_stopped()       include/linux/netdevice.h           Kiểm tra trạng thái điều khiển luồng (flow-control)
 
-## 
+##
+
 ## Trong Chương Này
 
 | Bluetooth |
@@ -4288,6 +4304,7 @@ Nếu bây giờ bạn xem đầu ra của lệnh ifconfig trên cả hai máy t
 
 **Bảng 16.2. Kết nối mạng giữa hai máy tính xách tay sử dụng Bluetooth PAN**
 
+> [!NOTE]
 > [1] Một tùy chọn dòng lệnh hữu ích cho pand là --persist, tùy chọn này sẽ tự động thử kết nối lại khi kết nối bị rớt. Hãy đào sâu vào các trang hướng dẫn (man page) để biết thêm các tùy chọn gọi lệnh khác.
 
 ## Thiết bị Giao diện Người dùng (Human Interface Devices)
@@ -5084,7 +5101,7 @@ connect-delay 3000
 
 ### CDMA
 
-Vì lý do hiệu năng (performance), nhiều thẻ CDMA PC Card có một bộ điều khiển USB (USB controller) bên trong mà qua đó modem CDMA được kết nối. Khi các thẻ này được cắm vào, hệ thống sẽ nhìn thấy một hoặc nhiều cầu nối PCI-to-USB mới trên buýt PCI (PCI bus). Hãy lấy ví dụ về một thẻ Huawei CDMA CardBus. Hãy quan sát các mục bổ sung trong đầu ra của lệnh *lspci* sau khi cắm thẻ này vào khe cắm CardBus của máyδ tính xách tay:
+Vì lý do hiệu năng (performance), nhiều thẻ CDMA PC Card có một bộ điều khiển USB (USB controller) bên trong mà qua đó modem CDMA được kết nối. Khi các thẻ này được cắm vào, hệ thống sẽ nhìn thấy một hoặc nhiều cầu nối PCI-to-USB mới trên buýt PCI (PCI bus). Hãy lấy ví dụ về một thẻ Huawei CDMA CardBus. Hãy quan sát các mục bổ sung trong đầu ra của lệnh *lspci* sau khi cắm thẻ này vào khe cắm CardBus của máy tính xách tay:
 
 ```
 

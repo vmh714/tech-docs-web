@@ -1,4 +1,4 @@
-# Chương 2: Xây dựng và Chạy các Module
+# Chương 2: Xây dựng và Chạy Module (Building and Running Modules)
 
 Đã đến lúc chúng ta bắt đầu lập trình. Chương này giới thiệu tất cả các khái niệm thiết yếu về module (module) và lập trình nhân (kernel programming). Chỉ trong vài trang này, chúng ta sẽ xây dựng và chạy một module hoàn chỉnh (dù là khá vô dụng), đồng thời xem xét một số mã nguồn cơ bản được chia sẻ bởi tất cả các module. Việc phát triển sự thành thạo này là nền tảng thiết yếu cho bất kỳ loại driver dạng module (modularized driver) nào. Để tránh việc đưa ra quá nhiều khái niệm cùng một lúc, chương này chỉ bàn về các module mà không đề cập đến bất kỳ lớp thiết bị (device class) cụ thể nào.
 
@@ -22,21 +22,23 @@ Vì vậy, nếu bạn chưa có một hệ thống thích hợp với cây mã 
 
 Nhiều cuốn sách lập trình bắt đầu với ví dụ "hello world" như một cách để hiển thị chương trình đơn giản nhất có thể. Cuốn sách này đề cập đến các Linux Kernel Module (nhân mô-đun) thay vì các chương trình thông thường; vì vậy, đối với độc giả thiếu kiên nhẫn, đoạn mã sau đây là một module "hello world" hoàn chỉnh:
 
-```
 ## include <linux/init.h>
+
 ## include <linux/module.h>
+
 MODULE_LICENSE("Dual BSD/GPL");
 static int hello_init(void)
 {
- printk(KERN_ALERT "Hello, world\n");
- return 0;
+printk(KERN_ALERT "Hello, world\n");
+return 0;
 }
 static void hello_exit(void)
 {
- printk(KERN_ALERT "Goodbye, cruel world\n");
+printk(KERN_ALERT "Goodbye, cruel world\n");
 }
 module_init(hello_init);
 module_exit(hello_exit);
+
 ```
 
 Module này định nghĩa hai hàm, một hàm được gọi khi module được nạp (load) vào trong kernel (*hello\_init*) và một hàm dành cho lúc module bị gỡ bỏ (*hello\_exit*). Các dòng *module\_init* và *module\_exit* sử dụng các macro đặc biệt của kernel để chỉ định vai trò của hai hàm này. Một macro đặc biệt khác (*MODULE\_LICENSE*) được sử dụng để thông báo cho kernel biết rằng module này mang giấy phép tự mã nguồn mở (free license); nếu không có khai báo như vậy, kernel sẽ đưa ra cảnh báo khi module được nạp.
@@ -46,13 +48,14 @@ Hàm *printk* được định nghĩa trong Linux Kernel và cung cấp cho các
 Bạn có thể kiểm tra module với các tiện ích *insmod* và *rmmod*, như được hiển thị bên dưới. Lưu ý rằng chỉ có siêu người dùng (superuser - root) mới có thể nạp và gỡ bỏ một module.
 
 ```
+
 % make
 make[1]: Entering directory `/usr/src/linux-2.6.10'
- CC [M] /home/ldd3/src/misc-modules/hello.o
- Building modules, stage 2.
- MODPOST
- CC /home/ldd3/src/misc-modules/hello.mod.o
- LD [M] /home/ldd3/src/misc-modules/hello.ko
+CC [M] /home/ldd3/src/misc-modules/hello.o
+Building modules, stage 2.
+MODPOST
+CC /home/ldd3/src/misc-modules/hello.mod.o
+LD [M] /home/ldd3/src/misc-modules/hello.ko
 make[1]: Leaving directory `/usr/src/linux-2.6.10'
 % su
 root# insmod ./hello.ko
@@ -60,6 +63,7 @@ Hello, world
 root# rmmod hello
 Goodbye cruel world
 root#
+
 ```
 
 Xin lưu ý một lần nữa rằng, để chuỗi lệnh trên hoạt động, bạn phải có một cây mã nguồn kernel (kernel tree) đã được cấu hình và biên dịch đúng cách ở một vị trí mà tệp makefile có thể tìm thấy nó (*/usr/src/linux-2.6.10* trong ví dụ được hiển thị). Chúng tôi sẽ đi sâu vào chi tiết về cách các module được biên dịch trong phần "Biên dịch và Nạp" (Compiling and Loading).
@@ -85,6 +89,7 @@ Là một lập trình viên, bạn biết rằng một ứng dụng có thể g
 Hình 2-1 minh họa cách các lệnh gọi hàm (function calls) và con trỏ hàm (function pointers) được sử dụng trong một module để thêm chức năng mới vào một kernel đang chạy.
 
 ```text
+
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                                                                         │
 │  insmod ──→ ┌───────────────┐ ···→ blk_init_queue()                    │
@@ -115,18 +120,19 @@ Hình 2-1 minh họa cách các lệnh gọi hàm (function calls) và con trỏ
 └─────────────────────────────────────────────────────────────────────────┘
 
 LEGEND:
-  ·····→   Data operation
-  ─────→   Data pointer
-  -- →     Function call
-  ───→     Function pointer
+·····→   Data operation
+─────→   Data pointer
+-- →     Function call
+───→     Function pointer
 
-  ╔══════════════════╗   Multiple functions
-  ╚══════════════════╝
+╔══════════════════╗   Multiple functions
+╚══════════════════╝
 
-  ┌──────────────────┐   Single function
-  └──────────────────┘
+┌──────────────────┐   Single function
+└──────────────────┘
 
-  ████████████████████   Data
+████████████████████   Data
+
 ```
 
 Hình 2-1. Liên kết một module với kernel
@@ -170,8 +176,10 @@ Thực ra, `current` không hẳn là một biến toàn cục (global variable)
 câu lệnh sau in ra ID của tiến trình và tên lệnh của tiến trình hiện tại bằng cách truy cập vào các trường nhất định trong `struct task_struct`:
 
 ```c
+
 printk(KERN_INFO "The process is \"%s\" (pid %i)\n",
- current->comm, current->pid);
+current->comm, current->pid);
+
 ```
 
 Tên lệnh được lưu trữ trong `current->comm` là tên cơ sở của tệp chương trình (được cắt gọn thành 15 ký tự nếu cần thiết) đang được thực thi bởi tiến trình hiện tại.
@@ -201,7 +209,9 @@ Nếu bạn vẫn chưa có sẵn cây thư mục kernel (kernel tree), hoặc c
 Một khi bạn đã thiết lập mọi thứ xong xuôi, việc tạo một makefile cho module của bạn sẽ trở nên rất đơn giản. Trên thực tế, đối với ví dụ "hello world" được hiển thị ở phần trước trong chương này, một dòng duy nhất là đủ:
 
 ```
+
 obj-m := hello.o
+
 ```
 
 Những độc giả đã quen thuộc với *make*, nhưng chưa quen với hệ thống build kernel 2.6, có lẽ đang tự hỏi makefile này hoạt động như thế nào. Xét cho cùng, dòng trên không giống với một makefile truyền thống. Tất nhiên, câu trả lời là hệ thống build kernel sẽ xử lý phần còn lại. Phép gán ở trên (tận dụng cú pháp mở rộng do GNU *make* cung cấp) nêu rõ rằng có một module được xây dựng từ tệp đối tượng (object file) *hello.o*. Module kết quả có tên là *hello.ko* sau khi được xây dựng từ tệp đối tượng.
@@ -209,8 +219,10 @@ Những độc giả đã quen thuộc với *make*, nhưng chưa quen với h�
 Nếu thay vào đó, bạn có một module tên là *module.ko* được tạo ra từ hai tệp mã nguồn (giả sử là *file1.c* và *file2.c*), câu lệnh chính xác sẽ là:
 
 ```
+
 obj-m := module.o
 module-objs := file1.o file2.o
+
 ```
 
 Để một makefile giống như những gì được hiển thị ở trên hoạt động, nó phải được gọi trong ngữ cảnh của hệ thống build kernel lớn hơn. Nếu cây mã nguồn kernel của bạn nằm ở, giả sử,
@@ -218,14 +230,15 @@ module-objs := file1.o file2.o
 thư mục *~/kernel-2.6* của bạn, lệnh *make* cần thiết để xây dựng module của bạn (được gõ trong thư mục chứa mã nguồn module và makefile) sẽ là:
 
 ```
+
 make -C ~/kernel-2.6 M=`pwd` modules
+
 ```
 
 Lệnh này bắt đầu bằng cách chuyển thư mục của nó sang thư mục được cung cấp với tùy chọn `-C` (đó là thư mục mã nguồn kernel của bạn). Ở đó, nó tìm thấy makefile cấp cao nhất của kernel. Tùy chọn `M=` khiến makefile đó quay trở lại thư mục mã nguồn module của bạn trước khi cố gắng xây dựng mục tiêu (target) `modules`. Mục tiêu này, lần lượt, tham chiếu đến danh sách các module được tìm thấy trong biến `obj-m`, mà chúng ta đã đặt thành *module.o* trong các ví dụ của mình.
 
 Việc gõ lệnh *make* trước đó có thể trở nên nhàm chาม sau một thời gian, vì vậy các nhà phát triển kernel đã phát triển một dạng thành ngữ makefile (makefile idiom), giúp cuộc sống dễ dàng hơn cho những ai xây dựng module bên ngoài cây mã nguồn kernel. Bí quyết là viết makefile của bạn như sau:
 
-```
 ## Nếu KERNELRELEASE được định nghĩa, chúng ta đã được gọi từ
 ## hệ thống build kernel và có thể sử dụng ngôn ngữ của nó.
 ifneq ($(KERNELRELEASE),)
@@ -540,6 +553,7 @@ Một giá trị con trỏ ký tự (char pointer). Bộ nhớ được cấp ph
 
 int long short uint ulong ushort
 
+> [!NOTE]
 > Các giá trị số nguyên cơ bản có độ dài khác nhau. Các phiên bản bắt đầu bằng u dành cho các giá trị không dấu (unsigned).
 
 Các tham số mảng (array parameters), trong đó các giá trị được cung cấp dưới dạng danh sách ngăn cách bằng dấu phẩy, cũng được hỗ trợ bởi trình nạp module (module loader). Để khai báo một tham số mảng, hãy sử dụng:
@@ -605,10 +619,11 @@ rmmod
 
 Các tiện ích không gian người dùng (user-space utilities) dùng để tải các module vào nhân (kernel) đang chạy và gỡ bỏ chúng.
 
-```
 ## include <linux/init.h>
+
 module_init(init_function);
 module_exit(cleanup_function);
+
 ```
 
 Các macro chỉ định hàm khởi tạo (initialization) và dọn dẹp (cleanup) của một module.
@@ -664,37 +679,43 @@ LINUX\_VERSION\_CODE
 Macro số nguyên (integer macro), hữu ích cho việc phụ thuộc phiên bản bằng #ifdef.
 
 ```
+
 EXPORT_SYMBOL (symbol);
 EXPORT_SYMBOL_GPL (symbol);
+
 ```
 
 Macro được sử dụng để xuất một ký hiệu (symbol) ra kernel. Dạng thứ hai xuất mà không sử dụng thông tin phiên bản, và dạng thứ ba giới hạn việc xuất chỉ cho các module được cấp phép GPL (GPL-licensed modules).
 
 ```
+
 MODULE_AUTHOR(author);
 MODULE_DESCRIPTION(description);
 MODULE_VERSION(version_string);
 MODULE_DEVICE_TABLE(table_info);
 MODULE_ALIAS(alternate_name);
+
 ```
 
 Đặt tài liệu về module vào tệp đối tượng.
 
 ```
+
 module_init(init_function);
 module_exit(exit_function);
+
 ```
 
 Các macro khai báo hàm khởi tạo và dọn dẹp của module.
 
-```
 ## include <linux/moduleparam.h>
 module_param(variable, type, perm);
 ```
 
 Macro tạo ra một tham số module (module parameter) có thể được điều chỉnh bởi người dùng khi module được tải (hoặc tại thời điểm khởi động hệ thống đối với mã được tích hợp sẵn - built-in code). Kiểu dữ liệu (`type`) có thể là `bool`, `charp`, `int`, `invbool`, `long`, `short`, `ushort`, `uint`, `ulong`, hoặc `intarray`.
 
-```
 ## include <linux/kernel.h>
+
 int printk(const char * fmt, ...);
+
 ```

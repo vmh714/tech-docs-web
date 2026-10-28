@@ -1,4 +1,4 @@
-# Chương 4: FILE I/O: MÔ HÌNH I/O TỔNG QUÁT
+# Chương 4: File I/O: Mô hình I/O tổng quát (File I/O: The Universal I/O Model)
 
 Bây giờ chúng ta sẽ bắt đầu đi sâu tìm hiểu về API System Call. Các tập tin (file) là một điểm khởi đầu tốt, vì chúng đóng vai trò cốt lõi trong triết lý của UNIX. Trọng tâm của chương này là các System Call được sử dụng để thực hiện việc nhập và xuất tập tin (file input and output).
 
@@ -24,6 +24,7 @@ Theo quy ước, hầu hết các chương trình đều mong đợi có thể s
 
 Khi tham chiếu đến các File Descriptor này trong chương trình, chúng ta có thể sử dụng các con số (0, 1 hoặc 2) hoặc, tốt hơn là sử dụng các tên chuẩn POSIX được định nghĩa trong `<unistd.h>`.
 
+> [!NOTE]
 > Mặc dù các biến `stdin`, `stdout` và `stderr` ban đầu tham chiếu lần lượt đến đầu vào, đầu ra và lỗi chuẩn của tiến trình, chúng có thể được thay đổi để tham chiếu đến bất kỳ tập tin nào bằng cách sử dụng hàm thư viện `freopen()`. Là một phần trong quá trình hoạt động của mình, `freopen()` có thể thay đổi File Descriptor nằm bên dưới luồng được mở lại (reopened stream). Nói cách khác, sau khi gọi `freopen()` trên `stdout` chẳng hạn, việc giả định rằng File Descriptor bên dưới vẫn là 1 là không còn an toàn nữa.
 
 Sau đây là bốn System Call cốt lõi để thực hiện File I/O (các ngôn ngữ lập trình và gói phần mềm thường chỉ sử dụng các lời gọi này một cách gián tiếp, thông qua các thư viện I/O):

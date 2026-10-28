@@ -1,7 +1,8 @@
-# Chương 56: SOCKET: GIỚI THIỆU
+# Chương 56: Socket: Giới thiệu (Sockets: Introduction)
 
-Socket là một phương pháp Giao tiếp giữa các tiến trình (Interprocess Communication - IPC) cho phép trao đổi dữ liệu giữa các ứng dụng, hoặc trên cùng một máy chủ (host) hoặc trên các máy chủ khác nhau được kết nối bằng mạng. Bản triển khai (implementation) API socket phổ biến đầu tiên xuất hiện cùng với 4.2BSD vào năm 1983, và API này đã đượcported (cổng hóa/chuyển đổi) sang hầu hết mọi bản triển khai UNIX, cũng như hầu hết các hệ điều hành khác.
+Socket là một phương pháp Giao tiếp giữa các tiến trình (Interprocess Communication - IPC) cho phép trao đổi dữ liệu giữa các ứng dụng, hoặc trên cùng một máy chủ (host) hoặc trên các máy chủ khác nhau được kết nối bằng mạng. Bản triển khai (implementation) API socket phổ biến đầu tiên xuất hiện cùng với 4.2BSD vào năm 1983, và API này đã được chuyển sang (ported) hầu hết mọi bản triển khai UNIX, cũng như hầu hết các hệ điều hành khác.
 
+> [!NOTE]
 > API socket được quy định chính thức trong POSIX.1g, được phê chuẩn vào năm 2000 sau khoảng một thập kỷ nằm ở dạng tiêu chuẩn dự thảo (draft standard). Tiêu chuẩn này đã được thay thế bởi SUSv3.
 
 Chương này và các chương tiếp theo mô tả việc sử dụng socket như sau:
@@ -52,7 +53,6 @@ Trong một số mã nguồn, chúng ta có thể thấy các hằng số có t�
 
 | Miền (Domain)   | Giao tiếp<br>được thực hiện | Giao tiếp<br>giữa các ứng dụng     | Định dạng địa chỉ<br>(Address format) | Cấu trúc địa chỉ<br>(Address structure) |
 |-----------------|-----------------------------|------------------------------------|---------------------------------------|-----------------------------------------|
-
 | AF_UNIX  | trong kernel              | trên cùng một host                          | đường dẫn (pathname)                         | sockaddr_un          |
 | AF_INET  | qua IPv4                   | trên các host được kết nối<br>qua mạng IPv4 | địa chỉ IPv4 32-bit +<br>số cổng 16-bit      | sockaddr_in          |
 |          |                            |                                           |                                              |                      |
@@ -101,16 +101,17 @@ Trên hầu hết các kiến trúc Linux (ngoại trừ Alpha và IA-64), tất
 
 I/O của socket có thể được thực hiện bằng cách sử dụng các system call truyền thống là `read()` và `write()`, hoặc sử dụng một loạt các system call dành riêng cho socket (ví dụ: `send()`, `recv()`, `sendto()`, và `recvfrom()`). Theo mặc định, các system call này sẽ ở trạng thái chặn (block) nếu thao tác I/O không thể hoàn thành ngay lập tức. Nonblocking I/O (I/O không chặn) cũng khả thi bằng cách sử dụng thao tác `fcntl()` `F_SETFL` (Mục 5.3) để bật cờ trạng thái mở tệp `O_NONBLOCK`.
 
+> [!NOTE]
 > Trên Linux, chúng ta có thể gọi `ioctl(fd, FIONREAD, &cnt)` để lấy số lượng byte chưa đọc có sẵn trên stream socket được tham chiếu bởi file descriptor (mô tả tệp) `fd`. Đối với một datagram socket, thao tác này trả về số lượng byte trong datagram chưa đọc tiếp theo (có thể bằng không nếu datagram tiếp theo có độ dài bằng không), hoặc trả về không nếu không có datagram nào đang chờ xử lý. Tính năng này không được chỉ định trong tiêu chuẩn SUSv3.
 
 ## 56.2 Tạo một Socket: socket()
 
 System call `socket()` tạo ra một socket mới.
 
-```
+```c
 ## include <sys/socket.h>
 int socket(int domain, int type, int protocol);
-                                Returns file descriptor on success, or –1 on error
+                                /* Trả về File Descriptor khi thành công, hoặc –1 khi lỗi */
 ```
 
 Đối số `domain` chỉ định miền truyền thông (communication domain) cho socket. Đối số `type` chỉ định kiểu socket (socket type). Đối số này thường được chỉ định là `SOCK_STREAM` để tạo một stream socket, hoặc `SOCK_DGRAM` để tạo một datagram socket.
@@ -119,22 +120,24 @@ int socket(int domain, int type, int protocol);
 
 Khi thành công, `socket()` trả về một file descriptor được dùng để tham chiếu đến socket mới được tạo trong các system call tiếp theo.
 
+> [!NOTE]
 > Bắt đầu từ kernel phiên bản 2.6.27, Linux cung cấp một cách sử dụng thứ hai cho đối số `type`, bằng cách cho phép kết hợp hai cờ phi tiêu chuẩn (nonstandard flags) bằng phép toán OR với kiểu socket. Cờ `SOCK_CLOEXEC` khiến kernel bật cờ close-on-exec (`FD_CLOEXEC`) cho file descriptor mới. Cờ này hữu ích vì những lý do tương tự như cờ `open()` `O_CLOEXEC` được mô tả tại Mục 4.3.1. Cờ `SOCK_NONBLOCK` khiến kernel thiết lập cờ `O_NONBLOCK` trên mô tả tệp mở (open file description) bên dưới, sao cho các thao tác I/O trong tương lai trên socket sẽ ở chế độ không chặn (nonblocking). Điều này giúp tiết kiệm các lời gọi `fcntl()` bổ sung để đạt được cùng một kết quả.
 
 ## 56.3 Gắn Socket vào một Địa chỉ: bind()
 
 System call `bind()` gắn một socket vào một địa chỉ.
 
-```
+```c
 ## include <sys/socket.h>
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
-                                             Returns 0 on success, or –1 on error
+                                             /* Trả về 0 khi thành công, hoặc –1 khi lỗi */
 ```
 
 Đối số `sockfd` là một file descriptor lấy từ lời gọi `socket()` trước đó. Đối số `addr` là một con trỏ trỏ đến một cấu trúc (structure) chỉ định địa chỉ mà socket này sẽ được gắn vào. Kiểu của cấu trúc được truyền vào đối số này phụ thuộc vào miền socket (socket domain). Đối số `addrlen` chỉ định kích thước của cấu trúc địa chỉ. Kiểu dữ liệu `socklen_t` được sử dụng cho đối số `addrlen` là một kiểu số nguyên được chỉ định bởi SUSv3.
 
 Thông thường, chúng ta gắn socket của server vào một địa chỉ nổi tiếng—tức là một địa chỉ cố định đã được biết trước đối với các ứng dụng client cần giao tiếp với server đó.
 
+> [!NOTE]
 > Có những khả năng khác ngoài việc gắn socket của server vào một địa chỉ nổi tiếng. Ví dụ, đối với một Internet domain socket, server có thể bỏ qua lời gọi `bind()` và đơn giản gọi `listen()`, điều này khiến kernel tự động chọn một cổng tạm thời (ephemeral port) cho socket đó. (Chúng ta mô tả các cổng tạm thời tại Mục [58.6.1.](#page-39-0)) Sau đó, server có thể sử dụng `getsockname()` (Mục [61.5](#page-114-0)) để truy xuất địa chỉ của socket của nó. Trong kịch bản này, server sau đó phải công bố (publish) địa chỉ đó để các client biết cách định vị socket của server. Việc công bố này có thể được thực hiện bằng cách đăng ký địa chỉ của server với một ứng dụng dịch vụ thư mục tập trung (centralized directory service application) mà các client sau đó sẽ liên hệ để lấy địa chỉ. (Ví dụ, Sun RPC giải quyết vấn đề này bằng cách sử dụng server portmapper của nó.) Tất nhiên, socket của ứng dụng dịch vụ thư mục phải nằm ở một địa chỉ nổi tiếng.
 
 ## 56.4 Cấu trúc Địa chỉ Socket Tổng quát: struct sockaddr
@@ -151,6 +154,7 @@ struct sockaddr {
 
 Cấu trúc này đóng vai trò là một mẫu (template) cho tất cả các cấu trúc địa chỉ đặc thù theo miền. Mỗi cấu trúc địa chỉ này đều bắt đầu bằng một trường họ (family field) tương ứng với trường sa_family của cấu trúc sockaddr. (Kiểu dữ liệu sa_family_t là một kiểu số nguyên được quy định trong SUSv3.) Giá trị trong trường family là đủ để xác định kích thước và định dạng của địa chỉ được lưu trữ trong phần còn lại của cấu trúc.
 
+> [!NOTE]
 > Một số cài đặt UNIX cũng định nghĩa một trường bổ sung trong cấu trúc sockaddr, đó là sa_len, chỉ định tổng kích thước của cấu trúc. SUSv3 không yêu cầu trường này, và nó không có mặt trong bản cài đặt Linux của sockets API.
 
 Nếu chúng ta định nghĩa macro kiểm tra tính năng `_GNU_SOURCE`, thì glibc sẽ tạo nguyên mẫu (prototype) cho các System Call socket khác nhau trong `<sys/socket.h>` bằng cách sử dụng một tiện ích mở rộng của gcc (gcc extension), giúp loại bỏ nhu cầu phải ép kiểu `(struct sockaddr *)`. Tuy nhiên, việc phụ thuộc vào tính năng này sẽ làm mất tính di động (sẽ dẫn đến các cảnh báo biên dịch trên các hệ thống khác).
@@ -185,10 +189,10 @@ Trong hầu hết các ứng dụng sử dụng stream socket, Server (máy ch�
 
 System Call `listen()` đánh dấu stream socket được trỏ bởi File Descriptor `sockfd` là thụ động (passive). Socket này sau đó sẽ được sử dụng để chấp nhận các kết nối từ các socket khác (đang hoạt động - active).
 
-```
+```c
 ## include <sys/socket.h>
 int listen(int sockfd, int backlog);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+                                             /* Trả về 0 khi thành công, hoặc –1 khi lỗi */
 ```
 
 Chúng ta không thể áp dụng `listen()` cho một socket đã được kết nối — nghĩa là một socket mà hàm `connect()` đã được thực thi thành công hoặc một socket được trả về bởi một lời gọi `accept()`.
@@ -203,16 +207,17 @@ Kernel phải ghi lại một số thông tin về mỗi yêu cầu kết nối 
 
 SUSv3 cho phép một bản cài đặt (implementation) đặt giới hạn trên cho giá trị có thể được chỉ định cho `backlog`, và cho phép bản cài đặt tự động làm tròn giá trị `backlog` xuống giới hạn này mà không cần thông báo. SUSv3 quy định rằng bản cài đặt nên công bố giới hạn này bằng cách định nghĩa hằng số `SOMAXCONN` trong `<sys/socket.h>`. Trên Linux, hằng số này được định nghĩa với giá trị 128. Tuy nhiên, kể từ phiên bản Kernel 2.4.25, Linux cho phép giới hạn này được điều chỉnh tại thời điểm chạy (run time) thông qua tệp `/proc/sys/net/core/somaxconn` đặc trưng của Linux. (Ở các phiên bản Kernel trước đó, giới hạn `SOMAXCONN` là cố định và không thể thay đổi).
 
+> [!NOTE]
 > Trong bản cài đặt BSD sockets gốc, giới hạn trên cho `backlog` là 5, và chúng ta có thể thấy con số này được chỉ định trong mã nguồn cũ. Tất cả các bản cài đặt hiện đại đều cho phép các giá trị `backlog` lớn hơn, điều này là cần thiết cho các máy chủ mạng sử dụng TCP socket để phục vụ số lượng lớn các client.
 
 ### 56.5.2 Chấp nhận một kết nối: accept()
 
 System Call `accept()` chấp nhận một kết nối đến trên stream socket đang lắng nghe được trỏ bởi File Descriptor `sockfd`. Nếu không có kết nối nào đang chờ xử lý khi `accept()` được gọi, lời gọi này sẽ bị block cho đến khi có yêu cầu kết nối đến.
 
-```
+```c
 ## include <sys/socket.h>
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-                               Trả về File Descriptor khi thành công, hoặc –1 khi lỗi
+                               /* Trả về File Descriptor khi thành công, hoặc –1 khi lỗi */
 ```
 
 Điểm cốt lõi cần hiểu về `accept()` là nó tạo ra một socket mới, và chính socket mới này được kết nối với socket đối tác (peer socket) đã thực hiện hàm `connect()`. File Descriptor cho socket đã kết nối được trả về như kết quả hàm của lời gọi `accept()`. Socket đang lắng nghe (`sockfd`) vẫn giữ nguyên trạng thái mở và có thể được sử dụng để chấp nhận các kết nối tiếp theo. Một ứng dụng server điển hình tạo ra một socket lắng nghe, bind nó với một địa chỉ nổi tiếng (well-known address), và sau đó xử lý tất cả các yêu cầu của client bằng cách chấp nhận các kết nối thông qua socket đó.
@@ -223,16 +228,17 @@ Tham số `addrlen` là một tham số kiểu giá trị-kết quả (value-res
 
 Nếu chúng ta không quan tâm đến địa chỉ của socket đối tác, thì `addr` và `addrlen` lần lượt được chỉ định là `NULL` và `0`. (Nếu muốn, chúng ta có thể truy xuất địa chỉ của đối tác sau đó bằng cách sử dụng System Call `getpeername()`, như được mô tả trong Mục [61.5](#page-114-0)).
 
-> Bắt đầu từ Kernel 2.6.28, Linux hỗ trợ một System Call mới, phi tiêu chuẩn là `accept4()`. System Call này thực hiện tác vụ giống như `accept()`, nhưng hỗ trợ thêm một tham số `flags`, có thể được sử dụng để sửa đổi hành vi của System Call. Hai cờ (flag) được hỗ trợ: `SOCK_CLOEXEC` và `SOCK_NONBLOCK`. Cờ `SOCK_CLOEXEC` khiến Kernel bật cờ close-on-exec (`FD_CLOEXEC`) cho File Descriptor mới được trả về bởi lời gọi. Cờ này hữu ích vì những lý do tương tự như cờ `O_CLOEXEC` của hàm `open()` được mô tả trong Mục 4.3.1. Cờ `SOCK_NONBLOCK` khiến Kernel bật cờ `O_NONBLOCK` trên Open File Description cơ sở, do đó các hoạt động I/O trong tương lai trên socket sẽ là không đồng bộ (nonblocking). Điều này giúp tiết kiệm các lời gọi `fcntl()` bổ sung để đạt được cùng một kết quả.
+> [!NOTE]
+> Bắt đầu từ Kernel 2.6.28, Linux hỗ trợ một System Call mới, phi tiêu chuẩn là `accept4()`. System Call này thực hiện tác vụ giống như `accept()`, nhưng hỗ trợ thêm một tham số `flags`, có thể được sử dụng để sửa đổi hành vi của System Call. Hai cờ (flag) được hỗ trợ: `SOCK_CLOEXEC` và `SOCK_NONBLOCK`. Cờ `SOCK_CLOEXEC` khiến Kernel bật cờ close-on-exec (`FD_CLOEXEC`) cho File Descriptor mới được trả về bởi lời gọi. Cờ này hữu ích vì những lý do tương tự như cờ `O_CLOEXEC` của hàm `open()` được mô tả trong Mục 4.3.1. Cờ `SOCK_NONBLOCK` khiến Kernel bật cờ `O_NONBLOCK` trên Open File Description cơ sở, do đó các hoạt động I/O trong tương lai trên socket sẽ ở chế độ không chặn (nonblocking). Điều này giúp tiết kiệm các lời gọi `fcntl()` bổ sung để đạt được cùng một kết quả.
 
 ### 56.5.3 Kết nối tới một Socket Ngang hàng: connect()
 
 System Call `connect()` kết nối socket chủ động được trỏ bởi File Descriptor `sockfd` với socket lắng nghe có địa chỉ được chỉ định bởi `addr` và `addrlen`.
 
-```
+```c
 ## include <sys/socket.h>
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
-                                            Trả về 0 khi thành công, hoặc –1 khi lỗi
+                                            /* Trả về 0 khi thành công, hoặc –1 khi lỗi */
 ```
 
 Các tham số `addr` và `addrlen` được chỉ định theo cách tương tự như các tham số tương ứng trong `bind()`.
@@ -266,7 +272,7 @@ Hoạt động của datagram socket có thể được giải thích thông qua
 
 1. System call `socket()` tương đương với việc thiết lập một hộp thư. (Ở đây, chúng ta giả định một hệ thống giống như dịch vụ bưu chính nông thôn ở một số quốc gia, nơi vừa nhận thư từ vừa phát thư đến hộp thư). Mỗi ứng dụng muốn gửi hoặc nhận datagram sẽ tạo một datagram socket bằng cách sử dụng `socket()`.
 
-- 2. Để cho phép ứng dụng khác gửi datagram (thư) cho mình, một ứng dụng sử dụng `bind()` để liên kết socket của nó với một địa chỉ nổi tiếng (well-known address). Thông thường, một máy chủ (server) liên kết socket của nó với một địa chỉ nổi tiếng, và một máy khách (client) khởi 1t quá trình giao tiếp bằng cách gửi một datagram đến địa chỉ đó. (Trong một số miền — đặc biệt là miền UNIX — máy khách cũng có thể cần sử dụng `bind()` để gán một địa chỉ cho socket của nó nếu nó muốn nhận datagram do máy chủ gửi tới).
+- 2. Để cho phép ứng dụng khác gửi datagram (thư) cho mình, một ứng dụng sử dụng `bind()` để liên kết socket của nó với một địa chỉ nổi tiếng (well-known address). Thông thường, một máy chủ (server) liên kết socket của nó với một địa chỉ nổi tiếng, và một máy khách (client) khởi tạo quá trình giao tiếp bằng cách gửi một datagram đến địa chỉ đó. (Trong một số miền — đặc biệt là miền UNIX — máy khách cũng có thể cần sử dụng `bind()` để gán một địa chỉ cho socket của nó nếu nó muốn nhận datagram do máy chủ gửi tới).
 - 3. Để gửi một datagram, ứng dụng gọi `sendto()`, nhận một trong các tham số là địa chỉ của socket mà datagram sẽ được gửi tới. Điều này tương tự như việc ghi địa chỉ người nhận lên một lá thư và đem đi gửi bưu điện.
 - 4. Để nhận một datagram, ứng dụng gọi `recvfrom()`, hàm này có thể bị chặn (block) nếu chưa có datagram nào đến. Vì `recvfrom()` cho phép chúng ta lấy được địa chỉ của người gửi, chúng ta có thể gửi lại phản hồi nếu muốn. (Điều này rất hữu ích nếu socket của người gửi được liên kết với một địa chỉ không nổi tiếng, điều này điển hình ở máy khách). Ở đây, chúng ta kéo dài phép loại suy ra một chút, vì không có yêu cầu bắt buộc là một lá thư được gửi phải được đánh dấu bằng địa chỉ của người gửi.
 - 5. Khi không còn cần thiết phải sử dụng socket nữa, ứng dụng sẽ đóng nó lại bằng `close()`.
@@ -283,14 +289,15 @@ Giống như hệ thống bưu chính, khi nhiều datagram (lá thư) được 
 
 Các system call `recvfrom()` và `sendto()` dùng để nhận và gửi các datagram trên một datagram socket.
 
-```
+```c
 ## include <sys/socket.h>
 ssize_t recvfrom(int sockfd, void *buffer, size_t length, int flags,
- struct sockaddr *src_addr, socklen_t *addrlen);
-                  Trả về số byte đã nhận, 0 khi gặp EOF, hoặc –1 nếu có lỗi
+                 struct sockaddr *src_addr, socklen_t *addrlen);
+                  /* Trả về số byte đã nhận, 0 khi gặp EOF, hoặc –1 nếu có lỗi */
+
 ssize_t sendto(int sockfd, const void *buffer, size_t length, int flags,
- const struct sockaddr *dest_addr, socklen_t addrlen);
-                                 Trả về số byte đã gửi, hoặc –1 nếu có lỗi
+               const struct sockaddr *dest_addr, socklen_t addrlen);
+                                 /* Trả về số byte đã gửi, hoặc –1 nếu có lỗi */
 ```
 
 Giá trị trả về và ba tham số đầu tiên của các system call này tương tự như đối với `read()` và `write()`.
@@ -305,10 +312,12 @@ Nếu chúng ta không quan tâm đến địa chỉ của người gửi, chún
 
 Bất kể giá trị được chỉ định cho `length` là gì, `recvfrom()` sẽ lấy chính xác một thông điệp (message) từ một datagram socket. Nếu kích thước của thông điệp đó vượt quá `length` byte, thông điệp sẽ bị cắt bớt một cách âm thầm (silently truncated) xuống còn `length` byte.
 
+> [!NOTE]
 > Nếu chúng ta sử dụng system call `recvmsg()` (Mục [61.13.2](#page-135-0)), thì có thể phát hiện ra một datagram bị cắt bớt thông qua cờ `MSG_TRUNC` được trả về trong trường `msg_flags` của cấu trúc `msghdr` nhận được. Xem trang hướng dẫn (manual page) `recvmsg(2)` để biết thêm chi tiết.
 
 Đối với `sendto()`, các tham số `dest_addr` và `addrlen` chỉ định socket mà datagram sẽ được gửi đến. Các tham số này được sử dụng theo cách tương tự như các tham số tương ứng trong `connect()`. Tham số `dest_addr` là một cấu trúc địa chỉ phù hợp cho miền giao tiếp này. Nó được khởi tạo với địa chỉ của socket đích. Tham số `addrlen` chỉ định kích thước của `addr`.
 
+> [!NOTE]
 > Trên Linux, có thể sử dụng `sendto()` để gửi các datagram có độ dài bằng 0. Tuy nhiên, không phải mọi cài đặt UNIX đều cho phép điều này.
 
 ### 56.6.2 Sử dụng connect() với Datagram Socket
@@ -324,10 +333,12 @@ Lưu ý rằng hiệu ứng của `connect()` mang tính bất đối xứng (as
 
 Chúng ta có thể thay đổi socket đối tác của một datagram socket đã kết nối bằng cách thực hiện một lời gọi `connect()` tiếp theo. Cũng có thể hủy bỏ hoàn toàn mối liên kết đối tác bằng cách chỉ định một cấu trúc địa chỉ trong đó họ địa chỉ (chẳng hạn như trường `sun_family` trong miền UNIX) được chỉ định là `AF_UNSPEC`. Tuy nhiên, lưu ý rằng nhiều cài đặt UNIX khác không hỗ trợ việc sử dụng `AF_UNSPEC` cho mục đích này.
 
+> [!NOTE]
 > SUSv3 có phần mơ hồ về việc hủy bỏ mối liên kết đối tác, nêu rằng một kết nối có thể được thiết lập lại bằng cách thực hiện lời gọi `connect()` chỉ định một "địa chỉ null", mà không định nghĩa thuật ngữ đó. SUSv4 quy định rõ ràng việc sử dụng `AF_UNSPEC`.
 
 Ưu điểm hiển nhiên của việc thiết lập peer (nút ngang hàng/nút đối tác) cho một datagram socket (ổ cắm gói dữ liệu) là chúng ta có thể sử dụng các System Call (lời gọi hệ thống) I/O đơn giản hơn khi truyền dữ liệu trên socket. Chúng ta không cần phải sử dụng `sendto()` với các đối số `dest_addr` và `addrlen` nữa, thay vào đó có thể sử dụng `write()`. Việc thiết lập peer chủ yếu hữu ích trong một ứng dụng cần gửi nhiều datagram tới một peer duy nhất (vốn là điểm đặc trưng của một số datagram client).
 
+> [!NOTE]
 > Trên một số triển khai TCP/IP, việc kết nối một datagram socket với một peer mang lại sự cải thiện về hiệu năng ([Stevens et al., 2004]). Trên Linux, việc kết nối một datagram socket tạo ra ít sự khác biệt đối với hiệu năng.
 
 ## 56.7 Tóm tắt

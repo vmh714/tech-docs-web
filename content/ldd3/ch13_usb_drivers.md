@@ -1,4 +1,4 @@
-# Chương 13: Trình điều khiển USB (USB Drivers)
+# Chương 13: Driver USB (USB Drivers)
 
 Bus nối tiếp vạn năng (Universal Serial Bus - USB) là kết nối giữa một máy tính chủ (host computer) và một số thiết bị ngoại vi. Ban đầu, nó được tạo ra để thay thế cho hàng loạt các loại bus chậm chạp và khác nhau—như các kết nối song song (parallel), nối tiếp (serial) và bàn phím—bằng một loại bus duy nhất mà mọi thiết bị đều có thể kết nối vào.\* USB đã phát triển vượt ra ngoài các kết nối chậm chạp này và hiện hỗ trợ hầu như mọi loại thiết bị có thể kết nối với một máy tính cá nhân (PC). Phiên bản sửa đổi mới nhất của đặc tả USB đã bổ sung các kết nối tốc độ cao với giới hạn tốc độ lý thuyết là 480 MBps.
 
@@ -1292,7 +1292,7 @@ Nếu hàm này thực thi thành công, nó trả về một chuỗi được m
 
 Phần này tóm tắt các ký hiệu đã được giới thiệu trong chương:
 
-## include <linux/usb.h>
+`#include <linux/usb.h>`
 
 Tệp tiêu đề (Header file) chứa mọi thứ liên quan đến USB. Tất cả các trình điều khiển thiết bị USB (USB device driver) đều phải bao gồm tệp này.
 

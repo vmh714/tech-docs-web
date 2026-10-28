@@ -1,4 +1,4 @@
-# Chương 64: PSEUDOTERMINAL
+# Chương 64: Thiết bị đầu cuối giả lập (Pseudoterminals)
 
 Pseudoterminal là một thiết bị ảo cung cấp một kênh IPC (Inter-Process Communication). Ở một đầu của kênh là một chương trình mong đợi được kết nối với một thiết bị terminal. Ở đầu kia là một chương trình điều khiển chương trình hướng-terminal (terminal-oriented program) bằng cách sử dụng kênh này để gửi dữ liệu đầu vào và đọc dữ liệu đầu ra của nó.
 
@@ -44,7 +44,7 @@ Hình 64-1: Vấn đề: làm thế nào để vận hành một chương trình
 
 Pseudoterminal cung cấp mắt xích còn thiếu để tạo kết nối mạng đến một chương trình hướng-terminal. Một pseudoterminal là một cặp thiết bị ảo được kết nối với nhau: một thiết bị master (pseudoterminal master) và một thiết bị slave (pseudoterminal slave), đôi khi được gọi chung là một cặp pseudoterminal (pseudoterminal pair). Một cặp pseudoterminal cung cấp một kênh IPC giống như một pipe hai chiều (bidirectional pipe) — hai tiến trình có thể mở master và slave, sau đó truyền dữ liệu theo bất kỳ hướng nào thông qua pseudoterminal đó.
 
-Điểm mấu chốt về thiết bị giả lập đầu cuối (pseudoterminal - pty) là thiết bị phụ (slave device) trông hoàn toàn giống như một terminal tiêu chuẩn. Tất cả các thao tác có thể áp dụng cho một thiết bị terminal cũng có thể được áp dụng cho thiết bị slave của pseudoterminal. Một số thao tác trong số này không có ý nghĩa đối với pseudoterminal (ví dụ: thiết lập tốc độ đường truyền hoặc tính chẵn lẻ của terminal), nhưng điều đó hoàn toàn bình thường, bởi vì pseudoterminal slave sẽ lờ đi một cách âm thầm.
+Điểm mấu chốt của một pseudoterminal là thiết bị slave xuất hiện và hoạt động giống hệt như một terminal tiêu chuẩn. Tất cả các thao tác có thể áp dụng cho một thiết bị terminal cũng có thể được áp dụng cho thiết bị slave của pseudoterminal. Một số thao tác trong số này không có ý nghĩa đối với pseudoterminal (ví dụ: thiết lập tốc độ đường truyền hoặc tính chẵn lẻ của terminal), nhưng điều đó hoàn toàn bình thường, bởi vì pseudoterminal slave sẽ lờ đi một cách âm thầm.
 
 ### Cách các chương trình sử dụng pseudoterminal
 
@@ -93,6 +93,7 @@ Pseudoterminal cũng có thể được sử dụng để kết nối một cặ
 
 Cho đến nay, cuộc thảo luận của chúng ta về việc sử dụng pseudoterminal vẫn mang tính trừu tượng. [Hình 64-3](#page-89-0) hiển thị một ví dụ cụ thể: việc sử dụng pseudoterminal bởi `ssh`, một ứng dụng cho phép người dùng chạy một phiên đăng nhập an toàn trên một hệ thống từ xa được kết nối qua mạng. (Trên thực tế, sơ đồ này kết hợp thông tin từ [Hình 64-1](#page-87-0) và [Hình 64-2](#page-88-0).) Trên máy chủ từ xa (remote host), driver program cho pseudoterminal master chính là máy chủ `ssh` (`sshd`), và chương trình hướng terminal được kết nối với pseudoterminal slave là login shell. Máy chủ `ssh` là chất keo kết nối pseudoterminal thông qua một Socket với máy khách `ssh` (`ssh client`). Khi tất cả các chi tiết đăng nhập đã hoàn tất, mục đích chính của máy chủ và máy khách `ssh` là chuyển tiếp các ký tự theo cả hai hướng giữa terminal của người dùng trên máy cục bộ (local host) và shell trên máy từ xa.
 
+> [!NOTE]
 > Chúng tôi lược bỏ việc mô tả nhiều chi tiết về ssh client và server. Ví dụ, các chương trình này mã hóa dữ liệu được truyền đi theo cả hai hướng qua mạng. Chúng tôi minh họa một tiến trình (process) ssh server đơn lẻ trên máy chủ từ xa (remote host), nhưng thực tế, ssh server là một network server đồng thời (concurrent network server). Nó trở thành một daemon và tạo ra một TCP socket thụ động (passive socket) để lắng nghe các kết nối đến từ các ssh client. Đối với mỗi kết nối, tiến trình ssh server chính (master) sẽ tạo một tiến trình con (forks a child process) để xử lý toàn bộ các chi tiết cho một phiên đăng nhập client duy nhất. (Chúng tôi gọi tiến trình con này là ssh server trong [Hình 64-3.](#page-89-0)) Ngoài các chi tiết về thiết lập pseudoterminal được mô tả ở trên, tiến trình con ssh server sẽ xác thực người dùng (authenticate), cập nhật các tệp tin kế toán đăng nhập (login accounting files) trên máy chủ từ xa (như được mô tả trong Chương 40), và sau đó thực thi shell đăng nhập (execs the login shell).
 
 ```
@@ -167,12 +168,15 @@ Từng bước một, chúng ta sẽ tiến hành xây dựng một hàm `ptyFor
 
 Hàm `posix_openpt()` tìm kiếm và mở một thiết bị pseudoterminal master (pseudo-terminal master) chưa được sử dụng, đồng thời trả về một file descriptor (mô tả tệp) có thể được sử dụng sau đó để tham chiếu đến thiết bị này.
 
-```
 ## define _XOPEN_SOURCE 600
+
 ## include <stdlib.h>
+
 ## include <fcntl.h>
+
 int posix_openpt(int flags);
-                                Trả về file descriptor nếu thành công, hoặc –1 nếu có lỗi
+Trả về file descriptor nếu thành công, hoặc –1 nếu có lỗi
+
 ```
 
 Đối số `flags` được cấu thành bằng cách kết hợp phép toán OR (hoặc bit) với không hoặc nhiều các hằng số sau đây:
@@ -192,11 +196,13 @@ Việc gọi `posix_openpt()` cũng dẫn đến việc tạo ra một tệp thi
 Hàm `posix_openpt()` xuất hiện lần đầu trong SUSv3, và là một phát minh của ủy ban POSIX. Trong cài đặt pseudoterminal System V ban đầu, việc lấy một pseudoterminal master khả dụng được thực hiện bằng cách mở thiết bị nhân bản (clone device) pseudoterminal master, `/dev/ptmx`. Việc mở thiết bị ảo này sẽ tự động định vị và mở pseudoterminal master chưa sử dụng tiếp theo, sau đó trả về một file descriptor cho nó. Thiết bị này được cung cấp trên Linux, nơi `posix_openpt()` được hiện thực như sau:
 
 ```
+
 int
 posix_openpt(int flags)
 {
- return open("/dev/ptmx", flags);
+return open("/dev/ptmx", flags);
 }
+
 ```
 
 ### Giới hạn về số lượng pseudoterminal UNIX 98
@@ -210,10 +216,14 @@ Từ Linux 2.6.4 trở đi, tùy chọn cấu hình kernel `CONFIG_UNIX98_PTYS` 
 SUSv3 quy định việc sử dụng `grantpt()` để thay đổi quyền sở hữu (ownership) và quyền truy cập (permissions) của thiết bị slave (pseudoterminal slave) tương ứng với master pseudoterminal được tham chiếu bởi file descriptor `mfd`. Trên Linux, việc gọi `grantpt()` thực tế là không cần thiết. Tuy nhiên, việc sử dụng `grantpt()` lại là bắt buộc trên một số hệ thống (implementations), và các ứng dụng có khả năng di động (portable applications) nên gọi hàm này sau khi gọi `posix_openpt()`.
 
 ```c
+
 ## define _XOPEN_SOURCE 500
+
 ## include <stdlib.h>
+
 int grantpt(int mfd);
-                                             Thành công trả về 0, lỗi trả về –1
+Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
+
 ```
 
 Trên các hệ thống yêu cầu `grantpt()`, hàm này tạo ra một tiến trình con (child process) để thực thi một chương trình mang cờ set-user-ID-root. Chương trình này, thường được gọi là `pt_chown`, thực hiện các thao tác sau trên thiết bị pseudoterminal slave:
@@ -234,10 +244,14 @@ Trên Linux, một pseudoterminal slave được tự động cấu hình theo c
 Hàm `unlockpt()` gỡ bỏ một khóa nội bộ (internal lock) trên slave tương ứng với pseudoterminal master được tham chiếu bởi file descriptor `mfd`. Mục đích của cơ chế khóa này là cho phép tiến trình gọi thực hiện bất kỳ quá trình khởi tạo nào cần thiết cho pseudoterminal slave (ví dụ: gọi `grantpt()`) trước khi một tiến trình khác được phép mở nó.
 
 ```c
+
 ## define _XOPEN_SOURCE 500
+
 ## include <stdlib.h>
+
 int unlockpt(int mfd);
-                                             Thành cóng trả về 0, lỗi trả về –1
+Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
+
 ```
 
 Nỗ lực mở một pseudoterminal slave trước khi nó được mở khóa bằng `unlockpt()` sẽ thất bại với mã lỗi `EIO`.
@@ -247,11 +261,15 @@ Nỗ lực mở một pseudoterminal slave trước khi nó được mở khóa 
 Hàm `ptsname()` trả về tên của pseudoterminal slave tương ứng với pseudoterminal master được tham chiếu bởi file descriptor `mfd`.
 
 ```c
+
 ## define _XOPEN_SOURCE 500
+
 ## include <stdlib.h>
+
 char *ptsname(int mfd);
-               Thành công trả về con trỏ tới chuỗi (có thể được cấp phát tĩnh),
-                                                      hoặc NULL khi xảy ra lỗi
+Thành công trả về con trỏ tới chuỗi (có thể được cấp phát tĩnh),
+hoặc NULL khi xảy ra lỗi
+
 ```
 
 Trên Linux (giống như hầu hết các hệ thống), `ptsname()` trả về một tên có dạng `/dev/pts/nn`, trong đó `nn` được thay thế bằng một số nhận diện duy nhất (uniquely identifies) pseudoterminal slave này.
@@ -271,7 +289,6 @@ Bây giờ chúng ta sẽ trình bày một hàm, `ptyMasterOpen()`, sử dụng
 - Hầu hết các chương trình thực hiện các bước này hoàn toàn giống nhau, vì vậy việc đóng gói (encapsulate) chúng vào một hàm duy nhất sẽ rất thuận tiện.
 - Hàm `ptyMasterOpen()` của chúng tôi ẩn đi tất cả các chi tiết đặc thù của pseudoterminal chuẩn UNIX 98. Trong Mục [64.8,](#page-106-0) chúng tôi trình bày một cách cài đặt lại hàm này sử dụng pseudoterminal theo phong cách BSD (BSD-style pseudoterminal). Toàn bộ mã nguồn mà chúng tôi trình bày trong phần còn lại của chương này có thể hoạt động với bất kỳ cách cài đặt nào trong hai cách này.
 
-```
 ## include "pty_master_open.h"
 int ptyMasterOpen(char *slaveName, size_t snLen);
                                Trả về File Descriptor khi thành công, hoặc –1 khi lỗi
@@ -279,6 +296,7 @@ int ptyMasterOpen(char *slaveName, size_t snLen);
 
 Hàm `ptyMasterOpen()` mở một pseudoterminal master chưa được sử dụng, gọi các hàm `grantpt()` và `unlockpt()` trên đó, sau đó sao chép tên của pseudoterminal slave tương ứng vào bộ đệm (buffer) do `slaveName` trỏ tới. Người gọi phải chỉ định dung lượng bộ nhớ có sẵn trong buffer này thông qua tham số `snLen`. Chúng tôi minh họa cách cài đặt hàm này trong [Liệt kê 64-1](#page-95-0).
 
+> [!NOTE]
 > Sẽ hoàn toàn khả thi nếu bỏ qua các tham số `slaveName` và `snLen`, và để người gọi `ptyMasterOpen()` tự gọi trực tiếp `ptsname()` nhằm lấy tên của pseudoterminal slave. Tuy nhiên, chúng tôi sử dụng các tham số `slaveName` và `snLen` vì pseudoterminal kiểu BSD không cung cấp hàm tương đương với `ptsname()`, và cách cài đặt hàm tương đương dành cho pseudoterminal kiểu BSD của chúng tôi [\(Liệt kê 64-4\)](#page-107-0) đã đóng gói kỹ thuật của BSD để lấy tên của slave.
 
 ```
@@ -359,6 +377,7 @@ Giống như `fork()`, `ptyFork()` trả về process ID của tiến trình con
 
 Cuối cùng, tiến trình con được tạo bởi `ptyFork()` sẽ kết thúc (terminate). Nếu tiến trình cha không kết thúc cùng lúc đó, thì nó phải chờ tiến trình con (wait on) để loại bỏ tiến trình th zombie (zombie process) phát sinh. Tuy nhiên, bước này thường có thể được lược bỏ, vì các ứng dụng sử dụng pseudoterminal thường được thiết kế sao cho tiến trình cha kết thúc cùng lúc với tiến trình con.
 
+> [!NOTE]
 > Các hệ phái BSD cung cấp hai hàm liên quan, không chuẩn (nonstandard) để làm việc với pseudoterminal. Hàm đầu tiên trong số này là `openpty()`, hàm này mở một cặp pseudoterminal, trả về các file descriptor cho master và slave, tùy chọn trả về tên của thiết bị slave, và tùy chọn thiết lập các thuộc tính terminal cũng như kích thước cửa sổ từ các tham số tương tự như `slaveTermios` và `slaveWS`. Hàm còn lại, `forkpty()`, cũng giống như `ptyFork()` của chúng ta, ngoại trừ việc nó không cung cấp phiên bản tương đương với tham số `snLen`. Trên Linux, cả hai hàm này đều được cung cấp bởi `glibc` và được tài liệu hóa trong trang hướng dẫn (man page) `openpty(3)`.
 
 **Liệt kê 64-2:** Hiện thực hóa `ptyFork()`
@@ -669,7 +688,7 @@ $ exit
 
 Thiết bị master và slave chia sẻ các cấu trúc thuộc tính terminal (`termios`) và kích thước cửa sổ (`winsize`). (Cả hai cấu trúc này được mô tả trong Chương [62.](#page-0-0)) Điều này có nghĩa là chương trình chạy ở phía trên pseudoterminal master có thể thay đổi các thuộc tính này cho pseudoterminal slave bằng cách áp dụng `tcsetattr()` và `ioctl()` lên File Descriptor (mô tả tệp) của thiết bị master.
 
-Một ví dụ về việc thay đổi thuộc tính terminal hữu ích là trong chương trình script. Giả lập rằng chúng ta đang chạy script trong một cửa sổ terminal emulator (trình giả lập terminal), và chúng ta thay đổi kích thước của cửa sổ đó. Trong trường hợp này, chương trình terminal emulator sẽ thông báo cho kernel về sự thay đổi kích thước của thiết bị terminal tương ứng, nhưng sự thay đổi này không được phản ánh trong bản ghi riêng của kernel dành cho pseudoterminal slave (xem [Hình 64-4](#page-101-1)). Kết quả là, các chương trình hướng màn hình (ví dụ: `vi`) chạy ở phía trên pseudoterminal slave sẽ tạo ra đầu ra gây nhầm lẫn, vì hiểu biết của chúng về kích thước cửa sổ terminal khác với kích thước thực tế của terminal. Chúng ta có thể giải quyết vấn đề này như sau:
+Một ví dụ về việc thay đổi thuộc tính terminal hữu ích là trong chương trình script. Giả sử chúng ta đang chạy script trong một cửa sổ trình giả lập terminal (terminal emulator) và tiến hành thay đổi kích thước của cửa sổ đó. Trong trường hợp này, chương trình terminal emulator sẽ thông báo cho kernel về sự thay đổi kích thước của thiết bị terminal tương ứng, nhưng sự thay đổi này không được phản ánh trong bản ghi riêng của kernel dành cho pseudoterminal slave (xem [Hình 64-4](#page-101-1)). Kết quả là, các chương trình hướng màn hình (ví dụ: `vi`) chạy ở phía trên pseudoterminal slave sẽ tạo ra đầu ra gây nhầm lẫn, vì hiểu biết của chúng về kích thước cửa sổ terminal khác với kích thước thực tế của terminal. Chúng ta có thể giải quyết vấn đề này như sau:
 
 - 1. Cài đặt một trình xử lý tín hiệu (signal handler) cho `SIGWINCH` trong tiến trình cha của script, để nó nhận được tín hiệu khi kích thước của cửa sổ terminal thay đổi.
 - 2. Khi tiến trình cha của script nhận được tín hiệu `SIGWINCH`, nó sử dụng thao tác `ioctl()` với lệnh `TIOCGWINSZ` để truy xuất cấu trúc `winsize` cho cửa sổ terminal liên kết với standard input (đầu vào chuẩn) của nó. Sau đó, nó sử dụng cấu trúc này trong thao tác `ioctl()` với lệnh `TIOCSWINSZ` để thiết lập kích thước cửa sổ của pseudoterminal master.
@@ -796,7 +815,7 @@ Các API pseudoterminal khác nhau đã xuất hiện trên System V và BSD. Li
 
 ```
 
-Dấu thời gian nên được ghi lại dưới dạng văn bản là số mili-giây kể từ khi phiên script bắt đầu. Việc ghi dấu thời gian dưới dạng văn bản có ưu điểm là file kết quả có thể đọc được bằng con người (human-readable). Bên trong chuỗi, các ký tự xuống dòng thực tế sẽ cần phải được thoát (escape). Một khả năng là ghi lại ký tự xuống dòng dưới dạng chuỗi 2 ký tự `\n` và dấu gạch chéo ngược dưới dạng `\\`.
+Dấu thời gian nên được ghi lại dưới dạng văn bản là số mili-giây kể từ khi phiên script bắt đầu. Việc ghi dấu thời gian dưới dạng văn bản có ưu điểm là file kết quả dễ đọc đối với con người (human-readable). Bên trong chuỗi, các ký tự xuống dòng thực tế sẽ cần phải được thoát (escape). Một khả năng là ghi lại ký tự xuống dòng dưới dạng chuỗi 2 ký tự `\n` và dấu gạch chéo ngược dưới dạng `\\`.
 
 Viết chương trình thứ hai, `script_replay.c`, đọc file script có gắn dấu thời gian và hiển thị nội dung của nó ra đầu ra chuẩn (standard output) với tốc độ giống như khi chúng được ghi ban đầu. Cùng nhau, hai chương trình này cung cấp một tính năng ghi âm và phát lại đơn giản cho nhật ký phiên shell (shell session log).
 

@@ -1,6 +1,6 @@
-# Chương 41: CƠ BẢN VỀ THƯ VIỆN DÙNG CHUNG
+# Chương 41: Cơ bản về Thư viện chia sẻ (Fundamentals of Shared Libraries)
 
-Thư viện dùng chung (Shared Library) là một kỹ thuật đặt các hàm thư viện vào một đơn vị duy nhất có thể được chia sẻ bởi nhiều tiến trình (process) tại thời điểm thực thi (run time). Kỹ thuật này có thể tiết kiệm cả dung lượng đĩa và RAM. Chương này bao gồm các nguyên ớc cơ bản về thư viện dùng chung. Chương tiếp theo sẽ đề cập đến một số tính năng nâng cao của thư viện dùng chung.
+Thư viện dùng chung (Shared Library) là một kỹ thuật đặt các hàm thư viện vào một đơn vị duy nhất có thể được chia sẻ bởi nhiều tiến trình (process) tại thời điểm thực thi (run time). Kỹ thuật này có thể tiết kiệm cả dung lượng đĩa và RAM. Chương này bao gồm các nguyên tắc cơ bản về thư viện dùng chung. Chương tiếp theo sẽ đề cập đến một số tính năng nâng cao của thư viện dùng chung.
 
 ## 41.1 Thư viện đối tượng (Object Libraries)
 
@@ -106,6 +106,7 @@ Khi một chương trình được xây dựng bằng cách liên kết với m�
 
 Các thư viện chia sẻ (shared libraries) được thiết kế để khắc phục những thiếu sót này. Ý tưởng cốt lõi của một thư viện chia sẻ là một bản sao duy nhất của các mô-đun đối tượng được chia sẻ bởi tất cả các chương trình yêu cầu các mô-đun đó. Các mô-đun đối tượng không được sao chép vào tệp thực thi đã liên kết; thay vào đó, một bản sao duy nhất của thư viện được nạp vào bộ nhớ tại thời điểm chạy (run time), khi chương trình đầu tiên yêu cầu các mô-đun từ thư viện chia sẻ được khởi động. Khi các chương trình khác sử dụng cùng thư viện chia sẻ đó được thực thi sau đó, chúng sẽ sử dụng bản sao của thư viện đã được nạp sẵn vào bộ nhớ. Việc sử dụng các thư viện chia sẻ có nghĩa là các chương trình thực thi yêu cầu ít không gian hơn trên đĩa và (khi chạy) trong bộ nhớ ảo.
 
+> [!NOTE]
 > Mặc dù mã nguồn của một thư viện chia sẻ (shared library) được chia sẻ giữa nhiều tiến trình (process), các biến của chúng thì không. Mỗi tiến trình sử dụng thư viện đều có bản sao riêng của các biến toàn cục (global variable) và biến tĩnh (static variable) được định nghĩa bên trong thư viện đó.
 
 Các thư viện chia sẻ mang lại những ưu điểm bổ sung sau:
@@ -201,10 +202,12 @@ open shared object file: No such file or directory
 
 Điều này đưa chúng ta đến bước thứ hai bắt buộc: liên kết động (dynamic linking), đây là nhiệm vụ phân giải tên thư viện được nhúng tại thời điểm chạy. Nhiệm vụ này được thực hiện bởi trình liên kết động (dynamic linker) (còn gọi là trình nạp liên kết động - dynamic linking loader, hoặc trình liên kết thời gian chạy - run-time linker). Bản thân trình liên kết động là một thư viện động, có tên là `/lib/ld-linux.so.2`, được sử dụng bởi mọi tệp thực thi ELF có dùng thư viện động.
 
+> [!NOTE]
 > Đường dẫn `/lib/ld-linux.so.2` thông thường là một liên kết tượng trưng (symbolic link) trỏ đến tệp thực thi của trình liên kết động. Tệp này có tên là `ld-version.so`, trong đó `version` là phiên bản glibc được cài đặt trên hệ thống—ví dụ: `ld-2.11.so`. Đường dẫn của trình liên kết động sẽ khác nhau trên một số kiến trúc (architectures). Ví dụ, trên IA-64, liên kết tượng trưng của trình liên kết động có tên là `/lib/ld-linux-ia64.so.2`.
 
 Trình liên kết động kiểm tra danh sách các thư viện động được yêu cầu bởi một chương trình và sử dụng một tập hợp các quy tắc được định nghĩa trước để tìm các tệp thư viện trong hệ thống tệp (file system). Một số quy tắc trong số này chỉ định một tập hợp các thư mục chuẩn mà các thư viện động thường trú ngụ. Ví dụ, nhiều thư viện động nằm trong `/lib` và `/usr/lib`. Thông báo lỗi ở trên xảy ra vì thư viện của chúng ta nằm trong thư mục làm việc hiện tại (current working directory), vốn không nằm trong danh sách chuẩn được tìm kiếm bởi trình liên kết động.
 
+> [!NOTE]
 > Một số kiến trúc (ví dụ: zSeries, PowerPC64 và x86-64) hỗ trợ thực thi cả chương trình 32-bit và 64-bit. Trên các hệ thống như vậy, các thư viện 32-bit nằm trong các thư mục con `*/lib`, và các thư viện 64-bit nằm trong các thư mục con `*/lib64`.
 
 ### Biến môi trường LD\_LIBRARY\_PATH
@@ -219,6 +222,7 @@ Called mod2-x2
 
 Cú pháp shell (bash, Korn và Bourne) được sử dụng trong lệnh trên tạo ra một định nghĩa biến môi trường bên trong tiến trình (process) đang thực thi `prog`. Định nghĩa này ra lệnh cho trình liên kết động tìm kiếm các thư viện chia sẻ trong `.`, thư mục làm việc hiện tại (current working directory).
 
+> [!NOTE]
 > Một định nghĩa thư mục trống trong danh sách `LD_LIBRARY_PATH` (ví dụ: phần tử ở giữa trong `dirx::diry`) tương đương với `.`, thư mục làm việc hiện tại (nhưng lưu ý rằng việc đặt `LD_LIBRARY_PATH` thành một chuỗi rỗng không mang lại kết quả tương tự). Chúng ta tránh sử dụng cách này (SUSv3 không khuyến khích việc sử dụng tương tự trong biến môi trường `PATH`).
 
 ### So sánh giữa liên kết tĩnh và liên kết động
@@ -389,6 +393,7 @@ library-name => resolves-to-path
 
 Đối với hầu hết các file thực thi ELF, ldd sẽ liệt kê các mục ít nhất cho ld-linux.so.2 (bộ liên kết động) và libc.so.6 (thư viện C chuẩn).
 
+> [!NOTE]
 > Tên của thư viện C sẽ khác nhau trên một số kiến trúc phần cứng. Ví dụ, thư viện này có tên là libc.so.6.1 trên IA-64 và Alpha.
 
 ### Các lệnh objdump và readelf
@@ -441,6 +446,7 @@ Ngoài tên thực (real name) và soname, một tên thứ ba thường đượ
 
 Thông thường, tên liên kết được tạo trong cùng thư mục với tệp mà nó trỏ tới. Nó có thể được liên kết tới tên thực hoặc tới soname của phiên bản major mới nhất của thư viện. Thông thường, liên kết tới soname sẽ được ưu tiên hơn, để các thay đổi đối với soname được phản ánh tự động vào tên liên kết. (Trong Mục [41.7,](#page-114-0) chúng ta sẽ thấy rằng chương trình `ldconfig` tự động hóa tác vụ giữ cho các soname luôn được cập nhật, và do đó ngầm duy trì tên liên kết nếu chúng ta sử dụng quy ước vừa mô tả.)
 
+> [!NOTE]
 > Nếu chúng ta muốn liên kết một chương trình với một phiên bản major cũ hơn của thư viện chia sẻ, chúng ta không thể sử dụng tên liên kết. Thay vào đó, như một phần của câu lệnh liên kết, chúng ta cần chỉ định phiên bản (major) yêu cầu bằng cách chỉ định một tên thực hoặc soname cụ thể.
 
 Dưới đây là một số ví dụ về tên liên kết:
@@ -464,7 +470,7 @@ real name              soname                linker name
   ┌──────────────────┐   ┌────────────────────┐  ┌────────────────────┐
   │  (regular file)  │◄--│  (symbolic link)   │◄-│  (symbolic link)   │
   │  Object code for │   │ libname.so.maj.min  │  │  libname.so.maj    │
-  │ library modules  │   └────────────────────>  └────────────────────┘
+  │ library modules  │   └────────────────────┘  └────────────────────┘
   └──────────────────┘
 ```
 
@@ -529,10 +535,12 @@ Password:
 ## mv libdemo.so.1.0.1 /usr/lib
 ```
 
-```
 ## cd /usr/lib
+
 ## ln -s libdemo.so.1.0.1 libdemo.so.1
+
 ## ln -s libdemo.so.1 libdemo.so
+
 ```
 
 Hai dòng cuối cùng trong phiên làm việc shell này tạo ra các liên kết tượng trưng cho soname và linker name.
@@ -556,8 +564,6 @@ Lệnh `ldconfig –p` hiển thị nội dung hiện tại của `/etc/ld.so.ca
 
 Theo mặc định, `ldconfig` thực hiện cả hai thao tác trên. Các tùy chọn dòng lệnh (command-line options) có thể được sử dụng để vô hiệu hóa có chọn lọc một trong hai thao tác: tùy chọn `-N` ngăn việc xây dựng lại bộ nhớ đệm (cache), và tùy chọn `-X` ngăn việc tạo các liên kết tượng trưng soname. Ngoài ra, tùy chọn `-v` (verbose) khiến `ldconfig` hiển thị đầu ra mô tả các hành động mà nó đang thực hiện.
 
-```
-
 Chúng ta nên chạy `ldconfig` bất cứ khi nào một thư viện mới được cài đặt, một thư viện hiện có được cập nhật hoặc gỡ bỏ, hoặc danh sách các thư mục trong `/etc/ld.so.conf` bị thay đổi.
 
 Như một ví dụ về hoạt động của `ldconfig`, giả sử chúng ta muốn cài đặt hai phiên bản chính (major version) khác nhau của một thư viện. Chúng ta thực hiện việc này như sau:
@@ -568,10 +574,6 @@ $ su
 Password:
 
 ## mv libdemo.so.1.0.1 libdemo.so.2.0.0 /usr/lib
-
-```
-
-```
 
 ## ldconfig -v | grep libdemo
 
@@ -584,22 +586,15 @@ libdemo.so.2 -> libdemo.so.2.0.0 (changed)
 
 Tiếp theo, chúng ta liệt kê các tệp có tên `libdemo` trong `/usr/lib` để xác minh thiết lập của các liên kết tượng trưng (symbolic link) `soname`:
 
-```
-
 ## cd /usr/lib
-
-## ls -l libdemo* | awk '{print $1, $$9, $10, $11}'
-
+## ls -l libdemo* | awk '{print $1, $9, $10, $11}'
 lrwxrwxrwx libdemo.so.1 -> libdemo.so.1.0.1
 -rwxr-xr-x libdemo.so.1.0.1
 lrwxrwxrwx libdemo.so.2 -> libdemo.so.2.0.0
 -rwxr-xr-x libdemo.so.2.0.0
-
 ```
 
 Chúng ta vẫn phải tạo liên kết tượng trưng cho tên trình liên kết (linker name), như được hiển thị trong câu lệnh tiếp theo:
-
-```
 
 ## ln -s libdemo.so.2 libdemo.so
 
@@ -607,15 +602,10 @@ Chúng ta vẫn phải tạo liên kết tượng trưng cho tên trình liên k
 
 Tuy nhiên, nếu chúng ta cài đặt một phiên bản phụ (minor version) 2.x mới của thư viện, thì vì tên trình liên kết trỏ đến `soname` mới nhất, `ldconfig` cũng sẽ có tác dụng giữ cho tên trình liên kết được cập nhật mới nhất, như ví dụ sau cho thấy:
 
-```
-
 ## mv libdemo.so.2.0.1 /usr/lib
-
 ## ldconfig -v | grep libdemo
-
-libdemo.so.1 -> libdemo.so.1.0.1
-libdemo.so.2 -> libdemo.so.2.0.1 (changed)
-
+ libdemo.so.1 -> libdemo.so.1.0.1
+ libdemo.so.2 -> libdemo.so.2.0.1 (changed)
 ```
 
 Nếu chúng ta đang xây dựng và sử dụng một thư viện riêng tư (private library - nghĩa là thư viện không được cài đặt trong một trong các thư mục tiêu chuẩn), chúng ta có thể yêu cầu `ldconfig` tạo liên kết tượng trưng `soname` cho chúng ta bằng cách sử dụng tùy chọn `-n`. Tùy chọn này chỉ định rằng `ldconfig` chỉ nên xử lý các thư viện nằm trong các thư mục được chỉ định trên dòng lệnh và không cập nhật tệp bộ nhớ đệm (cache file). Trong ví dụ sau, chúng ta sử dụng `ldconfig` để xử lý các thư viện trong thư mục làm việc hiện tại:
@@ -653,22 +643,14 @@ Nếu không có điều kiện nào trong số này bị vi phạm, thì tên t
 Một trong những ưu điểm của thư viện chia sẻ (shared library) là phiên bản major hoặc minor mới của thư viện có thể được cài đặt ngay cả khi các chương trình đang chạy vẫn đang sử dụng phiên bản hiện có. Tất cả những gì chúng ta cần làm là tạo phiên bản thư viện mới, cài đặt nó vào thư mục thích hợp, và cập nhật các liên kết tượng trưng (symbolic link) soname và linker name theo yêu cầu (hoặc thông thường hơn, là để `ldconfig` thực hiện công việc đó thay chúng ta). Để tạo một phiên bản minor mới (tức là một bản nâng cấp tương thích) của thư viện chia sẻ `/usr/lib/libdemo.1.0.1`, chúng ta thực hiện các bước sau:
 
 ```
-
 $ su
 Password:
-
 ## gcc -g -c -fPIC -Wall mod1.c mod2.c mod3.c
-
 ## gcc -g -shared -Wl,-soname,libdemo.so.1 -o libdemo.so.1.0.2 \
-
-mod1.o mod2.o mod3.o
-
+ mod1.o mod2.o mod3.o
 ## mv libdemo.so.1.0.2 /usr/lib
-
 ## ldconfig -v | grep libdemo
-
-libdemo.so.1 -> libdemo.so.1.0.2 (changed)
-
+ libdemo.so.1 -> libdemo.so.1.0.2 (changed)
 ```
 
 Giả sử liên kết tượng trưng linker name đã được thiết lập chính xác từ trước (tức là trỏ tới soname của thư viện), chúng ta sẽ không cần phải chỉnh sửa lại nó.
@@ -676,8 +658,6 @@ Giả sử liên kết tượng trưng linker name đã được thiết lập c
 Các chương trình đang chạy sẽ tiếp tục sử dụng phiên bản minor trước đó của thư viện chia sẻ. Chỉ khi chúng bị chấm dứt (terminated) và khởi động lại thì chúng mới sử dụng phiên bản minor mới của thư viện chia sẻ.
 
 Nếu sau đó chúng ta muốn tạo một phiên bản major mới (2.0.0) của thư viện chia sẻ, chúng ta sẽ thực hiện như sau:
-
-```
 
 ## gcc -g -c -fPIC -Wall mod1.c mod2.c mod3.c
 

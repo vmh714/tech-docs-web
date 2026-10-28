@@ -1,4 +1,4 @@
-# Chương 26: GIÁM SÁT TIẾN TRÌNH CON (MONITORING CHILD PROCESSES)
+# Chương 26: Giám sát tiến trình con (Monitoring Child Processes)
 
 Trong nhiều thiết kế ứng dụng, một tiến trình cha (parent process) cần biết khi nào một trong các tiến trình con (child processes) của nó thay đổi trạng thái — khi tiến trình con kết thúc (terminate) hoặc bị dừng bởi một tín hiệu (signal). Chương trình này mô tả hai kỹ thuật được sử dụng để giám sát các tiến trình con: lời gọi hệ thống (system call) `wait()` (và các biến thể của nó) và việc sử dụng tín hiệu `SIGCHLD`.
 
@@ -146,6 +146,7 @@ Chúng ta sử dụng thuật ngữ trạng thái chờ (wait status) để bao 
 
 Mặc dù được định nghĩa là một kiểu `int`, nhưng chỉ có 2 byte thấp của giá trị được trỏ tới bởi `status` thực sự được sử dụng. Cách thức mà 2 byte này được lấp đầy phụ thuộc vào sự kiện nào ở trên đã xảy ra với tiến trình con, như được minh họa trong [Hình 26-1.](#page-32-1)
 
+> [!NOTE]
 > [Hình 26-1](#page-32-1) thể hiện bố cục của giá trị trạng thái chờ đối với Linux/x86-32. Các chi tiết này có thể khác nhau giữa các bản cài đặt (implementations). SUSv3 không quy định bất kỳ bố cục cụ thể nào cho thông tin này, hoặc thậm chí không yêu cầu nó phải nằm trong 2 byte thấp của giá trị được trỏ bởi `status`. Các ứng dụng có tính di động (portable applications) nên luôn sử dụng các macro được mô tả trong phần này để kiểm tra giá trị này, thay vì trực tiếp kiểm tra các thành phần mặt nạ bit (bit-mask) của nó.
 
 ```text
@@ -370,6 +371,7 @@ handler(int sig)
 
 Giống như `waitpid()`, system call `waitid()` trả về trạng thái của các tiến trình con (child process). Tuy nhiên, `waitid()` cung cấp thêm các tính năng bổ sung mà `waitpid()` không có. System call này bắt nguồn từ System V, nhưng hiện đã được quy định trong chuẩn SUSv3. Nó đã được thêm vào Linux từ phiên bản kernel 2.6.9.
 
+> [!NOTE]
 > Trước Linux 2.6.9, một phiên bản của `waitid()` đã được cung cấp thông qua quá trình triển khai trong glibc. Tuy nhiên, vì việc triển khai đầy đủ giao diện này đòi hỏi sự hỗ trợ từ kernel, nên phần triển khai trong glibc không cung cấp thêm tính năng nào so với những gì đã có sẵn khi sử dụng `waitpid()`.
 
 ```c
@@ -485,6 +487,7 @@ Vòng đời của tiến trình cha (parent process) và tiến trình con (chi
 
 Ai sẽ trở thành tiến trình cha của một tiến trình con bị mồ côi? Tiến trình con bị mồ côi sẽ được nhận nuôi bởi `init`, tổ tiên của tất cả các tiến trình, có ID tiến trình (Process ID) là 1. Nói cách khác, sau khi tiến trình cha của một tiến trình con kết thúc, một lời gọi hàm `getppid()` sẽ trả về giá trị 1. Điều này có thể được sử dụng như một cách để xác định xem tiến trình cha thực sự của một tiến trình con còn sống hay không (giả định rằng tiến trình con đó được tạo bởi một tiến trình khác không phải là `init`).
 
+> [!NOTE]
 > Sử dụng thao tác `PR_SET_PDEATHSIG` của system call `prctl()` đặc trưng cho Linux, ta có thể sắp xếp để một tiến trình nhận được một tín hiệu (signal) được chỉ định khi nó trở thành tiến trình mồ côi.
 
 Điều gì xảy ra với một tiến trình con kết thúc trước khi tiến trình cha có cơ hội thực thi hàm `wait()`? Vấn đề ở đây là, mặc dù tiến trình con đã hoàn thành công việc của mình, tiến trình cha vẫn phải được phép thực hiện `wait()` vào một thời điểm sau đó để xác định tiến trình con đã kết thúc như thế nào. Kernel giải quyết tình huống này bằng cách biến tiến trình con thành một tiến trình thây ma (zombie). Điều này có nghĩa là phần lớn tài nguyên mà tiến trình con nắm giữ đã được giải phóng trở lại hệ thống để các tiến trình khác có thể tái sử dụng. Phần duy nhất của tiến trình còn lại là một mục (entry) trong bảng tiến trình (process table) của kernel, ghi lại (trong số những thứ khác) ID tiến trình của tiến trình con, trạng thái kết thúc (termination status) và các thống kê sử dụng tài nguyên (Mục 36.1).
@@ -512,6 +515,7 @@ After sending SIGKILL to make_zombie (PID=1014):
 
 Trong phần đầu ra ở trên, chúng ta thấy rằng `ps(1)` hiển thị chuỗi `<defunct>` để chỉ ra một tiến trình ở trạng thái zombie.
 
+> [!NOTE]
 > Chương trình trong [Liệt kê 26-4](#page-41-0) sử dụng hàm `system()` để thực thi lệnh shell được cung cấp trong đối số chuỗi ký tự (character-string argument) của nó. Chúng ta sẽ mô tả chi tiết về `system()` trong Mục [27.6](#page-66-0).
 
 **Liệt kê 26-4:** Tạo một tiến trình con zombie
@@ -697,6 +701,7 @@ y if (sigsuspend(&emptyMask) == -1 && errno != EINTR)
 
 Cũng giống như `waitpid()` có thể được sử dụng để theo dõi các tiến trình con bị dừng (stopped children), tiến trình cha (parent process) hoàn toàn có thể nhận được tín hiệu (signal) `SIGCHLD` khi một trong các tiến trình con của nó bị dừng bởi một signal. Hành vi này được điều khiển bởi cờ `SA_NOCLDSTOP` khi sử dụng `sigaction()` để thiết lập một trình xử lý (handler) cho signal `SIGCHLD`. Nếu cờ này bị bỏ qua, một signal `SIGCHLD` sẽ được gửi đến tiến trình cha khi một trong các tiến trình con của nó dừng lại; nếu cờ này được bật, `SIGCHLD` sẽ không được gửi đối với các tiến trình con bị dừng. (Việc cài đặt `signal()` được trình bày trong Mục 22.7 không chỉ định `SA_NOCLDSTOP`.)
 
+> [!NOTE]
 > Vì `SIGCHLD` bị bỏ qua theo mặc định (ignored by default), cờ `SA_NOCLDSTOP` chỉ có ý nghĩa khi chúng ta đang thiết lập một handler cho `SIGCHLD`. Hơn nữa, `SIGCHLD` là signal duy nhất mà cờ `SA_NOCLDSTOP` có tác dụng.
 
 SUSv3 cũng cho phép tiến trình cha được gửi signal `SIGCHLD` nếu một trong các tiến trình con bị dừng của nó được tiếp tục chạy (resumed) bằng cách nhận được signal `SIGCONT`. (Điều này tương ứng với cờ `WCONTINUED` trong `waitpid()`.) Tính năng này đã được cài đặt trong Linux kể từ phiên bản kernel 2.6.9.
@@ -705,6 +710,7 @@ SUSv3 cũng cho phép tiến trình cha được gửi signal `SIGCHLD` nếu m�
 
 Có một khả năng khác để xử lý các tiến trình con đã chết. Việc thiết lập tường minh hành vi xử lý (disposition) của `SIGCHLD` thành `SIG_IGN` sẽ khiến bất kỳ tiến trình con nào chấm dứt (terminates) sau đó bị xóa ngay lập tức khỏi hệ thống thay vì bị biến thành tiến trình thây ma (zombie). Trong trường hợp này, vì trạng thái của tiến trình con bị loại bỏ hoàn toàn, một lời gọi tiếp theo tới `wait()` (hoặc tương tự) sẽ không thể trả về bất kỳ thông tin nào cho tiến trình con đã kết thúc đó.
 
+> [!NOTE]
 > Lưu ý rằng mặc dù hành vi mặc định đối với `SIGCHLD` là bị bỏ qua, việc thiết lập tường minh disposition thành `SIG_IGN` lại gây ra hành vi khác biệt được mô tả ở đây. Về mặt này, `SIGCHLD` được xử lý một cách đặc biệt so với các signal khác.
 
 Trên Linux, cũng như trên nhiều hệ thống cài đặt UNIX, việc thiết lập disposition của `SIGCHLD` thành `SIG_IGN` không làm ảnh hưởng đến trạng thái của bất kỳ tiến trình con zombie nào đang tồn tại, vốn vẫn phải được chờ (wait upon) bằng cách thông thường. Trên một số hệ thống cài đặt UNIX khác (ví dụ: Solaris 8), việc thiết lập disposition của `SIGCHLD` thành `SIG_IGN` sẽ thực sự loại bỏ các tiến trình con zombie hiện có.
@@ -715,6 +721,7 @@ Ngữ nghĩa của `SIG_IGN` đối với `SIGCHLD` có lịch sử lâu đời,
 
 SUSv3 quy định rằng nếu cơ chế xử lý (disposition) của tín hiệu `SIGCHLD` được thiết lập thành `SIG_IGN`, thông tin sử dụng tài nguyên của tiến trình con (child process) phải bị loại bỏ và không được đưa vào tổng số liệu trả về khi tiến trình cha (parent process) gọi hàm `getrusage()` với cờ `RUSAGE_CHILDREN` (Mục 36.1). Tuy nhiên, trên các phiên bản Linux trước kernel 2.6.9, thời gian CPU và các tài nguyên mà tiến trình con sử dụng vẫn được ghi nhận và hiển thị trong các lệnh gọi `getrusage()`. Sự không tuân thủ này đã được khắc phục từ phiên bản Linux 2.6.9 trở đi.
 
+> [!NOTE]
 > Việc thiết lập cơ chế xử lý của `SIGCHLD` thành `SIG_IGN` cũng đồng thời ngăn chặn thời gian CPU của tiến trình con không bị đưa vào cấu trúc do hàm `times()` trả về (Mục 10.7). Tuy nhiên, trên các Linux kernel trước phiên bản 2.6.9, một sự không tuân thủ tương tự cũng xảy ra đối với thông tin do `times()` trả về.
 
 SUSv3 quy định rằng nếu cơ chế xử lý của `SIGCHLD` được đặt thành `SIG_IGN`, và tiến trình cha không có tiến trình con nào đã kết thúc mà biến thành trạng thái thây ma (zombie) nhưng chưa được thu hồi (wait for), thì lệnh gọi `wait()` (hoặc `waitpid()`) phải chặn (block) cho đến khi tất cả các tiến trình con của tiến trình cha đã kết thúc. Tại thời điểm đó, lệnh gọi sẽ kết thúc với mã lỗi `ECHILD`. Linux 2.6 tuân thủ yêu cầu này. Tuy nhiên, trong Linux 2.4 và các phiên bản trước đó, `wait()` chỉ chặn cho đến khi tiến trình con tiếp theo kết thúc, sau đó trả về ID tiến trình (process ID) và trạng thái của tiến trình con đó (tức là hành vi hoàn toàn giống như khi cơ chế xử lý của `SIGCHLD` không được đặt thành `SIG_IGN`).
@@ -725,6 +732,7 @@ SUSv3 quy định cờ `SA_NOCLDWAIT`, có thể được sử dụng khi thiế
 
 Sự khác biệt chính giữa việc thiết lập cơ chế xử lý của `SIGCHLD` thành `SIG_IGN` và sử dụng `SA_NOCLDWAIT` là khi thiết lập một trình xử lý (handler) với `SA_NOCLDWAIT`, SUSv3 không quy định rõ việc tín hiệu `SIGCHLD` có được gửi đến tiến trình cha hay không khi một tiến trình con kết thúc. Nói cách khác, một hệ thống (implementation) được phép gửi `SIGCHLD` khi chỉ định `SA_NOCLDWAIT`, và một ứng dụng có thể bắt (catch) tín hiệu này (mặc dù trình xử lý `SIGCHLD` sẽ không thể thu hồi trạng thái tiến trình con bằng cách sử dụng `wait()`, do kernel đã loại bỏ trạng thái zombie rồi). Trên một số hệ thống UNIX, bao gồm cả Linux, kernel có tạo ra tín hiệu `SIGCHLD` cho tiến trình cha. Trên các hệ thống UNIX khác, `SIGCHLD` không được tạo ra.
 
+> [!NOTE]
 > Khi thiết lập cờ `SA_NOCLDWAIT` cho tín hiệu `SIGCHLD`, các phiên bản Linux kernel cũ cũng thể hiện các chi tiết không tuân thủ SUSv3 giống như đã mô tả ở trên đối với việc thiết lập cơ chế xử lý của `SIGCHLD` thành `SIG_IGN`.
 
 ### Tín hiệu SIGCLD của System V

@@ -1,6 +1,4 @@
-## Chapter 43
-
-## TỔNG QUAN VỀ GIAO TIẾP GIỮA CÁC TIẾN TRÌNH (INTERPROCESS COMMUNICATION OVERVIEW)
+# Chương 43: Tổng quan về Giao tiếp liên tiến trình (Interprocess Communication Overview)
 
 Chương này trình bày một cái nhìn tổng quan ngắn gọn về các cơ chế mà các tiến trình (process) và luồng (thread) có thể sử dụng để giao tiếp với nhau và đồng bộ hóa các hoạt động của chúng. Các chương tiếp theo sẽ cung cấp thêm chi tiết về các cơ chế này.
 
@@ -31,7 +29,7 @@ Các cơ chế giao tiếp khác nhau được hiển thị trong [Hình 43-1](#
 
 Chúng ta có thể chia các cơ chế giao tiếp thành hai loại:
 
-- Cơ chế truyền dữ liệu (Data-transfer facilities): Yếu tố chính phân biệt các cơ chế này là khái niệm ghi và đọc. Để giao tiếp, một tiến trình ghi dữ liệu vào cơ chế IPC và một tiến trình khác đọc dữ liệu đó. Các cơ chế này yêu cầu hai lần truyền dữ liệu giữa bộ nhớ người dùng (user memory) và bộ nhớ nhân (kernel memory): một lần truyền từ bộ nhớ người dùng sang bộ nhớ nhân trong quá trình ghi, và một lần truyền từ bộ nhớ nhân sang bộ nhớ người dùng trong quá trình đọc. ([\Hình 43-2](#page-2-0) minh họa tình huống này đối với một pipe).
+- Cơ chế truyền dữ liệu (Data-transfer facilities): Yếu tố chính phân biệt các cơ chế này là khái niệm ghi và đọc. Để giao tiếp, một tiến trình ghi dữ liệu vào cơ chế IPC và một tiến trình khác đọc dữ liệu đó. Các cơ chế này yêu cầu hai lần truyền dữ liệu giữa bộ nhớ người dùng (user memory) và bộ nhớ nhân (kernel memory): một lần truyền từ bộ nhớ người dùng sang bộ nhớ nhân trong quá trình ghi, và một lần truyền từ bộ nhớ nhân sang bộ nhớ người dùng trong quá trình đọc. ([Hình 43-2](#page-2-0) minh họa tình huống này đối với một pipe).
 - Bộ nhớ chia sẻ (Shared memory): Bộ nhớ chia sẻ cho phép các tiến trình trao đổi thông tin bằng cách đặt nó vào một vùng nhớ được chia sẻ giữa các tiến trình. (Kernel thực hiện điều này bằng cách tạo các mục bảng trang - page-table entries trong mỗi tiến trình trỏ đến cùng các trang RAM, như được hiển thị trong [Hình 49-2](#page-149-0), ở trang [1026](#page-149-0)). Một tiến trình có thể làm cho dữ liệu có sẵn cho các tiến trình khác bằng cách đặt nó vào vùng nhớ chia sẻ. Bởi vì quá trình giao tiếp không yêu cầu System Call (giao tiếp hệ thống) hoặc truyền dữ liệu giữa bộ nhớ người dùng và bộ nhớ nhân, bộ nhớ chia sẻ có thể cung cấp tốc độ giao tiếp rất nhanh.
 
 ![](_page_2_Figure_6.jpeg)
@@ -40,7 +38,7 @@ Chúng ta có thể chia các cơ chế giao tiếp thành hai loại:
 
 ### Truyền dữ liệu (Data transfer)
 
-Chúng ta có thể chia nhỏ các cơ sở hạ tầng truyền dữ liệu (data-transfer facilities) thành các tiểu mục sau:
+Chúng ta có thể chia nhỏ các cơ chế truyền dữ liệu (data-transfer facilities) thành các tiểu mục sau:
 
 - Dữ liệu dạng luồng byte (Byte stream): Dữ liệu được trao đổi thông qua các pipe, FIFO và socket datagram là một luồng byte không phân định ranh giới (undelimited byte stream). Mỗi thao tác đọc (read operation) có thể đọc một số lượng byte tùy ý từ cơ chế IPC (Inter-Process Communication), bất kể kích thước của các khối dữ liệu do bên ghi (writer) tạo ra. Mô hình này phản ánh mô hình "tệp dưới dạng một chuỗi các byte" truyền thống của UNIX.
 
@@ -51,6 +49,7 @@ Một số đặc điểm chung phân biệt các cơ chế truyền dữ liệu
 
 - Mặc dù một cơ chế truyền dữ liệu có thể có nhiều tiến trình đọc (reader), nhưng các thao tác đọc mang tính phá hủy (destructive). Một thao tác đọc sẽ tiêu thụ dữ liệu (consume data) và dữ liệu đó sẽ không còn khả dụng cho bất kỳ tiến trình nào khác.
 
+> [!NOTE]
 > Cờ `MSG_PEEK` có thể được sử dụng để thực hiện việc đọc không phá hủy (nondestructive read) từ một socket (Mục 61.3). Các socket UDP (datagram miền Internet) cho phép một thông điệp đơn lẻ được broadcast hoặc multicast tới nhiều người nhận (Mục 61.12).
 
 - Đồng bộ hóa (Synchronization) giữa tiến trình đọc và tiến trình ghi diễn ra tự động. Nếu một tiến trình đọc cố gắng lấy dữ liệu từ một cơ chế truyền dữ liệu hiện không có dữ liệu, thì (theo mặc định) thao tác đọc sẽ bị chặn (block) cho đến khi có tiến trình ghi dữ liệu vào cơ chế đó.
@@ -80,6 +79,7 @@ Khi thực hiện đồng bộ hóa giữa các tiến trình (interprocess sync
 
 Các cơ chế truyền thông (communication facilities) cũng có thể được sử dụng để đồng bộ hóa. Ví dụ, trong Mục [44.3,](#page-20-0) chúng tôi chỉ ra cách một đường ống (pipe) có thể được sử dụng để đồng bộ hóa các hành động của tiến trình cha với các tiến trình con của nó. Tổng quát hơn, bất kỳ cơ chế truyền dữ liệu nào cũng có thể được sử dụng để đồng bộ hóa, với thao tác đồng bộ mang hình thức trao đổi thông điệp thông qua cơ chế đó.
 
+> [!NOTE]
 > Kể từ kernel phiên bản 2.6.22, Linux cung cấp một cơ chế đồng bộ bổ sung, không chuẩn thông qua system call `eventfd()`. System call này tạo ra một đối tượng `eventfd` có một số nguyên không dấu 8-byte đi kèm được duy trì bởi kernel. System call trả về một file descriptor (mô tả tệp) trỏ đến đối tượng đó. Việc ghi một số nguyên vào file descriptor này sẽ cộng số nguyên đó vào giá trị của đối tượng. Thao tác `read()` từ file descriptor sẽ bị chặn (block) nếu giá trị của đối tượng bằng 0. Nếu đối tượng có giá trị khác 0, thao tác `read()` sẽ trả về giá trị đó và đặt lại nó về 0. Ngoài ra, `poll()`, `select()`, hoặc `epoll` có thể được sử dụng để kiểm tra xem đối tượng có giá trị khác 0 hay không; nếu có, file descriptor cho biết nó ở trạng thái có thể đọc (readable). Một ứng dụng muốn sử dụng đối tượng `eventfd` để đồng bộ hóa trước tiên phải tạo đối tượng bằng `eventfd()`, sau đó gọi `fork()` để tạo các tiến trình có liên quan nhằm kế thừa các file descriptor trỏ đến đối tượng đó. Để biết thêm chi tiết, hãy xem trang tài liệu hướng dẫn (manual page) `eventfd(2)`.
 
 ## 43.4 So sánh các cơ chế IPC
@@ -90,9 +90,9 @@ Khi nói đến IPC (Inter-Process Communication - Giao tiếp giữa các tiế
 
 Để truy cập một đối tượng IPC, tiến trình (process) phải có một số cách để nhận diện đối tượng đó, và một khi đối tượng đã được "mở", tiến trình phải sử dụng một loại định danh (handle) nào đó để tham chiếu đến đối tượng đã mở. [Bảng 43-1](#page-5-0) tóm tắt các thuộc tính này cho các loại cơ chế IPC khác nhau.
 
-**Bảng 43-1:** Các định danh và tay nắm (handle) cho các loại cơ chế IPC khác nhau
+**Bảng 43-1:** Định danh và Handle dùng cho các loại cơ chế IPC khác nhau
 
-| Loại cơ chế | Tên dùng để<br>nhận diện đối tượng | Định danh dùng để tham chiếu<br>đối tượng trong chương trình |
+| Loại cơ chế | Tên dùng để<br>nhận diện đối tượng | Handle dùng để tham chiếu<br>đối tượng trong chương trình |
 |-------------------------|---------------------------------|-----------------------------------------------|
 | Pipe (Đường ống) | không có tên | file descriptor (mô tả tệp) |
 | FIFO | đường dẫn (pathname) | file descriptor |
@@ -147,7 +147,7 @@ Các cài đặt UNIX hiện đại hỗ trợ hầu hết các cơ chế IPC đ
 
 Các cơ chế System V IPC được thiết kế độc lập với mô hình I/O UNIX truyền thống, và do đó gặp phải một số điểm đặc thù khiến cho các giao diện lập trình của chúng trở nên phức tạp hơn khi sử dụng. Các cơ chế POSIX IPC tương ứng được thiết kế để giải quyết những vấn đề này. Các điểm sau đây là đáng chú ý nhất:
 
-- Các cơ chế System V IPC không có kết nối (connectionless). Các cơ chế này không cung cấp khái niệm về một tay nắm (handle) (như bộ mô tả tệp - file descriptor) tham chiếu đến một đối tượng IPC đang mở. Trong các chương sau, đôi khi chúng ta sẽ nói về việc "mở" (opening) một đối tượng System V IPC, nhưng đây thực chất chỉ là cách viết tắt để mô tả quá trình lấy một tay nắm để tham chiếu đến đối tượng đó. Kernel không ghi nhận tiến trình là đã "mở" đối tượng (không giống như các loại đối tượng IPC khác). Điều này có nghĩa là kernel không thể duy trì bộ đếm tham chiếu (reference count) về số lượng tiến trình hiện đang sử dụng một đối tượng. Do đó, ứng dụng có thể phải tốn thêm công sức lập trình để biết khi nào một đối tượng có thể được xóa một cách an toàn.
+- Các cơ chế System V IPC không có kết nối (connectionless). Các cơ chế này không cung cấp khái niệm về một handle (như file descriptor - bộ mô tả tệp) tham chiếu đến một đối tượng IPC đang mở. Trong các chương sau, đôi khi chúng ta sẽ nói về việc "mở" (opening) một đối tượng System V IPC, nhưng đây thực chất chỉ là cách viết tắt để mô tả quá trình lấy một handle để tham chiếu đến đối tượng đó. Kernel không ghi nhận tiến trình là đã "mở" đối tượng (không giống như các loại đối tượng IPC khác). Điều này có nghĩa là kernel không thể duy trì bộ đếm tham chiếu (reference count) về số lượng tiến trình hiện đang sử dụng một đối tượng. Do đó, ứng dụng có thể phải tốn thêm công sức lập trình để biết khi nào một đối tượng có thể được xóa một cách an toàn.
 - Các giao diện lập trình cho các cơ chế System V IPC không nhất quán với mô hình I/O UNIX truyền thống (chúng sử dụng các giá trị khóa dạng số nguyên - integer key values và định danh IPC - IPC identifiers thay vì tên đường dẫn - pathnames và file descriptors). Các giao diện lập trình cũng quá phức tạp. Điểm cuối cùng này đặc biệt áp dụng cho System V semaphores (tham khảo các Mục [47.11](#page-116-0) và 53.5).
 
 Ngược lại, kernel đếm các tham chiếu mở đối với các đối tượng POSIX IPC. Điều này đơn giản hóa các quyết định về thời điểm một đối tượng có thể bị xóa. Hơn nữa, các cơ chế POSIX IPC cung cấp một giao diện đơn giản hơn và nhất quán hơn với mô hình UNIX truyền thống.
@@ -188,6 +188,7 @@ Thuật ngữ tính bền bỉ (persistence) đề cập đến vòng đời (li
 
 - Tính bền bỉ theo tiến trình (Process persistence): Một đối tượng IPC có tính bền bỉ theo tiến trình sẽ tiếp tục tồn tại chừng nào nó còn được mở bởi ít nhất một tiến trình (process). Nếu đối tượng bị đóng bởi tất cả các tiến trình, thì toàn bộ tài nguyên kernel (kernel resource) liên kết với đối tượng đó sẽ được giải phóng và mọi dữ liệu chưa đọc sẽ bị tiêu hủy. Pipe, FIFO và socket là các ví dụ về cơ chế IPC có tính bền bỉ theo tiến trình.
 
+> [!NOTE]
 > Tính bền bỉ của dữ liệu trong một FIFO không giống với tính bền bỉ của tên FIFO đó. Một FIFO có tên trong hệ thống tập tin (file system) vẫn tiếp tục tồn tại ngay cả sau khi tất cả các bộ mô tả tập tin (file descriptor) tham chiếu đến FIFO đó đã bị đóng.
 
 - Tính bền bỉ theo kernel (Kernel persistence): Một đối tượng IPC có tính bền bỉ theo kernel sẽ tồn tại cho đến khi nó bị xóa một cách rõ ràng hoặc hệ thống bị tắt nguồn (shutdown). Vòng đời của đối tượng này độc lập với việc có bất kỳ tiến trình nào đang giữ mở đối tượng hay không. Điều này có nghĩa là, ví dụ, một tiến trình có thể tạo ra một đối tượng, ghi dữ liệu vào đó, rồi sau đó đóng nó lại (hoặc kết thúc tiến trình). Ở thời điểm sau đó, một tiến trình khác có thể mở đối tượng đó và đọc dữ liệu. Các ví dụ về cơ chế có tính bền bỉ theo kernel là System V IPC và POSIX IPC. Chúng ta tận dụng đặc tính này trong các chương trình mẫu được trình bày khi mô tả các cơ chế này ở các chương sau: đối với mỗi cơ chế, chúng ta triển khai các chương trình riêng biệt để tạo một đối tượng, xóa một đối tượng, và thực hiện truyền thông hoặc đồng bộ hóa (synchronization).

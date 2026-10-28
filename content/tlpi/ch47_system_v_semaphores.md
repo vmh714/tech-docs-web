@@ -1,4 +1,4 @@
-# Chương 47: SEMAPHORE SYSTEM V (SYSTEM V SEMAPHORES)
+# Chương 47: Semaphore System V (System V Semaphores)
 
 Chương trình này mô tả các semaphore System V (System V semaphores). Không giống như các cơ chế IPC (Inter-Process Communication) được mô tả trong các chương trước, semaphore System V không được sử dụng để truyền dữ liệu giữa các tiến trình (process). Thay vào đó, chúng cho phép các tiến trình đồng bộ hóa (synchronize) các hoạt động của mình. Một ứng dụng phổ biến của semaphore là đồng bộ hóa quyền truy cập vào một khối bộ nhớ chia sẻ (shared memory), nhằm ngăn chặn một tiến trình truy cập vào bộ nhớ chia sẻ cùng lúc với một tiến trình khác đang cập nhật nó.
 
@@ -109,11 +109,13 @@ main(int argc, char *argv[])
 
 System Call `semget()` tạo một semaphore set mới hoặc lấy định danh (identifier) của một set đã tồn tại.
 
-```
 ## include <sys/types.h> /* For portability */
+
 ## include <sys/sem.h>
+
 int semget(key_t key, int nsems, int semflg);
-                    Returns semaphore set identifier on success, or –1 on error
+Returns semaphore set identifier on success, or –1 on error
+
 ```
 
 Đối số `key` là một khóa được tạo bằng một trong các phương pháp được mô tả trong Mục [45.2](#page-48-1) (nghĩa là, thường là giá trị `IPC_PRIVATE` hoặc một khóa do hàm `ftok()` trả về).
@@ -155,6 +157,7 @@ Trả về số nguyên không âm khi thành công (xem văn bản); trả về
 
 Một số thao tác nhất định yêu cầu đối số thứ tư cho `semctl()`, mà chúng ta gọi là `arg` trong phần còn lại của mục này. Đối số này là một union được định nghĩa như trong Liệt kê 47-2 (Listing 47-2). Chúng ta phải định nghĩa tường minh union này trong các chương trình của mình. Chúng ta thực hiện điều này trong các chương trình ví dụ của mình bằng cách bao gồm tệp tiêu đề (header file) trong Liệt kê 47-2.
 
+> [!NOTE]
 > Mặc dù việc đặt định nghĩa của union `semun` vào một tệp tiêu đề chuẩn là hợp lý, SUSv3 lại yêu cầu lập trình viên phải tự định nghĩa nó một cách tường minh. Tuy nhiên, một số triển khai UNIX thực sự cung cấp định nghĩa này trong `<sys/sem.h>`. Các phiên bản glibc cũ hơn (từ phiên bản 2.0 trở xuống) cũng cung cấp định nghĩa này. Để tuân thủ SUSv3, các phiên bản glibc gần đây hơn thì không, và macro `_SEM_SEMUN_UNDEFINED` được định nghĩa với giá trị 1 trong `<sys/sem.h>` để chỉ ra thực tế này (nghĩa là một ứng dụng được biên dịch với glibc có thể kiểm tra macro này để xác định xem chương trình có phải tự định nghĩa union `semun` hay không).
 
 **Liệt kê 47-2 (Listing 47-2):** Định nghĩa của union `semun`
@@ -534,9 +537,9 @@ short sem_flg; /* Các cờ thao tác (IPC_NOWAIT và SEM_UNDO) */
 
 Trường `sem_num` xác định semaphore trong tập hợp mà thao tác sẽ được thực hiện trên đó. Trường `sem_op` chỉ định thao tác cần thực hiện:
 
--  Nếu `sem_op` lớn hơn 0, giá trị của `sem_op` được cộng vào giá trị semaphore. Kết quả là, các tiến trình khác đang đợi để giảm giá trị semaphore có thể được đánh thức và thực hiện các thao tác của chúng. Tiến trình gọi phải có quyền thay đổi (ghi) trên semaphore.
+- Nếu `sem_op` lớn hơn 0, giá trị của `sem_op` được cộng vào giá trị semaphore. Kết quả là, các tiến trình khác đang đợi để giảm giá trị semaphore có thể được đánh thức và thực hiện các thao tác của chúng. Tiến trình gọi phải có quyền thay đổi (ghi) trên semaphore.
 
-- Nếu `sem_op` bằng 0, giá trị của semaphore (tập tín hiệu/semaphores) được kiểm tra xem hiện tại có bằng 0 hay không. Nếu có, thao tác hoàn tất ngay lập tức; ngược lại, `semop()` sẽ bị chặn (block) cho đến khi giá trị semaphore trở về 0. Tiến trình gọi (calling process) phải có quyền đọc (read permission) trên semaphore đó.
+- Nếu `sem_op` bằng 0, giá trị của semaphore được kiểm tra xem hiện tại có bằng 0 hay không. Nếu có, thao tác hoàn tất ngay lập tức; ngược lại, `semop()` sẽ bị chặn (block) cho đến khi giá trị semaphore trở về 0. Tiến trình gọi (calling process) phải có quyền đọc (read permission) trên semaphore đó.
 - Nếu `sem_op` nhỏ hơn 0, giá trị của semaphore sẽ bị giảm đi một lượng được chỉ định trong `sem_op`. Nếu giá trị hiện tại của semaphore lớn hơn hoặc bằng giá trị tuyệt đối của `sem_op`, thao tác hoàn tất ngay lập tức. Ngược lại, `semop()` sẽ bị chặn (block) cho đến khi giá trị semaphore được tăng lên đến mức cho phép thực hiện thao tác mà không dẫn đến giá trị âm. Tiến trình gọi (calling process) phải có quyền thay đổi (alter permission) trên semaphore đó.
 
 Về mặt ngữ nghĩa, việc tăng giá trị của semaphore tương ứng với việc giải phóng một tài nguyên (make a resource available) để các tiến trình khác có thể sử dụng, trong khi việc giảm giá trị của semaphore tương ứng với việc đặt trước (reserve) một tài nguyên để tiến trình này sử dụng (độc quyền - exclusive). Khi giảm giá trị của semaphore, thao tác sẽ bị chặn nếu giá trị semaphore quá thấp—nghĩa là, nếu một tiến trình khác đã đặt trước tài nguyên đó.
@@ -551,6 +554,7 @@ Chúng ta có thể ngăn không cho `semop()` bị chặn khi thực hiện tha
 
 Mặc dù thông thường chúng ta thao tác trên một semaphore đơn lẻ tại một thời điểm, nhưng vẫn có thể thực hiện một lời gọi `semop()` để thao tác trên nhiều semaphore trong một tập hợp (set). Điểm quan trọng cần lưu ý là nhóm các thao tác này được thực hiện một cách nguyên tử (atomically); nghĩa là, `semop()` hoặc sẽ thực hiện tất cả các thao tác ngay lập tức (nếu có thể), hoặc sẽ bị chặn cho đến khi có thể thực hiện đồng thời tất cả các thao tác đó.
 
+> [!NOTE]
 > Rất ít hệ thống tài liệu hóa thực tế rằng `semop()` thực hiện các thao tác theo thứ tự mảng (array order), mặc dù tất cả các hệ thống mà tác giả biết đều làm như vậy, và một số ứng dụng phụ thuộc vào hành vi này. Tiêu chuẩn SUSv4 bổ sung văn bản yêu cầu rõ ràng hành vi này.
 
 Đoạn mã liệt kê (Listing) 47-7 minh họa việc sử dụng `semop()` để thực hiện các thao tác trên ba semaphore trong một tập hợp. Các thao tác trên semaphore 0 và 2 có thể không tiếp tục được ngay lập tức, tùy thuộc vào giá trị hiện tại của các semaphore. Nếu thao tác trên semaphore 0 không thể thực hiện ngay lập tức, thì không có thao tác nào trong số các thao tác được yêu cầu được thực hiện và `semop()` sẽ bị chặn. Mặt khác, nếu thao tác trên semaphore 0 có thể thực hiện ngay lập tức, nhưng thao tác trên semaphore 2 thì không—vì cờ `IPC_NOWAIT` đã được chỉ định—nên không có thao tác nào được thực hiện và `semop()` trả về ngay lập tức với lỗi `EAGAIN`.
@@ -575,6 +579,7 @@ Trả về 0 khi thành công, hoặc –1 khi lỗi
 
 System Call `semtimedop()` được cung cấp như một phương pháp hiệu quả hơn để thiết lập thời gian chờ (timeout) cho một thao tác semaphore so với việc sử dụng kết hợp `setitimer()` và `semop()`. Lợi ích hiệu năng nhỏ mà phương pháp này mang lại rất quan trọng đối với một số ứng dụng nhất định (đặc biệt là một số hệ thống cơ sở dữ liệu) cần thực hiện các thao tác đó thường xuyên. Tuy nhiên, `semtimedop()` không được định nghĩa trong SUSv3 và chỉ xuất hiện trên một vài cài đặt UNIX khác.
 
+> [!NOTE]
 > System Call `semtimedop()` xuất hiện như một tính năng mới trong Linux 2.6 và sau đó đã được back-port vào Linux 2.4, bắt đầu từ phiên bản kernel 2.4.22.
 
 ```c
@@ -605,9 +610,9 @@ Chương trình trong [Liệt kê 47-8](#page-105-0) cung cấp giao diện dòn
 
 Mỗi đối số dòng lệnh còn lại chỉ định một nhóm các thao tác semaphore sẽ được thực hiện trong một lời gọi `semop()` duy nhất. Các thao tác trong một đối số dòng lệnh đơn lẻ được phân tách bằng dấu phẩy. Mỗi thao tác tuân theo một trong các dạng sau:
 
--  `semnum+value`: cộng `value` vào semaphore `semnum`.
--  `semnum-value`: trừ `value` ra khỏi semaphore `semnum`.
--  `semnum=0`: kiểm tra semaphore `semnum` xem có bằng 0 hay không.
+- `semnum+value`: cộng `value` vào semaphore `semnum`.
+- `semnum-value`: trừ `value` ra khỏi semaphore `semnum`.
+- `semnum=0`: kiểm tra semaphore `semnum` xem có bằng 0 hay không.
 
 Ở cuối mỗi thao tác, chúng ta có thể tùy chọn đính kèm ký tự `n`, `u`, hoặc cả hai. Ký tự `n` có nghĩa là bao gồm cờ `IPC_NOWAIT` trong giá trị `sem_flg` cho thao tác này. Ký tự `u` có nghĩa là bao gồm cờ `SEM_UNDO` trong `sem_flg`. (Chúng ta sẽ mô tả cờ `SEM_UNDO` trong Mục [47.8](#page-109-1)).
 
@@ -826,6 +831,7 @@ ERROR [EIDRM Identifier removed] semop (PID=3660)
 ```
 
 Chúng tôi không hiển thị mã nguồn của chương trình svsem/svsem\_rm.c trong chương này, nhưng nó được cung cấp trong gói mã nguồn của cuốn sách. Chương trình này thực hiện việc xóa tập hợp semaphore được xác định bởi đối số dòng lệnh của nó.
+
 ```
 
 ## 47.7 Xử lý các Thao tác Semaphore Bị Chặn Đồng Thời
@@ -861,27 +867,33 @@ Một tiến trình con được tạo thông qua `fork()` không kế thừa c�
 Nhật ký phiên shell sau đây cho thấy hiệu ứng của việc thực hiện các thao tác trên hai semaphore: một thao tác có cờ `SEM_UNDO` và một thao tác không có. Chúng ta bắt đầu bằng cách tạo một tập hợp (set) chứa hai semaphore:
 
 ```
+
 $ ./svsem_create -p 2
 131073
+
 ```
 
 Tiếp theo, chúng ta thực thi một lệnh cộng 1 vào cả hai semaphore và sau đó kết thúc (terminate). Thao tác trên semaphore 0 có chỉ định cờ `SEM_UNDO`:
 
 ```
+
 $ ./svsem_op 131073 0+1u 1+1
- 2248, 06:41:56: about to semop()
- 2248, 06:41:56: semop() completed
+2248, 06:41:56: about to semop()
+2248, 06:41:56: semop() completed
+
 ```
 
 Bây giờ, chúng ta sử dụng chương trình trong [Listing 47-3](#page-96-0) để kiểm tra trạng thái của các semaphore:
 
 ```
+
 $ ./svsem_mon 131073
 Semaphore changed: Sun Jul 25 06:41:34 2010
 Last semop(): Sun Jul 25 06:41:56 2010
 Sem # Value SEMPID SEMNCNT SEMZCNT
- 0 0 2248 0 0
- 1 1 2248 0 0
+0 0 2248 0 0
+1 1 2248 0 0
+
 ```
 
 Nhìn vào giá trị của các semaphore ở hai dòng cuối của kết quả đầu ra trên, chúng ta có thể thấy rằng thao tác trên semaphore 0 đã được hoàn tác (undone), nhưng thao tác trên semaphore 1 thì không.
@@ -929,20 +941,28 @@ Khi triển khai semaphore nhị phân, chúng ta phải chọn cách biểu di�
 **Listing 47-9:** Tệp tiêu đề cho `binary_sems.c`
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– svsem/binary_sems.h
+
 ## ifndef BINARY_SEMS_H /* Prevent accidental double inclusion */
+
 ## define BINARY_SEMS_H
+
 ## include "tlpi_hdr.h"
+
 /* Variables controlling operation of functions below */
 extern Boolean bsUseSemUndo; /* Use SEM_UNDO during semop()? */
 extern Boolean bsRetryOnEintr; /* Retry if semop() interrupted by
- signal handler? */
+signal handler? */
 int initSemAvailable(int semId, int semNum);
 int initSemInUse(int semId, int semNum);
 int reserveSem(int semId, int semNum);
 int releaseSem(int semId, int semNum);
+
 ## endif
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– svsem/binary_sems.h
+
 ```
 
 [Listing 47-10](#page-113-0) minh họa việc triển khai các hàm semaphore nhị phân. Mỗi hàm trong bản triển khai này nhận hai tham số, dùng để xác định một tập hợp semaphore (semaphore set) và số thứ tự của một semaphore trong tập hợp đó. (Các hàm này không xử lý việc tạo và xóa các tập hợp semaphore; chúng cũng không xử lý hiện tượng Race Condition được mô tả trong Mục [47.5](#page-98-0)). Chúng ta sử dụng các hàm này trong các chương trình ví dụ được trình bày ở Mục [48.4](#page-124-0).
@@ -950,54 +970,63 @@ int releaseSem(int semId, int semNum);
 **Listing 47-10:** Triển khai semaphore nhị phân sử dụng System V semaphore
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– svsem/binary_sems.c
+
 ## include <sys/types.h>
+
 ## include <sys/sem.h>
+
 ## include "semun.h" /* Definition of semun union */
+
 ## include "binary_sems.h"
+
 Boolean bsUseSemUndo = FALSE;
 Boolean bsRetryOnEintr = TRUE;
 int /* Initialize semaphore to 1 (i.e., "available") */
 initSemAvailable(int semId, int semNum)
 {
- union semun arg;
- arg.val = 1;
- return semctl(semId, semNum, SETVAL, arg);
+union semun arg;
+arg.val = 1;
+return semctl(semId, semNum, SETVAL, arg);
 }
 int /* Initialize semaphore to 0 (i.e., "in use") */
 initSemInUse(int semId, int semNum)
 {
- union semun arg;
- arg.val = 0;
- return semctl(semId, semNum, SETVAL, arg);
+union semun arg;
+arg.val = 0;
+return semctl(semId, semNum, SETVAL, arg);
 }
 /* Reserve semaphore (blocking), return 0 on success, or -1 with 'errno'
- set to EINTR if operation was interrupted by a signal handler */
+set to EINTR if operation was interrupted by a signal handler */
 int /* Reserve semaphore - decrement it by 1 */
 reserveSem(int semId, int semNum)
 {
- struct sembuf sops;
- sops.sem_num = semNum;
- sops.sem_op = -1;
- sops.sem_flg = bsUseSemUndo ? SEM_UNDO : 0;
- while (semop(semId, &sops, 1) == -1)
- if (errno != EINTR || !bsRetryOnEintr)
- return -1;
- return 0;
+struct sembuf sops;
+sops.sem_num = semNum;
+sops.sem_op = -1;
+sops.sem_flg = bsUseSemUndo ? SEM_UNDO : 0;
+while (semop(semId, &sops, 1) == -1)
+if (errno != EINTR || !bsRetryOnEintr)
+return -1;
+return 0;
 }
+
 ```
 
 ```c
+
 int /* Release semaphore - increment it by 1 */
 releaseSem(int semId, int semNum)
 {
- struct sembuf sops;
- sops.sem_num = semNum;
- sops.sem_op = 1;
- sops.sem_flg = bsUseSemUndo ? SEM_UNDO : 0;
- return semop(semId, &sops, 1);
+struct sembuf sops;
+sops.sem_num = semNum;
+sops.sem_op = 1;
+sops.sem_flg = bsUseSemUndo ? SEM_UNDO : 0;
+return semop(semId, &sops, 1);
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– svsem/binary_sems.c
+
 ```
 
 ## 47.10 Giới hạn Semaphore (Semaphore Limits)
@@ -1041,9 +1070,11 @@ SEMUME
 Khi khởi động hệ thống, các giới hạn semaphore được đặt thành các giá trị mặc định. Các giá trị mặc định này có thể thay đổi tùy theo các phiên bản kernel. (Kernel của một số nhà phân phối đặt các giá trị mặc định khác với các kernel thuần - vanilla kernel). Một số giới hạn này có thể được sửa đổi bằng cách thay đổi các giá trị được lưu trữ trong tệp `/proc/sys/kernel/sem` đặc trưng của Linux. Tệp này chứa bốn số được phân tách bằng khoảng trắng, theo thứ tự định nghĩa các giới hạn SEMMSL, SEMMNS, SEMOPM và SEMMNI. (Các giới hạn SEMVMX và SEMAEM không thể thay đổi; cả hai đều được cố định ở mức 32.767). Ví dụ, dưới đây là các giới hạn mặc định mà chúng ta thấy đối với Linux 2.6.31 trên một hệ thống x86-32:
 
 ```
+
 $ cd /proc/sys/kernel
 $ cat sem
 250 32000 32 128
+
 ```
 
 Các định dạng được sử dụng trong hệ thống tệp `/proc` của Linux không đồng nhất cho ba cơ chế System V IPC. Đối với hàng đợi thông báo (message queue) và bộ nhớ chia sẻ (shared memory), mỗi giới hạn cấu hình được quản lý bởi một tệp riêng biệt. Đối với semaphore, một tệp duy nhất chứa tất cả các giới hạn có thể cấu hình. Đây là một sự trùng hợp lịch sử xuất hiện trong quá trình phát triển các API này và rất khó để khắc phục vì lý do tương thích.
@@ -1066,13 +1097,15 @@ Các định dạng được sử dụng trong hệ thống tệp `/proc` của 
 | SEMMNS | 2147483647 (INT_MAX) | |
 | SEMOPM | Xem văn bản | |
 
-Thao tác `SEM_INFO` đặc trưng của Linux `semctl()` truy xuất một cấu trúc kiểu `seminfo`, chứa các giá trị của các giới hạn semaphore khác nhau:
+Thao tác `IPC_INFO` đặc trưng của Linux trong `semctl()` truy xuất một cấu trúc kiểu `seminfo`, chứa các giá trị của các giới hạn semaphore khác nhau:
 
 ```
+
 union semun arg;
 struct seminfo buf;
 arg.__buf = &buf;
 semctl(0, 0, IPC_INFO, arg);
+
 ```
 
 Một thao tác liên quan đặc trưng của Linux, `SEM_INFO`, truy xuất cấu trúc `seminfo` chứa thông tin về các tài nguyên thực tế được sử dụng cho các đối tượng semaphore. Một ví dụ về việc sử dụng `SEM_INFO` được cung cấp trong tệp `svsem/svsem_info.c` trong gói mã nguồn của cuốn sách này.
@@ -1085,12 +1118,12 @@ Chi tiết về `IPC_INFO`, `SEM_INFO` và cấu trúc `seminfo` có thể đư�
 
 System V semaphores (Semaphore System V) có nhiều nhược điểm giống với hàng đợi thông điệp (message queues) (Mục [46.9\)](#page-84-1), bao gồm các điểm sau:
 
--  Semaphore được tham chiếu thông qua các định danh (identifiers) thay vì các bộ mô tả tập tin (file descriptors) được sử dụng bởi hầu hết các cơ chế I/O và IPC khác trong UNIX. Điều này gây khó khăn khi thực hiện các thao tác như vừa chờ trên một semaphore, vừa chờ dữ liệu đầu vào từ một file descriptor. (Có thể giải quyết khó khăn này bằng cách tạo một tiến trình con hoặc luồng (`thread`) hoạt động trên semaphore và ghi các thông điệp vào một pipe được giám sát, cùng với các file descriptor khác, sử dụng một trong các phương pháp được mô tả trong Chương 63.)
--  Việc sử dụng các khóa (keys) thay vì tên tập tin (filenames) để nhận diện semaphore làm tăng thêm độ phức tạp trong lập trình.
--  Việc sử dụng các system call (lời gọi hệ thống) riêng biệt để tạo và khởi tạo semaphore đồng nghĩa với việc, trong một số trường hợp, chúng ta phải tốn thêm công sức lập trình để tránh tình trạng tranh chấp (race conditions) khi khởi tạo một semaphore.
--  Kernel (nhân) không duy trì bộ đếm số lượng tiến trình đang tham chiếu đến một tập hợp semaphore (semaphore set). Điều này làm phức tạp quyết định về thời điểm thích hợp để xóa một tập hợp semaphore và gây khó khăn trong việc đảm bảo rằng một tập hợp không còn sử dụng được xóa bỏ.
--  Giao diện lập trình được cung cấp bởi System V quá phức tạp. Trong trường hợp thông thường, một chương trình chỉ thao tác trên một semaphore đơn lẻ. Khả năng thao tác đồng thời trên nhiều semaphore trong một tập hợp là không cần thiết.
--  Có nhiều giới hạn khác nhau đối có các hoạt động của semaphore. Các giới hạn này có thể cấu hình được, nhưng nếu một ứng dụng hoạt động ngoài phạm vi giới hạn mặc định, điều này vẫn đòi hỏi thêm công sức khi cài đặt ứng dụng.
+- Semaphore được tham chiếu thông qua các định danh (identifiers) thay vì các bộ mô tả tập tin (file descriptors) được sử dụng bởi hầu hết các cơ chế I/O và IPC khác trong UNIX. Điều này gây khó khăn khi thực hiện các thao tác như vừa chờ trên một semaphore, vừa chờ dữ liệu đầu vào từ một file descriptor. (Có thể giải quyết khó khăn này bằng cách tạo một tiến trình con hoặc luồng (`thread`) hoạt động trên semaphore và ghi các thông điệp vào một pipe được giám sát, cùng với các file descriptor khác, sử dụng một trong các phương pháp được mô tả trong Chương 63.)
+- Việc sử dụng các khóa (keys) thay vì tên tập tin (filenames) để nhận diện semaphore làm tăng thêm độ phức tạp trong lập trình.
+- Việc sử dụng các system call (lời gọi hệ thống) riêng biệt để tạo và khởi tạo semaphore đồng nghĩa với việc, trong một số trường hợp, chúng ta phải tốn thêm công sức lập trình để tránh tình trạng tranh chấp (race conditions) khi khởi tạo một semaphore.
+- Kernel (nhân) không duy trì bộ đếm số lượng tiến trình đang tham chiếu đến một tập hợp semaphore (semaphore set). Điều này làm phức tạp quyết định về thời điểm thích hợp để xóa một tập hợp semaphore và gây khó khăn trong việc đảm bảo rằng một tập hợp không còn sử dụng được xóa bỏ.
+- Giao diện lập trình được cung cấp bởi System V quá phức tạp. Trong trường hợp thông thường, một chương trình chỉ thao tác trên một semaphore đơn lẻ. Khả năng thao tác đồng thời trên nhiều semaphore trong một tập hợp là không cần thiết.
+- Có nhiều giới hạn khác nhau đối có các hoạt động của semaphore. Các giới hạn này có thể cấu hình được, nhưng nếu một ứng dụng hoạt động ngoài phạm vi giới hạn mặc định, điều này vẫn đòi hỏi thêm công sức khi cài đặt ứng dụng.
 
 Tuy nhiên, không giống như tình trạng với message queues, có ít lựa chọn thay thế hơn cho System V semaphores, và do đó có nhiều tình huống hơn mà chúng ta có thể chọn sử dụng chúng. Một giải pháp thay thế cho việc sử dụng semaphore là khóa bản ghi (record locking), mà chúng tôi mô tả trong Chương 55. Ngoài ra, từ kernel phiên bản 2.6 trở đi, Linux hỗ trợ sử dụng POSIX semaphores cho việc đồng bộ hóa tiến trình (process synchronization). Chúng tôi mô tả POSIX semaphores trong Chương 53.
 
@@ -1106,7 +1139,7 @@ Khi nhiều tiến trình đang cố gắng giảm một semaphore đi cùng m�
 
 Cờ `SEM_UNDO` cho phép các thao tác semaphore của một tiến trình được tự động hoàn tác khi tiến trình chấm dứt (termination). Điều này có thể hữu ích để tránh các kịch bản trong đó một tiến trình đột ngột kết thúc, để lại semaphore ở trạng thái khiến các tiến trình khác bị chặn vô thời hạn để chờ giá trị của semaphore được thay đổi bởi tiến trình đã kết thúc.
 
-System V semaphores được cấp phát và thao tác theo các tập hợp, đồng thời có thể được tăng hoặc giảm một lượng tùy ý. Điều này cung cấp nhiều tính năng hơn mức cần thiết của hầu hết các ứng dụng. Một yêu cầu phổ biến là đối với các semaphore nhị phân (binary semaphores) đơn lẻ, chỉ nhận các giá trị 0 và 1. Chúng tôi đã trình cách triển khai binary semaphores dựa trên nền tảng của System V semaphores.
+System V semaphores được cấp phát và thao tác theo các tập hợp, đồng thời có thể được tăng hoặc giảm một lượng tùy ý. Điều này cung cấp nhiều tính năng hơn mức cần thiết của hầu hết các ứng dụng. Một yêu cầu phổ biến là đối với các semaphore nhị phân (binary semaphores) đơn lẻ, chỉ nhận các giá trị 0 và 1. Chúng tôi đã trình bày cách triển khai binary semaphores dựa trên nền tảng của System V semaphores.
 
 ## Thông tin thêm
 

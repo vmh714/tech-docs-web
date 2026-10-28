@@ -1,6 +1,4 @@
-## Chapter 58
-
-## SOCKETS: CƠ SỞ VỀ MẠNG TCP/IP
+# Chương 58: Socket: Cơ bản về mạng TCP/IP (Sockets: Fundamentals of TCP/IP Networks)
 
 Chương này cung cấp phần giới thiệu về các khái niệm mạng máy tính và các giao thức mạng TCP/IP. Việc thấu hiểu các chủ đề này là cần thiết để sử dụng hiệu quả Internet domain socket (ổ cắm miền Internet), được mô tả trong chương tiếp theo.
 
@@ -14,8 +12,10 @@ Mặc dù có nhiều giao thức liên kết mạng khác nhau đã được ph
 
 Việc triển khai TCP/IP rộng rãi đầu tiên xuất hiện cùng với 4.2BSD vào năm 1983. Một số bản triển khai TCP/IP có nguồn gốc trực tiếp từ mã nguồn BSD; các bản triển khai khác, bao gồm cả bản triển khai trên Linux, được viết hoàn toàn mới từ đầu (from scratch), lấy hoạt động của mã nguồn BSD làm tiêu chuẩn tham chiếu để xác định cách thức hoạt động của TCP/IP.
 
+> [!NOTE]
 > TCP/IP xuất phát từ một dự án do Cơ quan Nghiên cứu Tiên tiến Quốc phòng Bộ Quốc phòng Hoa Kỳ tài trợ (ARPA, sau này là DARPA, với chữ D viết tắt của Defense - Quốc phòng) nhằm phát triển một kiến trúc mạng máy tính để sử dụng trong ARPANET, một mạng diện rộng thời kỳ đầu. Trong suốt những năm 1970, một họ giao thức mới đã được thiết kế cho ARPANET. Về mặt chính xác, các giao thức này được gọi là bộ giao thức Internet DARPA, nhưng thông thường chúng được gọi là bộ giao thức TCP/IP, hoặc đơn giản là TCP/IP.
 
+> [!NOTE]
 > Trang web http://www.isoc.org/internet/history/brief.shtml cung cấp lịch sử ngắn gọn về Internet và TCP/IP.
 
 [Hình 58-1](#page-31-0) minh họa một internet đơn giản. Trong sơ đồ này, máy tekapo là một ví dụ về một router (bộ định tuyến), một máy tính có chức năng kết nối một subnet này với một subnet khác, truyền dữ liệu giữa chúng. Ngoài việc hiểu giao thức internet đang được sử dụng, một router cũng phải hiểu các giao thức tầng liên kết dữ liệu (data-link-layer protocols) (có thể) khác nhau được sử dụng trên mỗi subnet mà nó kết nối.
@@ -44,6 +44,7 @@ Một trong những khái niệm mang lại sức mạnh và sự linh hoạt l�
 
 Đóng gói là một nguyên tắc quan trọng của giao thức mạng phân tầng. Hình 58-4 cho thấy một ví dụ về việc đóng gói trong các tầng giao thức TCP/IP. Ý tưởng cốt lõi của việc đóng gói là thông tin (ví dụ: dữ liệu ứng dụng, một phân đoạn TCP, hoặc một gói dữ liệu IP datagram) được chuyển từ tầng cao xuống tầng thấp hơn sẽ được tầng thấp hơn coi là dữ liệu mờ (opaque data). Nói cách khác, tầng thấp hơn không cố gắng diễn giải thông tin được gửi từ tầng trên, mà chỉ đơn giản đặt thông tin đó vào bên trong bất kỳ loại gói tin (packet) nào được sử dụng ở tầng thấp hơn và thêm phần tiêu đề (header) đặc trưng của riêng tầng đó trước khi chuyển gói tin xuống tầng thấp hơn tiếp theo. Khi dữ liệu được chuyển ngược từ tầng thấp lên tầng cao, một quá trình giải nén ngược lại sẽ diễn ra.
 
+> [!NOTE]
 > Chúng ta không thể hiện điều này trong Hình 58-4, nhưng khái niệm đóng gói cũng mở rộng xuống tầng liên kết dữ liệu, nơi các IP datagram được đóng gói bên trong các khung mạng (network frames). Việc đóng gói cũng có thể mở rộng lên tầng ứng dụng, nơi ứng dụng có thể tự thực hiện việc đóng gói dữ liệu của riêng mình.
 
 ## 58.3 Tầng liên kết dữ liệu (The Data-Link Layer)
@@ -56,6 +57,7 @@ Từ góc độ lập trình ứng dụng, chúng ta có thể nhìn chung bỏ 
 
 Một đặc điểm của tầng liên kết dữ liệu quan trọng đối với cuộc thảo luận của chúng ta về IP là đơn vị truyền dẫn tối đa (Maximum Transmission Unit - MTU). MTU của một tầng liên kết dữ liệu là giới hạn trên mà tầng đó áp đặt lên kích thước của một khung. Các tầng liên kết dữ liệu khác nhau sẽ có các MTU khác nhau.
 
+> [!NOTE]
 > Lệnh `netstat -i` hiển thị danh sách các giao diện mạng của hệ thống, cùng với các MTU tương ứng của chúng.
 
 ![](_page_34_Figure_0.jpeg)
@@ -76,10 +78,13 @@ Nằm phía trên tầng liên kết dữ liệu là tầng mạng, chịu trác
 
 Trong bộ giao thức TCP/IP, giao thức chính ở tầng mạng là IP. Phiên bản IP xuất hiện trong bản cài đặt 4.2BSD là IP phiên bản 4 (IPv4). Vào đầu những năm 1990, một phiên bản sửa đổi của IP đã được thiết kế: IP phiên bản 6 (IPv6). Điểm khác biệt đáng chú ý nhất giữa hai phiên bản là IPv4 xác định các mạng con (subnets) và host sử dụng địa chỉ 32-bit, trong khi IPv6 sử dụng địa chỉ 128-bit, qua đó cung cấp dải địa chỉ lớn hơn nhiều để cấp phát cho các host. Mặc dù IPv4 vẫn là phiên bản IP chiếm ưu thế đang được sử dụng trên Internet, nhưng trong những năm tới, nó sẽ dần được thay thế bởi IPv6. Cả IPv4 và IPv6 đều hỗ trợ các giao thức tầng truyền tải UDP và TCP ở cấp cao hơn (cùng với nhiều giao thức khác).
 
+> [!NOTE]
 > Mặc dù không gian địa chỉ (address space) 32-bit về mặt lý thuyết cho phép cấp phát hàng tỷ địa chỉ mạng IPv4, nhưng cách thức cấu trúc và phân bổ các địa chỉ này lại khiến cho số lượng địa chỉ khả dụng trên thực tế thấp hơn rất nhiều. Việc cạn kiệt không gian địa chỉ IPv4 có thể xảy ra là một trong những động lực chính dẫn đến sự ra đời của IPv6.
 
+> [!NOTE]
 > Một lịch sử ngắn gọn về IPv6 có thể được tìm thấy tại http://www.laynetworks.com/ IPv6.htm.
 
+> [!NOTE]
 > Sự tồn tại của IPv4 và IPv6 đặt ra câu hỏi: "Thế còn IPv5 thì sao?". Chưa từng có phiên bản IPv5 nào như vậy cả. Mỗi phần đầu (header) của IP datagram đều bao gồm một trường số phiên bản 4-bit (do đó, các IPv4 datagram luôn có số 4 trong trường này), và số phiên bản 5 đã được gán cho một giao thức thử nghiệm có tên là Internet Stream Protocol. (Phiên bản 2 của giao thức này, viết tắt là ST-II, được mô tả trong RFC 1819). Được hình thành ban đầu từ những năm 1970, giao thức hướng kết nối (connection-oriented) này được thiết kế để hỗ trợ truyền tải giọng nói (voice), video và mô phỏng phân tán (distributed simulation). Vì số phiên bản IP datagram 5 đã được gán, nên thế hệ kế thừa của IPv4 đã được gán số phiên bản là 6.
 
 [Hình 58-2](#page-32-0) minh họa một loại socket thô (`SOCK_RAW`), cho phép một ứng dụng giao tiếp trực tiếp với tầng IP (IP layer). Chúng tôi không mô tả chi tiết việc sử dụng socket thô, vì hầu hết các ứng dụng đều sử dụng socket thông qua một trong các giao thức tầng giao vận (transport-layer protocols) như TCP hoặc UDP. Socket thô được mô tả trong Chương 28 của [Stevens et al., 2004]. Một ví dụ mang tính hướng dẫn về việc sử dụng socket thô là chương trình `sendip` (http:// www.earth.li/projectpurple/progs/sendip.html), đây là một công cụ điều khiển bằng dòng lệnh (command-line-driven tool) cho phép xây dựng và truyền các IP datagram với nội dung tùy ý (bao gồm các tùy chọn để xây dựng UDP datagram và TCP segment).
@@ -88,7 +93,8 @@ Trong bộ giao thức TCP/IP, giao thức chính ở tầng mạng là IP. Phi�
 
 IP truyền dữ liệu dưới dạng các datagram (gói tin). Mỗi datagram được gửi giữa hai host sẽ di chuyển độc lập qua mạng, và có thể đi theo các tuyến đường khác nhau. Một IP datagram bao gồm một phần đầu (header), có kích thước dao động từ 20 đến 60 byte. Phần đầu chứa địa chỉ của host đích (target host), để datagram có thể được định tuyến qua mạng đến đích của nó, và cũng bao gồm địa chỉ nguồn của gói tin, giúp host nhận biết được nguồn gốc của datagram đó.
 
-> Một host gửi có thể giả mạo (spoof) địa chỉ nguồn của một gói tin, và điều này tạo thành cơ sở cho một cuộc tấn công từ chối dịch vụ (denial-of-service attack) TCP được gọi là SYN-flooding. [Lemon, 2002] mô tả chi tiết về cuộc tấn công này và các biện pháp được các Datagram TCP hiện đại sử dụng để đối phó với nó.
+> [!NOTE]
+> Một host gửi có thể giả mạo (spoof) địa chỉ nguồn của một gói tin, và điều này tạo thành cơ sở cho một cuộc tấn công từ chối dịch vụ (denial-of-service attack) TCP được gọi là SYN-flooding. [Lemon, 2002] mô tả chi tiết về cuộc tấn công này và các biện pháp được các bản thực thi TCP hiện đại sử dụng để đối phó với nó.
 
 Một tiến trình cài đặt/thực thi IP (IP implementation) có thể đặt giới hạn trên cho kích thước của các datagram mà nó hỗ trợ. Tất cả các cài đặt IP phải cho phép các datagram có kích thước ít nhất bằng giới hạn được chỉ định bởi kích thước bộ đệm lắp ráp lại tối thiểu (minimum reassembly buffer size) của IP. Trong IPv4, giới hạn này là 576 byte; trong IPv6, nó là 1500 byte.
 
@@ -96,8 +102,10 @@ Một tiến trình cài đặt/thực thi IP (IP implementation) có thể đ�
 
 IP được mô tả là một giao thức không kết nối (connectionless protocol), vì nó không cung cấp khái niệm về một mạch ảo (virtual circuit) kết nối hai host. IP cũng là một giao thức không đáng tin cậy (unreliable protocol): nó nỗ lực hết sức ("best effort") để truyền các datagram từ bên gửi đến bên nhận, nhưng không đảm bảo rằng các gói tin sẽ đến theo đúng thứ tự mà chúng được truyền đi, rằng chúng không bị trùng lặp, hoặc thậm chí không đảm bảo rằng chúng có đến nơi hay không. IP cũng không cung cấp cơ chế khôi phục lỗi (các gói tin bị lỗi phần tiêu đề sẽ âm thầm bị loại bỏ). Tính đáng tin cậy phải được đảm bảo bằng cách sử dụng một giao thức tầng truyền tải (transport-layer protocol) đáng tin cậy (ví dụ: TCP) hoặc được xử lý ngay bên trong ứng dụng.
 
+> [!NOTE]
 > IPv4 cung cấp một mã kiểm tra tổng (checksum) cho phần tiêu đề IP, cho phép phát hiện các lỗi trong phần tiêu đề, nhưng không cung cấp bất kỳ cơ chế phát hiện lỗi nào cho dữ liệu được truyền tải bên trong gói tin. IPv6 không cung cấp checksum trong phần tiêu đề IP, mà dựa vào các giao thức tầng cao hơn để cung cấp tính năng kiểm tra lỗi và độ tin cậy theo yêu cầu. (Checksum của UDP là tùy chọn trong IPv4 nhưng thường được bật; checksum của UDP là bắt buộc trong IPv6. Checksum của TCP là bắt buộc đối với cả IPv4 và IPv6.)
 
+> [!NOTE]
 > Việc trùng lặp các datagram IP có thể xảy ra do các kỹ thuật được sử dụng bởi một số tầng liên kết dữ liệu (data-link layer) để đảm bảo độ tin cậy, hoặc khi các datagram IP được đóng gói qua đường hầm (tunneled) qua một số mạng không phải TCP/IP có sử dụng cơ chế truyền lại (retransmission).
 
 ### IP có thể phân mảnh các datagram (fragment datagrams)
@@ -136,7 +144,7 @@ Một tổ chức nắm giữ địa chỉ này có thể gán 254 địa chỉ 
 
 Một số địa chỉ IPv4 có ý nghĩa đặc biệt. Địa chỉ đặc biệt 127.0.0.1 thường được định nghĩa là địa chỉ vòng lặp (loopback address), và theo quy ước được gán tên host là localhost. (Bất kỳ địa chỉ nào trên mạng 127.0.0.0/8 đều có thể được chỉ định làm địa chỉ IPv4 loopback, nhưng 127.0.0.1 là lựa chọn thông thường). Một gói dữ liệu (datagram) được gửi đến địa chỉ này thực ra không bao giờ đến mạng, mà thay vào đó sẽ tự động vòng lại để trở thành dữ liệu đầu vào cho host gửi. Việc sử dụng địa chỉ này rất thuận tiện cho việc kiểm thử các chương trình client và server trên cùng một host. Để sử dụng trong chương trình C, hằng số số nguyên `INADDR_LOOPBACK` được định nghĩa cho địa chỉ này.
 
-Hằng số `INADDR_ANY` là cái gọi là địa chỉ wildcard IPv4 (IPv4 wildcard address). Địa chỉ IP wildcard rất hữu ích cho các ứng dụng thực hiện bind (liên kết) các socket miền Internet trên các host đa cấu hình mạng (multihomed host). Nếu một ứng dụng trên host đa cấu hình liên kết một socket chỉ với một trong các địa chỉ IP của host đó, thì socket đó chỉ có thể nhận các gói dữ liệu UDP hoặc các yêu cầu kết nối TCP được gửi đến địa chỉ IP đó. Tuy nhiên, thông thường chúng ta muốn một ứng dụng trên host đa cấu hình có thể nhận các gói dữ liệu hoặc yêu cầu kết nối chỉ định bất kỳ địa chỉ IP nào của host, và việc liên kết socket với địa chỉ IP wildcard sẽ làm cho điều này trở nên khả thi. SUSv3 không chỉ định bất kỳ giá trị cụ thể nào cho `INADDR_ANY`, nhưng hầu hết các cài đặt đều định nghĩa nó là 0.0.0.0 (tất cả các số không).
+Hằng số `INADDR_ANY` là cái gọi là địa chỉ wildcard IPv4 (IPv4 wildcard address). Địa chỉ IP wildcard rất hữu ích cho các ứng dụng thực hiện bind (liên kết) các socket miền Internet trên các host đa giao diện (multihomed host). Nếu một ứng dụng trên host đa giao diện liên kết một socket chỉ với một trong các địa chỉ IP của host đó, thì socket đó chỉ có thể nhận các gói dữ liệu UDP hoặc các yêu cầu kết nối TCP được gửi đến địa chỉ IP đó. Tuy nhiên, thông thường chúng ta muốn một ứng dụng trên host đa giao diện có thể nhận các gói dữ liệu hoặc yêu cầu kết nối chỉ định bất kỳ địa chỉ IP nào của host, và việc liên kết socket với địa chỉ IP wildcard sẽ làm cho điều này trở nên khả thi. SUSv3 không chỉ định bất kỳ giá trị cụ thể nào cho `INADDR_ANY`, nhưng hầu hết các cài đặt đều định nghĩa nó là 0.0.0.0 (tất cả các số không).
 
 Thông thường, các địa chỉ IPv4 được chia thành các mạng con (subnetted). Việc chia mạng con sẽ chia phần Host ID của địa chỉ IPv4 thành hai phần: ID mạng con (subnet ID) và ID host (host ID) [\(Hình 58-6\)](#page-38-0). (Việc lựa chọn cách chia các bit của Host ID được thực hiện bởi quản trị viên mạng cục bộ). Lý do của việc chia mạng con là một tổ chức thường không kết nối tất cả các host của mình vào một mạng đơn lẻ. Thay vào đó, tổ chức có thể vận hành một tập hợp các mạng con ("mạng liên kết nội bộ" - internal internetwork), với mỗi mạng con được nhận diện bằng sự kết hợp giữa Network ID cộng với Subnet ID. Sự kết hợp này thường được gọi là ID mạng mở rộng (extended network ID). Trong một mạng con, mặt nạ mạng con (subnet mask) đóng vai trò tương tự như đã mô tả trước đó đối với mặt nạ mạng, và chúng ta có thể sử dụng một ký hiệu tương tự để chỉ ra dải địa chỉ được gán cho một mạng con cụ thể.
 
@@ -241,8 +249,10 @@ Dữ liệu được chia thành các phân đoạn (segment), mỗi phân đo�
 
 Khi một phân đoạn TCP đến đích mà không có lỗi, TCP bên nhận sẽ gửi một thông báo xác nhận dương tính (positive acknowledgement) tới bên gửi, thông báo cho bên gửi biết dữ liệu đã được giao thành công. Nếu một phân đoạn đến nơi có lỗi, nó sẽ bị loại bỏ (discard) và không có thông báo xác nhận nào được gửi đi. Để xử lý trường hợp các phân đoạn không bao giờ đến nơi hoặc bị loại bỏ, bên gửi sẽ khởi động một bộ định thời (timer) khi mỗi phân đoạn được truyền đi. Nếu không nhận được thông báo xác nhận trước khi bộ định thời hết hạn, phân đoạn đó sẽ được truyền lại (retransmit).
 
+> [!NOTE]
 > Vì thời gian cần thiết để truyền một phân đoạn và nhận được thông báo xác nhận của nó thay đổi tùy thuộc vào phạm vi của mạng và tải lưu lượng hiện tại, TCP áp dụng một thuật toán để điều chỉnh động kích thước thời gian chờ truyền lại (retransmission timeout - RTO).
 
+> [!NOTE]
 > TCP bên nhận có thể không gửi thông báo xác nhận ngay lập tức, mà thay vào đó chờ một khoảng thời gian ngắn để xem thông báo xác nhận có thể được ghép chung (piggyback) bên trong bất kỳ phản hồi nào mà bên nhận có thể gửi ngược lại ngay cho bên gửi hay không. (Mỗi phân đoạn TCP đều bao gồm một trường xác nhận, cho phép thực hiện việc ghép chung này.) Mục đích của kỹ thuật này, được gọi là ACK trễ (delayed ACK), là để tiết kiệm việc gửi một phân đoạn TCP, từ đó làm giảm số lượng gói tin trên mạng và giảm tải cho các host gửi và nhận.
 
 ## Đánh số thứ tự (Sequencing)
@@ -262,6 +272,7 @@ Số thứ tự ban đầu (initial sequence number - ISN) cho một luồng kh�
 
 Điều khiển luồng (flow control) ngăn chặn một bên gửi (sender) quá nhanh làm quá tải một bên nhận (receiver) chậm hơn. Để thực hiện điều khiển luồng, TCP phía nhận duy trì một bộ đệm (buffer) cho dữ liệu đến. (Mỗi TCP thông báo kích thước của bộ đệm này trong quá trình thiết lập kết nối - connection establishment.) Dữ liệu tích lũy trong bộ đệm này khi được nhận từ TCP phía gửi, và được lấy ra khi ứng dụng đọc dữ liệu. Với mỗi thông báo xác nhận (acknowledgement), bên nhận thông báo cho bên gửi biết còn bao nhiêu dung lượng trống trong bộ đệm dữ liệu đến của nó (tức là bên gửi có thể truyền bao nhiêu byte). Thuật toán điều khiển luồng của TCP sử dụng cái gọi là thuật toán cửa sổ trượt (sliding window algorithm), cho phép các đoạn dữ liệu (segment) chưa được xác nhận với tổng kích thước lên tới $N$ byte (kích thước cửa sổ được quảng cáo - offered window size) đang được truyền tải (in transit) giữa bên gửi và bên nhận. Nếu bộ đệm dữ liệu đến của một TCP phía nhận bị đầy hoàn toàn, thì cửa sổ được gọi là đã đóng (closed), và TCP phía gửi sẽ ngừng truyền.
 
+> [!NOTE]
 > Bên nhận có thể ghi đè kích thước mặc định cho bộ đệm dữ liệu đến bằng cách sử dụng tùy chọn socket `SO_RCVBUF` (xem trang hướng dẫn thủ công `socket(7)`).
 
 ### Điều khiển tắc nghẽn: thuật toán khởi động chậm và tránh tắc nghẽn
@@ -282,7 +293,7 @@ Kết hợp lại, các thuật toán khởi động chậm và tránh tắc ngh
 
 ## 58.7 Yêu cầu Bình luận (Requests for Comments - RFCs)
 
-Mỗi giao thức Internet mà chúng ta thảo luận trong cuốn sách này đều được định nghĩa trong một tài liệu RFC—một đặc tả giao thức chính thức (formal protocol specification). Các tài liệu RFC được xuất bản bởi Biên tập viên RFC (RFC Editor - http://www.rfc-editor.org/), được tài trợ bởi Tổ chức Internet (Internet Society - http://www.isoc.org/). Các RFC mô tả các tiêu chuẩn Internet được phát triển dưới sự bảo trợ của Lực lượng Đặc nhiệm Kỹ thuật Internet (Internet Engineering Task Force - IETF, http://www.ietf.org/), một cộng đồng gồm các nhà thiết kế mạng, nhà điều hành, nhà vendor và nhà nghiên cứu quan tâm đến sự tiến hóa và hoạt động suôn sẻ của Internet. Tư cách thành viên của IETF mở cho bất kỳ cá nhân nào quan tâm.
+Mỗi giao thức Internet mà chúng ta thảo luận trong cuốn sách này đều được định nghĩa trong một tài liệu RFC—một đặc tả giao thức chính thức (formal protocol specification). Các tài liệu RFC được xuất bản bởi Biên tập viên RFC (RFC Editor - http://www.rfc-editor.org/), được tài trợ bởi Tổ chức Internet (Internet Society - http://www.isoc.org/). Các RFC mô tả các tiêu chuẩn Internet được phát triển dưới sự bảo trợ của Lực lượng Đặc nhiệm Kỹ thuật Internet (Internet Engineering Task Force - IETF, http://www.ietf.org/), một cộng đồng gồm các nhà thiết kế mạng, nhà điều hành, nhà cung cấp (vendor) và nhà nghiên cứu quan tâm đến sự tiến hóa và hoạt động suôn sẻ của Internet. Tư cách thành viên của IETF mở cho bất kỳ cá nhân nào quan tâm.
 
 Các RFC sau đây có ý nghĩa đặc biệt quan trọng đối với nội dung được đề cập trong cuốn sách này:
 
@@ -315,7 +326,7 @@ Một số RFC và tài liệu nghiên cứu cung cấp các cải tiến và m�
 
 ## 58.8 Tóm tắt
 
-TCP/IP là một bộ giao thức mạng phân tầng (layered networking protocol suite). Ở tầng thấp nhất của chồng giao thức (protocol stack) TCP/IP là giao thức tầng mạng IP. IP truyền dữ liệu dưới dạng các datagram. IP hoạt động theo kiểu không kết nối (connectionless), có nghĩa là các datagram được truyền giữa host nguồn và host đích có thể đi theo các tuyến đường khác nhau trên mạng. IP không đáng tin cậy (unreliable), ở chỗ nó không đảm bảo rằng các datagram sẽ đến theo đúng thứ tự, không bị trùng lặp, hoặc thậm chí có đến nơi hay không. Nếu tính đáng tin cậy là bắt buộc, thì nó phải được cung cấp thông tin qua việc sử dụng một giao thức tầng trên đáng tin cậy (ví dụ: TCP) hoặc bên trong một ứng dụng.
+TCP/IP là một bộ giao thức mạng phân tầng (layered networking protocol suite). Ở tầng thấp nhất của chồng giao thức (protocol stack) TCP/IP là giao thức tầng mạng IP. IP truyền dữ liệu dưới dạng các datagram. IP hoạt động theo kiểu không kết nối (connectionless), có nghĩa là các datagram được truyền giữa host nguồn và host đích có thể đi theo các tuyến đường khác nhau trên mạng. IP không đáng tin cậy (unreliable), ở chỗ nó không đảm bảo rằng các datagram sẽ đến theo đúng thứ tự, không bị trùng lặp, hoặc thậm chí có đến nơi hay không. Nếu tính đáng tin cậy là bắt buộc, thì nó phải được cung cấp thông qua việc sử dụng một giao thức tầng trên đáng tin cậy (ví dụ: TCP) hoặc bên trong một ứng dụng.
 
 Phiên bản gốc của IP là IPv4. Vào đầu những năm 1990, một phiên bản IP mới là IPv6 đã được thiết kế. Điểm khác biệt đáng chú ý nhất giữa IPv4 và IPv6 là IPv4 sử dụng 32 bit để biểu diễn một địa chỉ host, trong khi IPv6 sử dụng 128 bit, do đó cho phép số lượng host lớn hơn nhiều trên Internet toàn cầu. Hiện tại, IPv4 vẫn là phiên bản IP được sử dụng rộng rãi nhất, mặc dù trong những năm tới, nó có khả năng sẽ bị thay thế bởi IPv6.
 

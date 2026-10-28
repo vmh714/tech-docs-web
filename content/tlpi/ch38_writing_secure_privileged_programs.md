@@ -1,4 +1,4 @@
-# Chương 38: VIẾT CHƯƠNG TRÌNH ĐẶC QUYỀN BẢO MẬT
+# Chương 38: Viết chương trình đặc quyền an toàn (Writing Secure Privileged Programs)
 
 Các chương trình đặc quyền (privileged programs) có quyền truy cập vào các tính năng và tài nguyên (tệp, thiết bị, v.v.) không khả dụng đối với người dùng thông thường. Một chương trình có thể chạy với đặc quyền thông qua hai phương thức chính:
 
@@ -94,7 +94,7 @@ Trong các trang trước, chúng tôi đã mô tả các kỹ thuật để t�
 
 - Trên Linux, ngay cả khi tiến trình gọi (caller) có effective user ID là 0, các system call (lời gọi hệ thống) dùng để thay đổi định danh (credential) có thể không hoạt động như mong đợi nếu chương trình đã chủ động thao túng các capability của nó. Ví dụ, nếu capability `CAP_SETUID` bị vô hiệu hóa, thì các nỗ lực thay đổi user ID của Process (tiến trình) sẽ thất bại hoặc tồi tệ hơn là chỉ âm thầm thay đổi một phần các user ID được yêu cầu.
 
-- Do các khả năng được liệt kê trong hai mục trước, thực tiễn được khuyến nghị cao (ví dụ: xem [Tsafrir et al., 2008]) là không chỉ kiểm tra xem một system call thay đổi credential có thành công hay không, mà còn phải xác minh rằng sự thay đổi đó đã diễn ra đúng như mong đợi. Ví dụ, nếu chúng ta đang tạm thời từ bỏ hoặc khôi phục một privileged user ID (user ID có đặc quyền) bằng cách sử dụng `seteuid()`, thì chúng ta nên theo sau lời gọi đó bằng một lời gọi `geteuid()` để xác minh rằng effective user ID đúng như những gì chúng ta mong đợi. Tương tự, nếu chúng ta đang từ bỏ vĩnh viễn một privileged user ID, thì chúng ta phải xác minh rằng real user ID, effective user ID và saved set-user-ID đều đã được thay đổi thành công thành unprivileged user ID (user ID không có đặc quyền). Thật không may, mặc dù có các system call tiêu chuẩn để truy xuất real ID và effective ID, nhưng lại không có system call tiêu chuẩn nào để truy xuất saved set ID. Linux và một số ít hệ thống khác cung cấp `getresuid()` và `getresgid()` cho mục đích này; trên một số hệ thống khác, chúng ta có thể cần phải áp dụng các kỹ thuật như phân tích cú pháp thông tin trong các tệp `/proc`.
+- Do các khả năng/trường hợp được liệt kê ở hai điểm trên, thực tiễn được khuyến nghị cao (ví dụ: xem [Tsafrir et al., 2008]) là không chỉ kiểm tra xem một system call thay đổi credential có thành công hay không, mà còn phải xác minh rằng sự thay đổi đó đã diễn ra đúng như mong đợi. Ví dụ, nếu chúng ta đang tạm thời từ bỏ hoặc khôi phục một privileged user ID (user ID có đặc quyền) bằng cách sử dụng `seteuid()`, thì chúng ta nên theo sau lời gọi đó bằng một lời gọi `geteuid()` để xác minh rằng effective user ID đúng như những gì chúng ta mong đợi. Tương tự, nếu chúng ta đang từ bỏ vĩnh viễn một privileged user ID, thì chúng ta phải xác minh rằng real user ID, effective user ID và saved set-user-ID đều đã được thay đổi thành công thành unprivileged user ID (user ID không có đặc quyền). Thật không may, mặc dù có các system call tiêu chuẩn để truy xuất real ID và effective ID, nhưng lại không có system call tiêu chuẩn nào để truy xuất saved set ID. Linux và một số ít hệ thống khác cung cấp `getresuid()` và `getresgid()` cho mục đích này; trên một số hệ thống khác, chúng ta có thể cần phải áp dụng các kỹ thuật như phân tích cú pháp thông tin trong các tệp `/proc`.
 - Một số thay đổi về credential chỉ có thể được thực hiện bởi các tiến trình có effective user ID là 0. Do đó, khi thay đổi nhiều ID — supplementary group ID (ID nhóm bổ sung), group ID và user ID — chúng ta nên từ bỏ privileged effective user ID cuối cùng khi hạ quyền. Ngược lại, chúng ta nên nâng privileged effective user ID đầu tiên khi cấp quyền.
 
 ## 38.3 Thận Trọng Khi Thực Thi Một Chương Trình
@@ -125,6 +125,7 @@ real=1000 effective=1000 saved=1000
 
 Các chương trình có đặc quyền chạy dưới sự kiểm soát của người dùng không bao giờ được `exec` một shell, dù là trực tiếp hay gián tiếp (thông qua `system()`, `popen()`, `execlp()`, `execvp()` hoặc các hàm thư viện tương tự khác). Sự phức tạp và mạnh mẽ của các shell (và các trình thông dịch không bị ràng buộc khác như `awk`) đồng nghĩa với việc hầu như không thể loại bỏ tất cả các lỗ hổng bảo mật, ngay cả khi shell được thực thi không cho phép truy cập tương tác. Rủi ro hệ quả là người dùng có thể thực thi các câu lệnh shell tùy ý dưới effective user ID của tiến trình. Nếu bắt buộc phải `exec` một shell, hãy đảm bảo rằng các đặc quyền đã được từ bỏ vĩnh viễn trước đó.
 
+> [!NOTE]
 > Một ví dụ về loại lỗ hổng bảo mật có thể xảy ra khi `exec` một shell đã được lưu ý trong phần thảo luận về `system()` ở Mục 27.6.
 
 Một số cài đặt UNIX tôn trọng các bit quyền set-user-ID và set-group-ID khi chúng được áp dụng cho các tập lệnh trình thông dịch (interpreter script) (Mục 27.3), do đó, khi tập lệnh được chạy, tiến trình thực thi tập lệnh đó sẽ mang danh tính của một người dùng (có đặc quyền) khác. Do những rủi ro bảo mật vừa được mô tả, Linux, cũng như một số hệ thống UNIX khác, sẽ âm thầm bỏ qua các bit quyền set-user-ID và set-group-ID khi thực thi (`exec`) một tập lệnh. Ngay cả trên các hệ thống mà tập lệnh set-user-ID và set-group-ID được cho phép, việc sử dụng chúng vẫn nên được tránh.
@@ -143,6 +144,7 @@ Nếu tiến trình nhận được một tín hiệu (signal) khiến nó tạo
 
 Tiếp theo ý cuối cùng, như một nguyên tắc chung, một chương trình bảo mật nên ngăn chặn các tệp core dump, sao cho tệp core dump không thể bị kiểm tra để lấy thông tin nhạy cảm. Một chương trình có thể đảm bảo rằng tệp core dump không được tạo ra bằng cách sử dụng `setrlimit()` để đặt giới hạn tài nguyên `RLIMIT_CORE` thành 0 (xem Mục [36.3](#page-27-0)).
 
+> [!NOTE]
 > Theo mặc định, Linux không cho phép một chương trình set-user-ID thực hiện kết xuất lõi (core dump) để phản hồi lại một tín hiệu (Mục 22.1), ngay cả khi chương trình đã từ bỏ tất cả các đặc quyền. Tuy nhiên, các cài đặt UNIX khác có thể không cung cấp tính năng bảo mật này.
 
 ## 38.5 Giới hạn tiến trình (Confine the Process)
@@ -159,6 +161,7 @@ Hơn nữa, bằng cách sử dụng các capability và các cờ securebits, c
 
 Một kỹ thuật bảo mật hữu ích trong một số trường hợp là thiết lập một `chroot jail` (vùng cô lập chroot) nhằm giới hạn tập hợp các thư mục và tệp mà một chương trình có thể truy cập. (Hãy đảm bảo cũng gọi `chdir()` để thay đổi thư mục làm việc hiện tại của tiến trình (`current working directory`) thành một vị trí bên trong vùng cô lập này). Tuy nhiên, cần lưu ý rằng một `chroot jail` là chưa đủ để giới hạn một chương trình `set-user-ID-root` (xem Mục 18.12).
 
+> [!NOTE]
 > Một giải pháp thay thế cho việc sử dụng `chroot jail` là máy chủ ảo (virtual server), là một máy chủ được triển khai trên nền tảng của một nhân ảo (virtual kernel). Do mỗi nhân ảo được cô lập với các nhân ảo khác có thể đang chạy trên cùng phần cứng, máy chủ ảo mang lại tính bảo mật và linh hoạt cao hơn so với `chroot jail`. (Một số hệ điều hành hiện đại khác cũng cung cấp các phiên bản triển khai máy chủ ảo của riêng chúng). Bản triển khai ảo hóa cũ nhất trên Linux là User-Mode Linux (UML), vốn là một thành phần tiêu chuẩn của nhân Linux 2.6. Thông tin thêm về UML có thể được tìm thấy tại http://user-mode-linux.sourceforge.net/. Các dự án nhân ảo gần đây hơn bao gồm Xen (http://www.cl.cam.ac.uk/Research/SRG/ netos/xen/) và KVM (http://kvm.qumranet.com/).
 
 ## 38.6 Đề phòng Tín hiệu và Tình trạng tranh chấp (Race Conditions)
@@ -173,6 +176,7 @@ Vấn đề này đặc biệt quan trọng đối với các tín hiệu làm d
 
 Tình huống được mô tả ở đây thực chất chỉ là một trường hợp đặc biệt của tình trạng tranh chấp dạng thời điểm kiểm tra, thời điểm sử dụng (`time-of-check, time-of-use race condition`). Một tiến trình đặc quyền (`privileged process`) nên tránh thực hiện các thao tác dựa trên các lần xác minh trước đó mà có thể không còn đúng nữa (tham khảo thảo luận về system call `access()` trong Mục 15.4.4 để biết một ví dụ cụ thể). Nguyên tắc này được áp dụng ngay cả khi người dùng không thể gửi tín hiệu đến tiến trình. Khả năng dừng một tiến trình đơn giản là cho phép người dùng nới rộng khoảng thời gian giữa thời điểm kiểm tra và thời điểm sử dụng.
 
+> [!NOTE]
 > Mặc dù có thể khó khăn trong một lần thử duy nhất để dừng một tiến trình nằm giữa khoảng thời gian kiểm tra và thời gian sử dụng, một kẻ tấn công độc hại có thể thực thi một chương trình `set-user-ID` lặp đi lặp lại, và sử dụng một chương trình khác hoặc một shell script để liên tục gửi tín hiệu dừng tới chương trình `set-user-ID` đó đồng thời thay đổi môi trường chạy thời gian thực. Điều này làm tăng đáng kể cơ hội lật đổ chương trình `set-user-ID`.
 
 ## 38.7 Những cạm bẫy khi thực hiện các thao tác trên tệp và File I/O
@@ -196,7 +200,7 @@ Các chương trình có đặc quyền (privileged program) nên tránh đưa r
 
 Các chương trình set-user-ID và set-group-ID không nên cho rằng giá trị của các biến môi trường (environment variable) là đáng tin cậy. Hai biến có tính liên quan đặc biệt là `PATH` và `IFS`.
 
-`PATH` xác định nơi shell (và do đó bao gồm cả `system()` và `popen()`), cũng như `execlp()` và `execvp()`, tìm kiếm các chương trình. Một người dùng độc hại có thể đặt `PATH` thành một giá trị nhằm đánh lừa một chương trình set-user-ID sử dụng một trong các hàm này để thực thi một chương trình tùy ý với quyền hạn cao. Nếu các hàm này bắt buộc phải được sử dụng, `PATH` nên được thiết lập thành một danh sách thư mục đáng tin cậy (nhưng tốt hơn hết là nên chỉ định đường dẫn tuyệt vời (absolute pathname) khi thực thi các chương trình qua họ hàm `exec`). Tuy nhiên, như đã lưu ý trước đó, cách tốt nhất là từ bỏ đặc quyền (drop privileges) trước khi thực thi một shell hoặc sử dụng một trong các hàm đã nêu ở trên.
+`PATH` xác định nơi shell (và do đó bao gồm cả `system()` và `popen()`), cũng như `execlp()` và `execvp()`, tìm kiếm các chương trình. Một người dùng độc hại có thể đặt `PATH` thành một giá trị nhằm đánh lừa một chương trình set-user-ID sử dụng một trong các hàm này để thực thi một chương trình tùy ý với quyền hạn cao. Nếu các hàm này bắt buộc phải được sử dụng, `PATH` nên được thiết lập thành một danh sách thư mục đáng tin cậy (nhưng tốt hơn hết là nên chỉ định đường dẫn tuyệt đối (absolute pathname) khi thực thi các chương trình qua họ hàm `exec`). Tuy nhiên, như đã lưu ý trước đó, cách tốt nhất là từ bỏ đặc quyền (drop privileges) trước khi thực thi một shell hoặc sử dụng một trong các hàm đã nêu ở trên.
 
 `IFS` chỉ định các ký tự phân tách mà shell hiểu là dùng để tách các từ trong một dòng lệnh. Biến này nên được thiết lập thành một chuỗi rỗng, điều này có nghĩa là chỉ các ký tự khoảng trắng (white-space characters) mới được shell hiểu là ký tự phân tách từ. Một số shell luôn thiết lập `IFS` theo cách này khi khởi động. (Mục 27.6 mô tả một lỗ hổng liên quan đến `IFS` từng xuất hiện trong các phiên bản Bourne shell cũ).
 
@@ -210,7 +214,7 @@ Một chương trình đặc quyền (privileged program) cần phải xác th�
 
 Một chương trình set-user-ID nên tránh đưa ra các giả định không đáng tin cậy về môi trường chạy ban đầu của nó. Ví dụ, đầu vào chuẩn (standard input), đầu ra chuẩn (standard output), hoặc lỗi chuẩn (standard error) có thể đã bị đóng. (Các mô tả tệp - file descriptor này có thể đã bị đóng trong chương trình thực thi - exec chương trình set-user-ID). Trong trường hợp này, việc mở một tệp có thể vô tình tái sử dụng mô tả tệp 1 (chẳng hạn), do đó, trong khi chương trình nghĩ rằng nó đang ghi ra đầu ra chuẩn, thì thực tế nó lại đang ghi vào tệp mà nó vừa mở.
 
-Có nhiều khả năng khác cần xem xét. Ví dụ, một tiến trình có thể làm cạn kiệt các giới hạn tài nguyên khác nhau, chẳng hạn như giới hạn về số lượng tiến trình có thể được tạo, giới hạn tài nguyên thời gian CPU, hoặc giới hạn tài nguyên kích thước tệp, dẫn đến việc các lời hệ thống (system call) khác nhau có thể thất bại hoặc các tín hiệu (signal) khác nhau có thể được tạo ra. Người dùng độc hại có thể cố tình thiết kế tình trạng cạn kiệt tài nguyên nhằm mục đích phá hoại chương trình.
+Có nhiều khả năng khác cần xem xét. Ví dụ, một tiến trình có thể làm cạn kiệt các giới hạn tài nguyên khác nhau, chẳng hạn như giới hạn về số lượng tiến trình có thể được tạo, giới hạn tài nguyên thời gian CPU, hoặc giới hạn tài nguyên kích thước tệp, dẫn đến việc các lời gọi hệ thống (system call) khác nhau có thể thất bại hoặc các tín hiệu (signal) khác nhau có thể được tạo ra. Người dùng độc hại có thể cố tình thiết kế tình trạng cạn kiệt tài nguyên nhằm mục đích phá hoại chương trình.
 
 ## 38.9 Đề phòng Tràn bộ nhớ đệm (Buffer Overrun)
 
@@ -232,6 +236,7 @@ Một số triển khai UNIX cung cấp hàm `strlcpy()`, hàm này nhận một
 
 Cùng với sự gia tăng của các dịch vụ dựa trên Internet là sự gia tăng tương ứng về cơ hội xảy ra các cuộc tấn công từ chối dịch vụ từ xa (remote denial-of-service attacks). Các cuộc tấn công này nhằm mục đích làm cho một dịch vụ không khả dụng đối với các khách hàng (client) hợp pháp, bằng cách gửi cho máy chủ (server) dữ liệu bị lỗi định dạng (malformed data) khiến nó bị treo (crash) hoặc bằng cách làm quá tải máy chủ bằng các yêu cầu giả mạo.
 
+> [!NOTE]
 > Các cuộc tấn công từ chối dịch vụ cục bộ (local denial-of-service attacks) cũng có thể xảy ra. Ví dụ nổi tiếng nhất là khi một người dùng chạy một fork bomb đơn giản (một chương trình liên tục gọi `fork`, từ đó tiêu thụ toàn bộ các khe tiến trình - process slots trên hệ thống). Tuy nhiên, nguồn gốc của các cuộc tấn công từ chối dịch vụ cục bộ dễ xác định hơn rất nhiều và chúng thường có thể được ngăn chặn bằng các biện pháp bảo mật vật lý và mật khẩu phù hợp.
 
 Việc xử lý các yêu cầu bị lỗi định dạng (malformed requests) khá đơn giản—một máy chủ nên được lập trình để kiểm tra nghiêm ngặt đầu vào của nó và tránh hiện tượng tràn bộ đệm (buffer overruns), như đã mô tả ở trên.

@@ -1,4 +1,4 @@
-# Chương 11: Các Kiểu Dữ liệu trong Kernel
+# Chương 11: Các kiểu dữ liệu trong Kernel (Data Types in the Kernel)
 
 Trước khi tiếp tục với các chủ đề nâng cao hơn, chúng ta cần dừng lại một chút để lưu ý nhanh về các vấn đề tính tương thích (portability). Các phiên bản hiện đại của Linux kernel có tính tương thích cực kỳ cao, chạy trên vô số kiến trúc phần cứng khác nhau. Với bản chất đa nền tảng của Linux, các trình điều khiển (driver) được định hướng sử dụng nghiêm túc cũng phải có tính tương thích như vậy.
 
@@ -77,7 +77,7 @@ Trên thực tế, trình biên dịch báo hiệu sự không nhất quán về
 
 Một số kiểu dữ liệu được sử dụng phổ biến trong kernel có các câu lệnh `typedef` của riêng chúng, từ đó ngăn chặn bất kỳ vấn đề về khả năng tương thích (portability) nào. Ví dụ, định danh tiến trình (process identifier - pid) thường là `pid_t` thay vì `int`. Việc sử dụng `pid_t` che giấu mọi sự khác biệt có thể có trong việc gõ kiểu dữ liệu thực tế (actual data typing). Chúng tôi sử dụng thuật ngữ *đặc thù cho giao diện* (*interface-specific*) để chỉ một kiểu được định nghĩa bởi một thư viện nhằm cung cấp giao diện cho một cấu trúc dữ liệu cụ thể.
 
-Lưu ý rằng trong thời gian gần đây, tương đối ít kiểu đặc thù cho giao diện mới được định nghĩa. Việc sử dụng câu lệnh `typedef` đã trở nên kém phổ biến đối với nhiều nhà phát triển kernel, những người thích nhìn thấy thông tin kiểu thực tế được sử dụng trực tiếp trong mã nguồn hơn là bị ẩn đằng belakang một kiểu do người dùng định nghĩa. Tuy nhiên, nhiều kiểu đặc thù cho giao diện cũ vẫn còn trong kernel và chúng sẽ không sớm biến mất.
+Lưu ý rằng trong thời gian gần đây, tương đối ít kiểu đặc thù cho giao diện mới được định nghĩa. Việc sử dụng câu lệnh `typedef` đã trở nên kém phổ biến đối với nhiều nhà phát triển kernel, những người thích nhìn thấy thông tin kiểu thực tế được sử dụng trực tiếp trong mã nguồn hơn là bị ẩn đằng sau một kiểu do người dùng định nghĩa. Tuy nhiên, nhiều kiểu đặc thù cho giao diện cũ vẫn còn trong kernel và chúng sẽ không sớm biến mất.
 
 Ngay cả khi không có kiểu đặc thù cho giao diện nào được định nghĩa, việc sử dụng đúng kiểu dữ liệu một cách nhất quán với phần còn lại của kernel luôn là điều quan trọng. Ví dụ, một số đếm jiffies (jiffy count) luôn là `unsigned long`, độc lập với kích thước thực tế của nó, vì vậy kiểu `unsigned long` nên luôn được sử dụng khi làm việc với jiffies. Trong phần này, chúng ta tập trung vào việc sử dụng các kiểu kết thúc bằng `_t`.
 
@@ -453,39 +453,58 @@ Nếu bạn xem xét bên trong tệp *<linux/list.h>*, bạn sẽ thấy một 
 
 Các ký hiệu sau đây đã được giới thiệu trong chương này:
 
-## include <linux/types.h> typedef u8; typedef u16; typedef u32;
-
+```c
+## include <linux/types.h>
+typedef u8;
+typedef u16;
+typedef u32;
 typedef u64;
+```
 
 Các kiểu dữ liệu được đảm bảo là giá trị số nguyên không dấu (unsigned integer) 8, 16, 32 và 64-bit. Các kiểu có dấu tương ứng cũng tồn tại. Trong không gian người dùng (user space), bạn có thể tham chiếu đến các kiểu này dưới dạng `__u8`, `__u16`, v.v.
 
-```
+```c
 ## include <asm/page.h>
 PAGE_SIZE
 PAGE_SHIFT
-    Các ký hiệu xác định số byte trên mỗi trang (page) cho kiến trúc hiện tại
-    và số bit trong độ lệch trang (page offset) (12 cho các trang 4-KB và 13 cho các trang 8-KB).
+```
+
+Các ký hiệu xác định số byte trên mỗi trang (page) cho kiến trúc hiện tại và số bit trong độ lệch trang (page offset) (12 cho các trang 4-KB và 13 cho các trang 8-KB).
+
+```c
 ## include <asm/byteorder.h>
 __LITTLE_ENDIAN
 __BIG_ENDIAN
-    Chỉ một trong hai ký hiệu được định nghĩa, tùy thuộc vào kiến trúc.
+```
+
+Chỉ một trong hai ký hiệu được định nghĩa, tùy thuộc vào kiến trúc.
+
+```c
 ## include <asm/byteorder.h>
 u32 __cpu_to_le32 (u32);
 u32 __le32_to_cpu (u32);
-    Các hàm chuyển đổi giữa các thứ tự byte đã biết và thứ tự byte của bộ xử lý.
-    Có hơn 60 hàm như vậy; hãy xem các tệp khác nhau trong include/linux/
-    byteorder/ để có danh sách đầy đủ và các cách chúng được định nghĩa.
+```
+
+Các hàm chuyển đổi giữa các thứ tự byte đã biết và thứ tự byte của bộ xử lý. Có hơn 60 hàm như vậy; hãy xem các tệp khác nhau trong `include/linux/byteorder/` để có danh sách đầy đủ và các cách chúng được định nghĩa.
+
+```c
 ## include <asm/unaligned.h>
 get_unaligned(ptr);
 put_unaligned(val, ptr);
-    Một số kiến trúc cần bảo vệ việc truy cập dữ liệu không căn chỉnh (unaligned data access)
-    bằng cách sử dụng các macro này. Các macro này sẽ mở rộng thành các thao tác hủy tham chiếu 
-    con trỏ thông thường đối với các kiến trúc cho phép bạn truy cập dữ liệu không căn chỉnh.
+```
+
+Một số kiến trúc cần bảo vệ việc truy cập dữ liệu không căn chỉnh (unaligned data access) bằng cách sử dụng các macro này. Các macro này sẽ mở rộng thành các thao tác giải tham chiếu con trỏ thông thường đối với các kiến trúc cho phép bạn truy cập dữ liệu không căn chỉnh.
+
+```c
 ## include <linux/err.h>
 void *ERR_PTR(long error);
 long PTR_ERR(const void *ptr);
 long IS_ERR(const void *ptr);
-    Các hàm cho phép mã lỗi (error codes) được trả về bởi các hàm trả về giá trị con trỏ.
+```
+
+Các hàm cho phép mã lỗi (error codes) được trả về bởi các hàm trả về giá trị con trỏ.
+
+```c
 ## include <linux/list.h>
 list_add(struct list_head *new, struct list_head *head);
 list_add_tail(struct list_head *new, struct list_head *head);
@@ -496,8 +515,9 @@ list_entry(entry, type, member);
 list_move(struct list_head *entry, struct list_head *head);
 list_move_tail(struct list_head *entry, struct list_head *head);
 list_splice(struct list_head *list, struct list_head *head);
-    Các hàm thao tác với danh sách liên kết kép vòng (circular, doubly linked lists).
 ```
+
+Các hàm thao tác với danh sách liên kết kép vòng (circular, doubly linked lists).
 
 `list_for_each(struct list_head *cursor, struct list_head *list)` `list_for_each_prev(struct list_head *cursor, struct list_head *list)` `list_for_each_safe(struct list_head *cursor, struct list_head *next, struct list_head *list)` `list_for_each_entry(type *cursor, struct list_head *list, member)` `list_for_each_entry_safe(type *cursor, type *next, struct list_head *list, member)`
 

@@ -27,10 +27,16 @@
 - **Điều hướng một tay (Thumb Zone Ergonomics):**
   - Nút tròn nổi **TOC FAB** và Modal Mục lục dạng **Bottom Sheet** trượt từ dưới đáy màn hình.
   - Cặp nút **"Bài trước" / "Bài kế tiếp"** 52px ở chân trang.
-- **Bảo toàn Sơ đồ ASCII (Memory Topologies):**
-  - Khóa tỷ lệ ký tự `letter-spacing: 0px !important;`, cuộn ngang mượt mà, không bao giờ bị vỡ sơ đồ 80 cột.
-- **Khối mã nguồn kỹ thuật (Book Technical Plate):**
-  - Tô màu cú pháp C/C++ Allman và Bash thuần JavaScript, có nút sao chép tức thì.
+- **Khối mã nguồn & Sơ đồ chuẩn Modern IDE / Obsidian Editor:**
+  - Thiết kế thẻ viền tinh tế với nút điều hướng cửa sổ macOS (🔴 🟡 🟢), thẻ định danh ngôn ngữ nổi bật (`C++`, `BASH`, `MERMAID`, `TOPOLOGY`).
+  - Nút sao chép mã tức thì kèm hiệu ứng xác nhận trực quan.
+- **Dựng sơ đồ tương tác Mermaid Vector (Mermaid v11 CDN):**
+  - Tự động nhận diện và vẽ các sơ đồ hệ thống phức tạp (Flowchart, Sequence, I-node Topologies) thành định dạng vector SVG sắc nét.
+  - Tự động hòa phối màu theo chế độ sáng/tối (Dark / Light Theme).
+  - Tích hợp nút chuyển đổi nhanh giữa chế độ xem đồ họa vector và mã nguồn Mermaid gốc.
+  - Nền bản vẽ dạng chấm lưới (dot grid canvas) chuẩn kỹ thuật.
+- **Bộ phân tích Markdown tự phục hồi (Self-Healing Parser):**
+  - Tự động ngắt và khôi phục trạng thái khi gặp lỗi dấu backtick đóng thiếu trong tài liệu gốc, bảo toàn toàn vẹn cấu trúc tiêu đề và các đoạn văn bản.
 
 ---
 

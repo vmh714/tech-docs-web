@@ -1,4 +1,4 @@
-# Chương 20: TÍN HIỆU: CÁC KHÁI NIỆM CƠ BẢN
+# Chương 20: Tín hiệu: Các khái niệm cơ bản (Signals: Fundamental Concepts)
 
 Chương này và hai chương tiếp theo sẽ thảo luận về tín hiệu (signal). Mặc dù các khái niệm cơ bản rất đơn giản, nhưng phần thảo luận của chúng ta khá dài do có nhiều chi tiết cần bao phủ. Chương này đề cập đến các chủ đề sau:
 
@@ -45,6 +45,7 @@ Signal handler là một hàm do lập trình viên viết, thực hiện các t
 
 Lưu ý rằng không thể thiết lập cách xử lý tín hiệu thành chấm dứt tiến trình hoặc tạo tệp lõi - dump core (trừ khi một trong số đó là cách xử lý mặc định của tín hiệu). Cách gần nhất chúng ta có thể làm là cài đặt một handler cho tín hiệu đó, sau đó gọi `exit()` hoặc `abort()`. Hàm `abort()` (Mục 21.2.2) tạo ra một tín hiệu `SIGABRT` cho tiến trình, khiến nó dump core và chấm dứt.
 
+> [!NOTE]
 > Tệp `/proc/PID/status` đặc trưng của Linux chứa các trường mặt nạ bit (bit-mask fields) khác nhau có thể được kiểm tra để xác định cách mà một tiến trình xử lý các tín hiệu. Các mặt nạ bit được hiển thị dưới dạng số thập lục phân (hexadecimal), với bit có trọng số thấp nhất (least significant bit) đại diện cho tín hiệu 1, bit tiếp theo bên trái đại diện cho tín hiệu 2, v.v. Các trường này bao gồm `SigPnd` (các tín hiệu đang chờ xử lý trên mỗi luồng - per-thread pending signals), `ShdPnd` (các tín hiệu đang chờ xử lý trên toàn tiến trình - process-wide pending signals; kể từ Linux 2.6), `SigBlk` (các tín hiệu bị chặn - blocked signals), `SigIgn` (các tín hiệu bị bỏ qua), và `SigCgt` (các tín hiệu đã bắt). (Sự khác biệt giữa các trường `SigPnd` và `ShdPnd` sẽ trở nên rõ ràng khi chúng ta mô tả việc xử lý tín hiệu trong các tiến trình đa luồng - multithreaded processes ở Mục 33.2). Thông tin tương tự cũng có thể thu được bằng cách sử dụng các tùy chọn khác nhau cho lệnh `ps(1)`.
 
 Signals xuất hiện trong các bản cài đặt UNIX rất sớm, nhưng đã trải qua một số thay đổi đáng kể kể từ khi ra đời. Trong các bản cài đặt đầu tiên, các tín hiệu có thể bị mất (nghĩa là không được chuyển đến tiến trình đích) trong một số hoàn cảnh nhất định. Hơn nữa, mặc dù các cơ chế đã được cung cấp để chặn việc gửi tín hiệu trong khi mã nguồn quan trọng (critical code) đang được thực thi, nhưng trong một số trường hợp, việc chặn này không đáng tin cậy. Những vấn đề này đã được khắc phục trong 4.2BSD, nơi cung cấp cái gọi là tín hiệu đáng tin cậy (reliable signals). (Một cải tiến khác của BSD là việc bổ sung các tín hiệu bổ sung để hỗ trợ việc điều khiển tác vụ shell - shell job control, mà chúng ta mô tả ở Mục 34.7).
@@ -268,6 +269,7 @@ Lưu ý các điểm sau đây liên quan đến hành vi mặc định được
 
 Các hệ thống UNIX cung cấp hai cách để thay đổi trạng thái xử lý tín hiệu (signal disposition): `signal()` và `sigaction()`. System Call `signal()`, được mô tả trong phần này, là API ban đầu để thiết lập trạng thái xử lý tín hiệu và nó cung cấp một giao diện đơn giản hơn so với `sigaction()`. Mặt khác, `sigaction()` cung cấp các tính năng không có sẵn ở `signal()`. Hơn nữa, có sự khác biệt trong hành vi của `signal()` giữa các hệ thống cài đặt UNIX khác nhau (Mục 22.7), điều này có nghĩa là không bao giờ nên sử dụng nó để thiết lập trình xử lý tín hiệu (signal handler) trong các chương trình có tính di portability (portable). Do các vấn đề về tính di động này, `sigaction()` là API được (rất) ưu tiên để thiết lập một signal handler. Sau khi chúng ta giải thích cách sử dụng `sigaction()` ở Mục [20.13,](#page-29-0) chúng ta sẽ luôn sử dụng lời gọi đó khi thiết lập các signal handler trong các chương trình ví dụ của mình.
 
+> [!NOTE]
 > Mặc dù được tài liệu hóa trong phần 2 của các trang hướng dẫn (manual pages) trên Linux, `signal()` thực chất được cài đặt trong glibc như một hàm thư viện nằm chồng lên trên System Call `sigaction()`.
 
 ```c
@@ -477,10 +479,11 @@ main(int argc, char *argv[])
 
 Một tiến trình (process) có thể gửi một tín hiệu đến tiến trình khác bằng cách sử dụng System Call `kill()`, đây là hàm tương đương với lệnh shell `kill`. (Thuật ngữ kill được chọn vì hành động mặc định của hầu hết các tín hiệu có sẵn trên các phiên bản UNIX thời kỳ đầu là chấm dứt tiến trình - terminate the process).
 
-```
 ## include <signal.h>
+
 int kill(pid_t pid, int sig);
-                                             Trả về 0 khi thành công, hoặc –1 nếu có lỗi
+Trả về 0 khi thành công, hoặc –1 nếu có lỗi
+
 ```
 
 Tham số `pid` xác định một hoặc nhiều tiến trình mà tín hiệu được chỉ định bởi `sig` sẽ được gửi tới. Bốn trường hợp khác nhau quyết định cách `pid` được diễn giải:
@@ -501,6 +504,7 @@ Một tiến trình cần có các quyền thích hợp để có thể gửi t�
 Tín hiệu `SIGCONT` được xử lý theo một cách đặc biệt. Một tiến trình đặc quyền thấp (unprivileged process) có thể gửi tín hiệu này tới bất kỳ tiến trình nào khác trong cùng một phiên (session), không cần quan tâm đến các kiểm tra ID người dùng (user ID checks). Quy tắc này cho phép các shell kiểm soát công việc (job-control shells) khởi động lại các công việc bị dừng (nhóm tiến trình - process groups), ngay cả khi các tiến trình trong công việc đó đã thay đổi ID người dùng của chúng (tức là chúng là các tiến trình có đặc quyền đã sử dụng các system call được mô tả tại Mục 9.7 để thay đổi thông tin xác thực - credentials của mình).
 
 ```text
+
 Sending process              Receiving process
 ┌─────────────────────┐      ┌─────────────────────┐
 │   real user ID      │─────>│   real user ID      │
@@ -510,9 +514,10 @@ Sending process              Receiving process
 │ saved set-user-ID   │─────>│ saved set-user-ID   │
 └─────────────────────┘      └─────────────────────┘
 
-        indicates that if IDs match,
+indicates that if IDs match,
 ───────> then sender has permission
-        to send a signal to receiver
+to send a signal to receiver
+
 ```
 
 **Hình 20-2:** Các quyền cần thiết để một tiến trình đặc quyền thấp (unprivileged process) gửi tín hiệu
@@ -541,21 +546,28 @@ Tất cả các kỹ thuật này, ngoại trừ kỹ thuật cuối cùng, khô
 Đôi khi, việc một tiến trình tự gửi tín hiệu cho chính mình rất hữu ích. (Chúng ta thấy một ví dụ về điều này trong Mục 34.7.3). Hàm `raise()` thực hiện tác vụ này.
 
 ```c
+
 ## include <signal.h>
+
 int raise(int sig);
-                                      Returns 0 on success, or nonzero on error
+Returns 0 on success, or nonzero on error
+
 ```
 
 Trong một chương trình đơn luồng (single-threaded program), một lời gọi đến `raise()` tương đương với lời gọi `kill()` sau đây:
 
 ```
+
 kill(getpid(), sig);
+
 ```
 
 Trên một hệ thống hỗ trợ luồng (threads), `raise(sig)` được hiện thực như sau:
 
 ```
+
 pthread_kill(pthread_self(), sig)
+
 ```
 
 Chúng tôi mô tả hàm `pthread_kill()` trong Mục 33.2.3, nhưng hiện tại chỉ cần nói rằng cách hiện thực này có nghĩa là tín hiệu sẽ được chuyển giao (delivered) đến chính xác luồng đã gọi `raise()`. Ngược lại, lời gọi `kill(getpid(), sig)` gửi tín hiệu tới tiến trình gọi, và tín hiệu đó có thể được chuyển giao tới bất kỳ luồng nào trong tiến trình.
@@ -567,50 +579,60 @@ Khi một tiến trình tự gửi tín hiệu (signal) cho chính nó bằng c�
 Lưu ý rằng `raise()` trả về một giá trị khác 0 (không nhất thiết là –1) khi xảy ra lỗi. Lỗi duy nhất có thể xảy ra với `raise()` là `EINVAL`, do tham số `sig` không hợp lệ. Do đó, khi chúng ta chỉ định một trong các hằng số `SIGxxxx`, chúng ta thường không kiểm tra trạng thái trả về của hàm này.
 
 ```c
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––signals/t_kill.c
+
 ## include <signal.h>
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- int s, sig;
- if (argc != 3 || strcmp(argv[1], "--help") == 0)
- usageErr("%s sig-num pid\n", argv[0]);
- sig = getInt(argv[2], 0, "sig-num");
- s = kill(getLong(argv[1], 0, "pid"), sig);
- if (sig != 0) {
- if (s == -1)
- errExit("kill");
- } else { /* Null signal: process existence check */
- if (s == 0) {
- printf("Process exists and we can send it a signal\n");
- } else {
- if (errno == EPERM)
- printf("Process exists, but we don't have "
- "permission to send it a signal\n");
- else if (errno == ESRCH)
- printf("Process does not exist\n");
- else
- errExit("kill");
- }
- }
- exit(EXIT_SUCCESS);
+int s, sig;
+if (argc != 3 || strcmp(argv[1], "--help") == 0)
+usageErr("%s sig-num pid\n", argv[0]);
+sig = getInt(argv[2], 0, "sig-num");
+s = kill(getLong(argv[1], 0, "pid"), sig);
+if (sig != 0) {
+if (s == -1)
+errExit("kill");
+} else { /* Null signal: process existence check */
+if (s == 0) {
+printf("Process exists and we can send it a signal\n");
+} else {
+if (errno == EPERM)
+printf("Process exists, but we don't have "
+"permission to send it a signal\n");
+else if (errno == ESRCH)
+printf("Process does not exist\n");
+else
+errExit("kill");
+}
+}
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––signals/t_kill.c
+
 ```
 
 Hàm `killpg()` gửi một tín hiệu đến tất cả các thành viên của một nhóm tiến trình (process group).
 
 ```c
+
 ## include <signal.h>
+
 int killpg(pid_t pgrp, int sig);
-                                             Returns 0 on success, or –1 on error
+Returns 0 on success, or –1 on error
+
 ```
 
 Một lời gọi đến `killpg()` tương đương với lời gọi `kill()` sau đây:
 
 ```
+
 kill(-pgrp, sig);
+
 ```
 
 Nếu `pgrp` được chỉ định là 0, thì tín hiệu sẽ được gửi đến tất cả các tiến trình nằm trong cùng một nhóm tiến trình với tiến trình gọi. Chuẩn SUSv3 không quy định chi tiết trường hợp này, nhưng hầu hết các cài đặt UNIX đều diễn giải trường hợp này giống như Linux.
@@ -620,13 +642,20 @@ Nếu `pgrp` được chỉ định là 0, thì tín hiệu sẽ được gửi 
 Mỗi tín hiệu đều có một mô tả có thể in được đi kèm. Các mô tả này được liệt kê trong mảng `sys_siglist`. Ví dụ, chúng ta có thể tham chiếu đến `sys_siglist[SIGPIPE]` để lấy mô tả cho `SIGPIPE` (đường ống bị đứt - broken pipe). Tuy nhiên, thay vì sử dụng trực tiếp mảng `sys_siglist`, hàm `strsignal()` được ưu tiên hơn.
 
 ```c
+
 ## define _BSD_SOURCE
+
 ## include <signal.h>
+
 extern const char *const sys_siglist[];
+
 ## define _GNU_SOURCE
+
 ## include <string.h>
+
 char *strsignal(int sig);
-                                      Returns pointer to signal description string
+Returns pointer to signal description string
+
 ```
 
 Hàm `strsignal()` thực hiện kiểm tra biên (bounds checking) đối với tham số `sig`, sau đó trả về một con trỏ trỏ đến chuỗi mô tả tín hiệu có thể in được, hoặc một con trỏ trỏ đến chuỗi lỗi nếu số hiệu tín hiệu không hợp lệ. (Trên một số hệ implementation UNIX khác, `strsignal()` trả về `NULL` nếu `sig` không hợp lệ).
@@ -638,8 +667,11 @@ Một ví dụ về việc sử dụng `strsignal()` được thể hiện trong
 Hàm `psignal()` hiển thị (trên luồng lỗi chuẩn - standard error) chuỗi được truyền vào qua tham số `msg`, theo sau là dấu hai chấm, và sau đó là mô tả tín hiệu tương ứng với `sig`. Giống như `strsignal()`, `psignal()` cũng hỗ trợ locale (locale-sensitive).
 
 ```c
+
 ## include <signal.h>
+
 void psignal(int sig, const char *msg);
+
 ```
 
 Mặc dù `psignal()`, `strsignal()`, và `sys_siglist` không được chuẩn hóa như một phần của SUSv3, chúng vẫn có sẵn trên nhiều cài đặt UNIX. (Chuẩn SUSv4 bổ sung các đặc tả cho `psignal()` và `strsignal()`).
@@ -655,10 +687,13 @@ Nhiều tín hiệu được biểu diễn bằng một cấu trúc dữ liệu 
 Hàm `sigemptyset()` khởi tạo một tập hợp tín hiệu sao cho không chứa phần tử nào. Hàm `sigfillset()` khởi tạo một tập hợp chứa tất cả các tín hiệu (bao gồm tất cả các tín hiệu thời gian thực - realtime signal).
 
 ```c
+
 ## include <signal.h>
+
 int sigemptyset(sigset_t *set);
 int sigfillset(sigset_t *set);
-                                          Both return 0 on success, or –1 on error
+Both return 0 on success, or –1 on error
+
 ```
 
 Phải sử dụng một trong các hàm sigemptyset() hoặc sigaddset() để khởi tạo một tập tín hiệu (signal set). Lý do là ngôn ngữ C không tự động khởi tạo các biến tự động (automatic variables), và việc khởi tạo các biến tĩnh (static variables) về 0 không thể được đảm bảo một cách tương thích (portably) là biểu thị cho một tập tín hiệu rỗng, vì các tập tín hiệu có thể được thực thi bằng các cấu trúc khác ngoài mặt nạ bit (bit masks). (Vì lý do tương tự, việc sử dụng `memset(3)` để xóa nội dung của một tập tín hiệu nhằm đánh dấu nó là rỗng là không chính xác).
@@ -666,18 +701,24 @@ Phải sử dụng một trong các hàm sigemptyset() hoặc sigaddset() để 
 Sau khi khởi tạo, các tín hiệu riêng lẻ có thể được thêm vào một tập bằng cách sử dụng `sigaddset()` và bị loại bỏ bằng cách sử dụng `sigdelset()`.
 
 ```c
+
 ## include <signal.h>
+
 int sigaddset(sigset_t *set, int sig);
 int sigdelset(sigset_t *set, int sig);
-                                          Both return 0 on success, or –1 on error
+Both return 0 on success, or –1 on error
+
 ```
 
 Đối với cả `sigaddset()` và `sigdelset()`, tham số `sig` là một số hiệu tín hiệu (signal number). Hàm `sigismember()` được sử dụng để kiểm tra xem một tín hiệu có thuộc về một tập hay không.
 
 ```c
+
 ## include <signal.h>
+
 int sigismember(const sigset_t *set, int sig);
-                                    Returns 1 if sig is a member of set, otherwise 0
+Returns 1 if sig is a member of set, otherwise 0
+
 ```
 
 Hàm `sigismember()` trả về 1 (true) nếu `sig` là một thành viên của `set`, và ngược lại trả về 0 (false).
@@ -685,13 +726,17 @@ Hàm `sigismember()` trả về 1 (true) nếu `sig` là một thành viên củ
 Thư viện GNU C thực thi ba hàm phi chuẩn thực hiện các tác vụ bổ sung cho các hàm tập tín hiệu chuẩn vừa được mô tả.
 
 ```c
+
 ## define _GNU_SOURCE
+
 ## include <signal.h>
+
 int sigandset(sigset_t *set, sigset_t *left, sigset_t *right);
 int sigorset(sigset_t *dest, sigset_t *left, sigset_t *right);
-                                          Both return 0 on success, or –1 on error
+Both return 0 on success, or –1 on error
 int sigisemptyset(const sigset_t *set);
-                                              Returns 1 if sig is empty, otherwise 0
+Returns 1 if sig is empty, otherwise 0
+
 ```
 
 Các hàm này thực hiện các tác vụ sau:
@@ -711,56 +756,66 @@ Các hàm `printSigMask()` và `printPendingSigs()` sử dụng `printSigset()` 
 **Listing 20-4:** Các hàm dùng để hiển thị tập tín hiệu
 
 ```c
+
 ––––––––––––––––––––––––––––––––––––––––––––––––– signals/signal_functions.c
+
 ## define _GNU_SOURCE
+
 ## include <string.h>
+
 ## include <signal.h>
+
 ## include "signal_functions.h" /* Khai báo các hàm được định nghĩa ở đây */
+
 ## include "tlpi_hdr.h"
+
 /* LƯU Ý: Tất cả các hàm sau đây đều sử dụng fprintf(), vốn
- không an toàn với tín hiệu bất đồng bộ (async-signal-safe) (xem Mục 21.1.2). Do đó, các
+không an toàn với tín hiệu bất đồng bộ (async-signal-safe) (xem Mục 21.1.2). Do đó, các
+
 ```
 
 ```c
- hàm này cũng không an toàn với tín hiệu bất đồng bộ (tức là hãy cẩn thận khi
- gọi bừa bãi chúng từ các trình xử lý tín hiệu - signal handlers). */
+
+hàm này cũng không an toàn với tín hiệu bất đồng bộ (tức là hãy cẩn thận khi
+gọi bừa bãi chúng từ các trình xử lý tín hiệu - signal handlers). */
 void /* In danh sách các tín hiệu bên trong một tập tín hiệu */
 printSigset(FILE *of, const char *prefix, const sigset_t *sigset)
 {
- int sig, cnt;
- cnt = 0;
- for (sig = 1; sig < NSIG; sig++) {
- if (sigismember(sigset, sig)) {
- cnt++;
- fprintf(of, "%s%d (%s)\n", prefix, sig, strsignal(sig));
- }
- }
- if (cnt == 0)
- fprintf(of, "%s<tập tín hiệu rỗng>\n", prefix);
+int sig, cnt;
+cnt = 0;
+for (sig = 1; sig < NSIG; sig++) {
+if (sigismember(sigset, sig)) {
+cnt++;
+fprintf(of, "%s%d (%s)\n", prefix, sig, strsignal(sig));
+}
+}
+if (cnt == 0)
+fprintf(of, "%s<tập tín hiệu rỗng>\n", prefix);
 }
 int /* In mặt nạ các tín hiệu bị chặn đối với tiến trình này */
 printSigMask(FILE *of, const char *msg)
 {
- sigset_t currMask;
- if (msg != NULL)
- fprintf(of, "%s", msg);
- if (sigprocmask(SIG_BLOCK, NULL, &currMask) == -1)
- return -1;
- printSigset(of, "\t\t", &currMask);
- return 0;
+sigset_t currMask;
+if (msg != NULL)
+fprintf(of, "%s", msg);
+if (sigprocmask(SIG_BLOCK, NULL, &currMask) == -1)
+return -1;
+printSigset(of, "\t\t", &currMask);
+return 0;
 }
 int /* In các tín hiệu đang chờ xử lý hiện tại đối với tiến trình này */
 printPendingSigs(FILE *of, const char *msg)
 {
- sigset_t pendingSigs;
- if (msg != NULL)
- fprintf(of, "%s", msg);
- if (sigpending(&pendingSigs) == -1)
- return -1;
- printSigset(of, "\t\t", &pendingSigs);
- return 0;
+sigset_t pendingSigs;
+if (msg != NULL)
+fprintf(of, "%s", msg);
+if (sigpending(&pendingSigs) == -1)
+return -1;
+printSigset(of, "\t\t", &pendingSigs);
+return 0;
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––– signals/signal_functions.c
+
 ```
 
 ## 20.10 Mặt nạ tín hiệu (Signal Mask - Chặn việc gửi tín hiệu)
@@ -776,9 +831,12 @@ Một tín hiệu có thể được thêm vào mặt nạ tín hiệu theo các
 Chúng ta sẽ hoãn thảo luận về hai trường hợp đầu tiên cho đến khi nghiên cứu về `sigaction()` tại Mục [20.13](#page-29-0), và thảo luận về `sigprocmask()` ngay bây giờ.
 
 ```c
+
 ## include <signal.h>
+
 int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
-                                             Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
+Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
+
 ```
 
 Chúng ta có thể sử dụng `sigprocmask()` để thay đổi mặt nạ tín hiệu của tiến trình, lấy ra mặt nạ hiện tại, hoặc thực hiện cả hai. Đối số `how` xác định các thay đổi mà `sigprocmask()` thực hiện đối với mặt nạ tín hiệu:
@@ -804,17 +862,19 @@ Nếu chúng ta muốn lấy mặt nạ tín hiệu mà không làm thay đổi 
 **Liệt kê 20-5:** Tạm thời chặn việc gửi một tín hiệu
 
 ```
- sigset_t blockSet, prevMask;
- /* Khởi tạo một tập hợp tín hiệu chứa SIGINT */
- sigemptyset(&blockSet);
- sigaddset(&blockSet, SIGINT);
- /* Chặn SIGINT, lưu lại mặt nạ tín hiệu trước đó */
- if (sigprocmask(SIG_BLOCK, &blockSet, &prevMask) == -1)
- errExit("sigprocmask1");
- /* ... Mã nguồn không được phép bị ngắt bởi SIGINT ... */
- /* Khôi phục mặt nạ tín hiệu trước đó, bỏ chặn SIGINT */
- if (sigprocmask(SIG_SETMASK, &prevMask, NULL) == -1)
- errExit("sigprocmask2");
+
+sigset_t blockSet, prevMask;
+/* Khởi tạo một tập hợp tín hiệu chứa SIGINT */
+sigemptyset(&blockSet);
+sigaddset(&blockSet, SIGINT);
+/* Chặn SIGINT, lưu lại mặt nạ tín hiệu trước đó */
+if (sigprocmask(SIG_BLOCK, &blockSet, &prevMask) == -1)
+errExit("sigprocmask1");
+/* ... Mã nguồn không được phép bị ngắt bởi SIGINT ... */
+/* Khôi phục mặt nạ tín hiệu trước đó, bỏ chặn SIGINT */
+if (sigprocmask(SIG_SETMASK, &prevMask, NULL) == -1)
+errExit("sigprocmask2");
+
 ```
 
 SUSv3 quy định rằng nếu bất kỳ tín hiệu đang chờ xử lý (pending signal) nào được bỏ chặn bởi một lời gọi `sigprocmask()`, thì ít nhất một trong các tín hiệu đó sẽ được gửi đi trước khi lời gọi trả về. Nói cách khác, nếu chúng ta bỏ chặn một tín hiệu đang chờ xử lý, nó sẽ được gửi đến tiến trình ngay lập tức.
@@ -822,9 +882,11 @@ SUSv3 quy định rằng nếu bất kỳ tín hiệu đang chờ xử lý (pend
 Các cố gắng chặn `SIGKILL` và `SIGSTOP` sẽ âm thầm bị bỏ qua. Nếu chúng ta cố gắng chặn các tín hiệu này, `sigprocmask()` sẽ không thực hiện yêu cầu cũng như không tạo ra lỗi. Điều này có nghĩa là chúng ta có thể sử dụng đoạn mã sau để chặn tất cả các tín hiệu ngoại trừ `SIGKILL` và `SIGSTOP`:
 
 ```
+
 sigfillset(&blockSet);
 if (sigprocmask(SIG_BLOCK, &blockSet, NULL) == -1)
- errExit("sigprocmask");
+errExit("sigprocmask");
+
 ```
 
 ## 20.11 Tín hiệu đang chờ xử lý (Pending Signals)
@@ -832,9 +894,12 @@ if (sigprocmask(SIG_BLOCK, &blockSet, NULL) == -1)
 Nếu một tiến trình nhận được một tín hiệu mà nó đang chặn tại thời điểm đó, tín hiệu đó sẽ được thêm vào tập hợp các tín hiệu đang chờ xử lý (pending signals) của tiến trình. Khi (và nếu) tín hiệu đó sau đó được bỏ chặn, nó sẽ được gửi đến tiến trình. Để xác định tín hiệu nào đang chờ xử lý đối với một tiến trình, chúng ta có thể gọi hàm `sigpending()`.
 
 ```c
+
 ## include <signal.h>
+
 int sigpending(sigset_t *set);
-                                             Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
+Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
+
 ```
 
 System call `sigpending()` trả về tập hợp các tín hiệu đang chờ xử lý đối với tiến trình gọi trong cấu trúc `sigset_t` do `set` trỏ tới. Sau đó, chúng ta có thể kiểm tra `set` bằng cách sử dụng hàm `sigismember()` được mô tả ở Mục [20.9](#page-19-0).
@@ -854,36 +919,43 @@ Tập hợp các tín hiệu đang chờ xử lý (set of pending signals) chỉ
 **Liệt kê 20-6:** Gửi nhiều tín hiệu
 
 ```c
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– signals/sig_sender.c
+
 ## include <signal.h>
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- int numSigs, sig, j;
- pid_t pid;
- if (argc < 4 || strcmp(argv[1], "--help") == 0)
-	 usageErr("%s pid num-sigs sig-num [sig-num-2]\n", argv[0]);
+int numSigs, sig, j;
+pid_t pid;
+if (argc < 4 || strcmp(argv[1], "--help") == 0)
+usageErr("%s pid num-sigs sig-num [sig-num-2]\n", argv[0]);
+
 ```
 
 ```c
- pid = getLong(argv[1], 0, "PID");
- numSigs = getInt(argv[2], GN_GT_0, "num-sigs");
- sig = getInt(argv[3], 0, "sig-num");
- /* Gửi tín hiệu đến bộ nhận */
- printf("%s: sending signal %d to process %ld %d times\n",
- argv[0], sig, (long) pid, numSigs);
- for (j = 0; j < numSigs; j++)
-	 if (kill(pid, sig) == -1)
-		 errExit("kill");
- /* Nếu đối số dòng lệnh thứ tư được chỉ định, hãy gửi tín hiệu đó */
- if (argc > 4)
-	 if (kill(pid, getInt(argv[4], 0, "sig-num-2")) == -1)
-		 errExit("kill");
- printf("%s: exiting\n", argv[0]);
- exit(EXIT_SUCCESS);
+
+pid = getLong(argv[1], 0, "PID");
+numSigs = getInt(argv[2], GN_GT_0, "num-sigs");
+sig = getInt(argv[3], 0, "sig-num");
+/* Gửi tín hiệu đến bộ nhận */
+printf("%s: sending signal %d to process %ld %d times\n",
+argv[0], sig, (long) pid, numSigs);
+for (j = 0; j < numSigs; j++)
+if (kill(pid, sig) == -1)
+errExit("kill");
+/* Nếu đối số dòng lệnh thứ tư được chỉ định, hãy gửi tín hiệu đó */
+if (argc > 4)
+if (kill(pid, getInt(argv[4], 0, "sig-num-2")) == -1)
+errExit("kill");
+printf("%s: exiting\n", argv[0]);
+exit(EXIT_SUCCESS);
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– signals/sig_sender.c
+
 ```
 
 Chương trình được hiển thị trong [Liệt kê 20-7](#page-27-0) được thiết kế để bắt và báo cáo thống kê về các tín hiệu được gửi bởi chương trình trong [Liệt kê 20-6](#page-25-0). Chương trình này thực hiện các bước sau:
@@ -896,21 +968,25 @@ Chương trình được hiển thị trong [Liệt kê 20-7](#page-27-0) đư�
 Trước tiên, chúng ta sử dụng hai chương trình này để minh họa rằng một tín hiệu bị chặn chỉ được gửi đến tiến trình một lần duy nhất, bất kể nó được tạo ra bao nhiêu lần. Chúng ta thực hiện điều này bằng cách chỉ định một khoảng thời gian ngủ (sleep interval) cho tiến trình nhận và gửi tất cả các tín hiệu trước khi khoảng thời gian ngủ đó kết thúc.
 
 ```bash
+
 $ ./sig_receiver 15 & Tiến trình nhận chặn tín hiệu trong 15 giây
 [1] 5368
 ./sig_receiver: PID is 5368
 ./sig_receiver: sleeping for 15 seconds
+
 ```
 
 ```bash
+
 $ ./sig_sender 5368 1000000 10 2 Gửi các tín hiệu SIGUSR1, cộng với SIGINT
 ./sig_sender: sending signal 10 to process 5368 1000000 times
 ./sig_sender: exiting
 ./sig_receiver: pending signals are:
- 2 (Interrupt)
- 10 (User defined signal 1)
+2 (Interrupt)
+10 (User defined signal 1)
 ./sig_receiver: signal 10 caught 1 time
 [1]+ Done ./sig_receiver 15
+
 ```
 
 Các đối số dòng lệnh cho chương trình gửi đã chỉ định các tín hiệu SIGUSR1 và SIGINT, tương ứng là tín hiệu số 10 và số 2 trên Linux/x86.
@@ -920,6 +996,7 @@ Từ kết quả đầu ra ở trên, chúng ta có thể thấy rằng mặc d�
 Ngay cả khi một tiến trình không chặn tín hiệu, nó vẫn có thể nhận được ít tín hiệu hơn số lượng được gửi tới. Điều này có thể xảy ra nếu các tín hiệu được gửi quá nhanh đến mức chúng xuất hiện trước khi tiến trình nhận có cơ hội được kernel lên lịch thực thi (scheduled for execution), dẫn đến việc nhiều tín hiệu bị ghi nhận chỉ một lần duy nhất trong tập hợp tín hiệu đang chờ xử lý của tiến trình. Nếu chúng ta chạy chương trình trong [Liệt kê 20-7](#page-27-0) mà không có bất kỳ đối số dòng lệnh nào (để nó không chặn tín hiệu và không ngủ), chúng ta sẽ thấy kết quả sau:
 
 ```
+
 $ ./sig_receiver &
 [1] 5393
 ./sig_receiver: PID is 5393
@@ -928,6 +1005,7 @@ $ ./sig_sender 5393 1000000 10 2
 ./sig_sender: exiting
 ./sig_receiver: signal 10 caught 52 times
 [1]+ Done ./sig_receiver
+
 ```
 
 Trong số một triệu tín hiệu được gửi đi, chỉ có 52 tín hiệu được tiến trình nhận (receiving process) bắt được. (Con số chính xác các tín hiệu bắt được sẽ thay đổi tùy thuộc vào các yếu tố ngẫu nhiên từ thuật toán lập lịch của kernel (kernel scheduling algorithm)). Lý do cho hiện tượng này là mỗi lần chương trình gửi (sending program) được cấp lịch chạy, nó sẽ gửi nhiều tín hiệu đến tiến trình nhận. Tuy nhiên, chỉ có một trong các tín hiệu đó được đánh dấu là đang chờ xử lý (pending) và sau đó được chuyển giao (delivered) khi tiến trình nhận có cơ hội chạy.
@@ -935,60 +1013,69 @@ Trong số một triệu tín hiệu được gửi đi, chỉ có 52 tín hiệ
 **Listing 20-7:** Bắt và đếm các tín hiệu
 
 ```c
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––– signals/sig_receiver.c
+
 ## define _GNU_SOURCE
+
 ## include <signal.h>
+
 ## include "signal_functions.h" /* Declaration of printSigset() */
+
 ## include "tlpi_hdr.h"
-  static int sigCnt[NSIG]; /* Counts deliveries of each signal */
-  static volatile sig_atomic_t gotSigint = 0;
-   /* Set nonzero if SIGINT is delivered */
-  static void
+
+static int sigCnt[NSIG]; /* Counts deliveries of each signal */
+static volatile sig_atomic_t gotSigint = 0;
+/* Set nonzero if SIGINT is delivered */
+static void
 q handler(int sig)
-  {
+{
+
 ```
 
 ```
- if (sig == SIGINT)
-   gotSigint = 1;
-   else
-   sigCnt[sig]++;
-  }
-  int
-  main(int argc, char *argv[])
-  {
-   int n, numSecs;
-   sigset_t pendingMask, blockingMask, emptyMask;
-   printf("%s: PID is %ld\n", argv[0], (long) getpid());
+
+if (sig == SIGINT)
+gotSigint = 1;
+else
+sigCnt[sig]++;
+}
+int
+main(int argc, char *argv[])
+{
+int n, numSecs;
+sigset_t pendingMask, blockingMask, emptyMask;
+printf("%s: PID is %ld\n", argv[0], (long) getpid());
 w for (n = 1; n < NSIG; n++) /* Same handler for all signals */
-   (void) signal(n, handler); /* Ignore errors */
-   /* If a sleep time was specified, temporarily block all signals,
-   sleep (while another process sends us signals), and then
-   display the mask of pending signals and unblock all signals */
+(void) signal(n, handler); /* Ignore errors */
+/* If a sleep time was specified, temporarily block all signals,
+sleep (while another process sends us signals), and then
+display the mask of pending signals and unblock all signals */
 e if (argc > 1) {
-   numSecs = getInt(argv[1], GN_GT_0, NULL);
-   sigfillset(&blockingMask);
-   if (sigprocmask(SIG_SETMASK, &blockingMask, NULL) == -1)
-   errExit("sigprocmask");
-   printf("%s: sleeping for %d seconds\n", argv[0], numSecs);
-   sleep(numSecs);
-   if (sigpending(&pendingMask) == -1)
-   errExit("sigpending");
-   printf("%s: pending signals are: \n", argv[0]);
-   printSigset(stdout, "\t\t", &pendingMask);
-   sigemptyset(&emptyMask); /* Unblock all signals */
-   if (sigprocmask(SIG_SETMASK, &emptyMask, NULL) == -1)
-   errExit("sigprocmask");
-   }
+numSecs = getInt(argv[1], GN_GT_0, NULL);
+sigfillset(&blockingMask);
+if (sigprocmask(SIG_SETMASK, &blockingMask, NULL) == -1)
+errExit("sigprocmask");
+printf("%s: sleeping for %d seconds\n", argv[0], numSecs);
+sleep(numSecs);
+if (sigpending(&pendingMask) == -1)
+errExit("sigpending");
+printf("%s: pending signals are: \n", argv[0]);
+printSigset(stdout, "\t\t", &pendingMask);
+sigemptyset(&emptyMask); /* Unblock all signals */
+if (sigprocmask(SIG_SETMASK, &emptyMask, NULL) == -1)
+errExit("sigprocmask");
+}
 r while (!gotSigint) /* Loop until SIGINT caught */
-   continue;
+continue;
 t for (n = 1; n < NSIG; n++) /* Display number of signals received */
-   if (sigCnt[n] != 0)
-   printf("%s: signal %d caught %d time%s\n", argv[0], n,
-   sigCnt[n], (sigCnt[n] == 1) ? "" : "s");
-   exit(EXIT_SUCCESS);
-  }
-  –––––––––––––––––––––––––––––––––––––––––––––––––––– signals/sig_receiver.c
+if (sigCnt[n] != 0)
+printf("%s: signal %d caught %d time%s\n", argv[0], n,
+sigCnt[n], (sigCnt[n] == 1) ? "" : "s");
+exit(EXIT_SUCCESS);
+}
+–––––––––––––––––––––––––––––––––––––––––––––––––––– signals/sig_receiver.c
+
 ```
 
 ## 20.13 Thay đổi Thiết lập Xử lý Tín hiệu: sigaction()
@@ -996,9 +1083,12 @@ t for (n = 1; n < NSIG; n++) /* Display number of signals received */
 System call `sigaction()` là một giải pháp thay thế cho `signal()` dùng để thiết lập cách xử lý (disposition) một tín hiệu. Mặc dù `sigaction()` có phần phức tạp hơn khi sử dụng so với `signal()`, đổi lại nó mang lại tính linh hoạt cao hơn. Cụ thể, `sigaction()` cho phép chúng ta truy vấn cách xử lý hiện tại của một tín hiệu mà không làm thay đổi nó, cũng như thiết lập các thuộc tính khác nhau để kiểm soát chính xác những gì xảy ra khi một signal handler (trình xử lý tín hiệu) được gọi. Thêm vào đó, như chúng ta sẽ trình bày chi tiết hơn trong Mục 22.7, `sigaction()` có tính di động (portable) cao hơn `signal()` khi thiết lập một signal handler.
 
 ```c
+
 ## include <signal.h>
+
 int sigaction(int sig, const struct sigaction *act, struct sigaction *oldact);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Tham số `sig` xác định tín hiệu mà chúng ta muốn truy vấn hoặc thay đổi cách xử lý. Tham số này có thể là bất kỳ tín hiệu nào ngoại trừ `SIGKILL` hoặc `SIGSTOP`.
@@ -1006,13 +1096,15 @@ Tham số `sig` xác định tín hiệu mà chúng ta muốn truy vấn hoặc 
 Tham số `act` là một con trỏ trỏ đến một cấu trúc chỉ định cách xử lý mới cho tín hiệu. Nếu chúng ta chỉ quan tâm đến việc tìm kiếm cách xử lý hiện có của tín hiệu, chúng ta có thể truyền `NULL` cho tham số này. Tham số `oldact` là một con trỏ trỏ đến một cấu trúc cùng kiểu, và được sử dụng để trả về thông tin về cách xử lý trước đó của tín hiệu. Nếu chúng ta không quan tâm đến thông tin này, chúng ta có thể truyền `NULL` cho tham số này. Các cấu trúc mà `act` và `oldact` trỏ tới có kiểu như sau:
 
 ```
+
 struct sigaction {
- void (*sa_handler)(int); /* Địa chỉ của handler */
- sigset_t sa_mask; /* Các tín hiệu bị chặn trong quá trình
- thực thi handler */
- int sa_flags; /* Các cờ điều khiển việc thực thi handler */
- void (*sa_restorer)(void); /* Không dành cho ứng dụng sử dụng */
+void (*sa_handler)(int); /* Địa chỉ của handler */
+sigset_t sa_mask; /* Các tín hiệu bị chặn trong quá trình
+thực thi handler */
+int sa_flags; /* Các cờ điều khiển việc thực thi handler */
+void (*sa_restorer)(void); /* Không dành cho ứng dụng sử dụng */
 };
+
 ```
 
 Cấu trúc `sigaction` thực tế còn phức tạp hơn một chút so với đoạn mã hiển thị ở đây. Chúng ta sẽ xem xét các chi tiết xa hơn trong Mục 21.4.
@@ -1062,9 +1154,12 @@ Một ví dụ về việc sử dụng `sigaction()` được minh họa trong L
 Gọi hàm `pause()` sẽ tạm dừng thực thi tiến trình (Process) cho đến khi lệnh gọi bị ngắt bởi một trình xử lý tín hiệu (hoặc cho đến khi một tín hiệu không được xử lý làm chấm dứt tiến trình).
 
 ```c
+
 ## include <unistd.h>
+
 int pause(void);
-                                          Luôn trả về –1 với errno được thiết lập thành EINTR
+Luôn trả về –1 với errno được thiết lập thành EINTR
+
 ```
 
 Khi một tín hiệu được xử lý, `pause()` bị ngắt và luôn trả về –1 với `errno` được thiết lập thành `EINTR`. (Chúng tôi sẽ trình bày chi tiết hơn về lỗi `EINTR` trong Mục 21.5).

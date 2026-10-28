@@ -1,4 +1,4 @@
-# Chương 8. Giao thức Inter-Integrated Circuit
+# Chương 8: Giao thức Inter-Integrated Circuit (I2C Protocol)
 
 | Trong chương này                        |     |
 |-----------------------------------------|-----|
@@ -313,48 +313,53 @@ Liệt kê 8.4 hiện thực hóa `eep_probe()`, phương thức `probe()` của
 
 ### Listing 8.4. Kiểm tra sự tồn tại của các Bank EEPROM
 
-```
 ## include <linux/i2c.h>
+
 /* EEPROM có hai bank nhớ có địa chỉ lần lượt là SLAVE_ADDR1
- * và SLAVE_ADDR2
- */
+
+- và SLAVE_ADDR2
+*/
 static unsigned short normal_i2c[] = {
- SLAVE_ADDR1, SLAVE_ADDR2, I2C_CLIENT_END
+SLAVE_ADDR1, SLAVE_ADDR2, I2C_CLIENT_END
 };
 static struct i2c_client_address_data addr_data = {
- .normal_i2c = normal_i2c,
- .probe = ignore,
- .ignore = ignore,
- .forces = ignore,
+.normal_i2c = normal_i2c,
+.probe = ignore,
+.ignore = ignore,
+.forces = ignore,
 };
 static int
 eep_probe(struct i2c_adapter *adapter)
 {
- /* Hàm callback eep_attach() được minh họa
- * trong Listing 8.5
- */
- return i2c_probe(adapter, &addr_data, eep_attach);
+/* Hàm callback eep_attach() được minh họa
+
+- trong Listing 8.5
+*/
+return i2c_probe(adapter, &addr_data, eep_attach);
 }
+
 ```
 
 **Listing 8.5. Gắn kết một Client (Attaching a Client)**
 
 ```
+
 int
 eep_attach(struct i2c_adapter *adapter, int address, int kind)
 {
- static struct i2c_client *eep_client;
- eep_client = kmalloc(sizeof(*eep_client), GFP_KERNEL);
- eep_client->driver = &eep_driver; /* Đã đăng ký trong Listing 8.2 */
- eep_client->addr = address; /* Địa chỉ được phát hiện */
- eep_client->adapter = adapter; /* Host Adapter */
- eep_client->flags = 0;
- strlcpy(eep_client->name, "eep", I2C_NAME_SIZE);
- /* Điền thông tin vào các trường trong cấu trúc dữ liệu trên mỗi thiết bị (per-device) */
- /* ... */
- /* Gắn kết */
- i2c_attach_client(new_client);
+static struct i2c_client *eep_client;
+eep_client = kmalloc(sizeof(*eep_client), GFP_KERNEL);
+eep_client->driver = &eep_driver; /* Đã đăng ký trong Listing 8.2 */
+eep_client->addr = address; /* Địa chỉ được phát hiện */
+eep_client->adapter = adapter; /* Host Adapter */
+eep_client->flags = 0;
+strlcpy(eep_client->name, "eep", I2C_NAME_SIZE);
+/* Điền thông tin vào các trường trong cấu trúc dữ liệu trên mỗi thiết bị (per-device) */
+/* ... */
+/* Gắn kết */
+i2c_attach_client(new_client);
 }
+
 ```
 
 ## Kiểm tra năng lực của Adapter (Checking Adapter Capabilities)
@@ -375,32 +380,34 @@ Hãy tham khảo *include/linux/i2c.h* để biết danh sách các chức năng
 #### Listing 8.6. Đọc từ EEPROM
 
 ```
+
 ssize_t
 eep_read(struct file *file, char *buf,
- size_t count, loff_t *ppos)
+size_t count, loff_t *ppos)
 {
- int i, transferred, ret, my_buf[BANK_SIZE];
- /* Lấy cấu trúc dữ liệu client riêng cho bank này */
- struct ee_bank *my_bank =
- (struct ee_bank *)file->private_data;
- /* Kiểm tra xem chức năng smbus_read_word() có được hỗ trợ hay không */
- if (i2c_check_functionality(my_bank->client,
- I2C_FUNC_SMBUS_READ_WORD_DATA)) {
- /* Đọc dữ liệu */
- while (transferred < count) {
- ret = i2c_smbus_read_word_data(my_bank->client,
- my_bank->current_pointer+i);
- my_buf[i++] = (u8)(ret & 0xFF);
- my_buf[i++] = (u8)(ret >> 8);
- transferred += 2;
- }
- /* Sao chép dữ liệu sang user space và tăng con trỏ file nội bộ.
- Các bước kiểm tra tính hợp lệ được lược bỏ để đơn giản hóa */
- copy_to_user(buffer, (void *)my_buf, transferred);
- my_bank->current_pointer += transferred;
- }
- return transferred;
+int i, transferred, ret, my_buf[BANK_SIZE];
+/* Lấy cấu trúc dữ liệu client riêng cho bank này */
+struct ee_bank *my_bank =
+(struct ee_bank *)file->private_data;
+/* Kiểm tra xem chức năng smbus_read_word() có được hỗ trợ hay không */
+if (i2c_check_functionality(my_bank->client,
+I2C_FUNC_SMBUS_READ_WORD_DATA)) {
+/* Đọc dữ liệu */
+while (transferred < count) {
+ret = i2c_smbus_read_word_data(my_bank->client,
+my_bank->current_pointer+i);
+my_buf[i++] = (u8)(ret & 0xFF);
+my_buf[i++] = (u8)(ret >> 8);
+transferred += 2;
 }
+/* Sao chép dữ liệu sang user space và tăng con trỏ file nội bộ.
+Các bước kiểm tra tính hợp lệ được lược bỏ để đơn giản hóa */
+copy_to_user(buffer, (void *)my_buf, transferred);
+my_bank->current_pointer += transferred;
+}
+return transferred;
+}
+
 ```
 
 Việc ghi vào thiết bị cũng được thực hiện tương tự, ngoại trừ việc thay bằng hàm `i2c_smbus_write_XXX()`.
@@ -410,18 +417,22 @@ Một số chip EEPROM có bộ phát Nhận dạng Tần số Radio (Radio Freq
 Để truy cập các bank EEPROM từ user space, hãy phát triển các ứng dụng hoạt động trên */dev/eep/n*. Để kết xuất (dump) nội dung của các bank EEPROM, hãy sử dụng `od`:
 
 ```
+
 bash> od –a /dev/eep/0
 0000000 S E R # dc4 ff soh R P nul nul nul nul nul nul nul
 0000020 @ 1 3 R 1 1 5 3 Z J 1 V 1 L 4 6
 0000040 5 1 0 H sp 1 S 2 8 8 8 7 J U 9 9
+
 ```
 
 ```
+
 0000060 H 0 0 6 6 nul nul nul bs 3 8 L 5 0 0 3
 0000100 Z J 1 N U B 4 6 8 6 V 7 nul nul nul nul
 0000120 nul nul nul nul nul nul nul nul nul nul nul nul nul nul nul nul
 *
 0000400
+
 ```
 
 Như một bài tập thực hành, hãy thử sức sửa đổi driver EEPROM để tạo các giao diện */sys* cho các bank EEPROM thay vì các giao diện */dev*. Bạn có thể tái sử dụng mã nguồn từ Listing 5.7, "Sử dụng Sysfs để Điều khiển Bảng LED Song song" (Using Sysfs to Control the Parallel LED Board), trong Chương 5 để hỗ trợ bạn trong nỗ lực này.
@@ -436,7 +447,9 @@ Như một bài tập thực hành, hãy thử sức sửa đổi driver EEPROM 
 - Nếu bạn chọn biên dịch driver dưới dạng một module, bạn phải cung cấp phương thức `exit()` để hủy đăng ký thiết bị (unregister) và dọn dẹp các cấu trúc dữ liệu dành riêng cho client. Việc hủy đăng ký driver khỏi I2C Core chỉ cần một dòng lệnh duy nhất:
 
 ```
+
 i2c_del_driver(&eep_driver);
+
 ```
 
 ## Ví Dụ Về Thiết Bị: Đồng Hồ Thời Gian Thực (Real Time Clock)
@@ -444,16 +457,19 @@ i2c_del_driver(&eep_driver);
 Bây giờ chúng ta hãy lấy ví dụ về một chip RTC được kết nối với bộ điều khiển nhúng (embedded controller) thông qua bus I2C. Sơ đồ kết nối được thể hiện trong Hình 8.3.
 
 ```
+
 +-------------------+         I²C Bus (SDA/SCL)          +---------+
+
 | Embedded          | <================================> |   RTC   |
 | Controller        |                                    +---------+
 +-------------------+                                         |
-                                                              | Battery Backup
-                                                              |
-                                                             ===
-                                                             GND
+| Battery Backup
+|
+===
+GND
 
-                             [RTC cũng có một chân đầu ra CLK ở phía dưới được dán nhãn "CLK"]
+[RTC cũng có một chân đầu ra CLK ở phía dưới được dán nhãn "CLK"]
+
 ```
 
 **Hình 8.3. Một I2C RTC trên hệ thống nhúng.**
@@ -481,9 +497,9 @@ Khởi động RTC (nếu nó chưa chạy) bằng cách bật các bit thích h
 Để làm điều này, hãy xây dựng một `i2c_msg` và tạo ra các giao dịch I2C (I2C transaction) trên bus bằng cách sử dụng `i2c_transfer()`. Cơ chế truyền dữ liệu này là độc quyền của I2C và không tương thích với SMBus. Để ghi vào hai thanh ghi RTC được đề cập trước đó, bạn phải xây dựng hai thông điệp `i2c_msg`. Thông điệp đầu tiên thiết lập offset của thanh ghi. Trong trường hợp của chúng ta, nó là `3`, là offset của `RTC_STATUS_REG`. Thông điệp thứ hai mang số lượng byte mong muốn đến offset được chỉ định. Trong ngữ cảnh này, nó truyền 2 byte, mỗi byte lần lượt cho `RTC_STATUS_REG` và `RTC_CONTROL_REG`.
 
 ```
-```
 
 ```
+
 ## include <linux/i2c.h> /* Cho struct i2c_msg */
 int
 myrtc_attach(struct i2c_adapter *adapter, int addr, int kind)
@@ -558,7 +574,7 @@ RTC thường lưu trữ thời gian ở dạng *Binary Coded Decimal* (BCD), tr
 
 Hãy tham khảo *drivers/rtc/rtc-ds1307.c* để xem ví dụ về một RTC driver xử lý dòng chip I2C RTC DS13XX của Dallas/Maxim.
 
-Là một bus 2 dây (2-wire bus), bus I2C không có đường yêu cầu ngắt (interrupt request line) mà các thiết bị tớ (slave devices) có thể kích hoạt, nhưng một số bộ điều khiển chính (host adapters) I<sup>2</sup>C có khả năng ngắt bộ vi xử lý để báo hiệu việc hoàn tất các yêu cầu truyền dữ liệu. Tuy nhiên, hoạt động điều khiển bằng ngắt (interrupt-driven) này hoàn toàn trong suốt (transparent) đối với các I2C client driver và được ẩn bên trong các hàm dịch vụ do I2C core cung cấp. Giả sử rằng bộ điều khiển chính I2C (I2C host controller) nằm trong SoC nhúng ở Hình 8.3 có khả năng ngắt bộ xử lý, việc gọi `i2c_transfer()` trong `myrtc_attach()` có thể đang thực hiện cácσ công việc sau dưới gầm máy (under the hood):
+Là một bus 2 dây (2-wire bus), bus I2C không có đường yêu cầu ngắt (interrupt request line) mà các thiết bị tớ (slave devices) có thể kích hoạt, nhưng một số bộ điều khiển chính (host adapters) I<sup>2</sup>C có khả năng ngắt bộ vi xử lý để báo hiệu việc hoàn tất các yêu cầu truyền dữ liệu. Tuy nhiên, hoạt động điều khiển bằng ngắt (interrupt-driven) này hoàn toàn trong suốt (transparent) đối với các I2C client driver và được ẩn bên trong các hàm dịch vụ do I2C core cung cấp. Giả sử rằng bộ điều khiển chính I2C (I2C host controller) nằm trong SoC nhúng ở Hình 8.3 có khả năng ngắt bộ xử lý, việc gọi `i2c_transfer()` trong `myrtc_attach()` có thể đang thực hiện các công việc sau bên dưới tầng hệ thống (under the hood):
 
 - Xây dựng một giao dịch (transaction) tương ứng với `rtc_msg[0]` và ghi nó lên bus sử dụng các dịch vụ của trình điều khiển thiết bị bộ điều khiển chính (host controller device driver).
 - Chờ cho đến khi bộ điều khiển chính khẳng định (assert) một ngắt hoàn thành truyền dữ liệu (transmit complete interrupt) báo hiệu rằng `rtc_msg[0]` hiện đang nằm trên đường truyền (wire).
@@ -597,6 +613,15 @@ Kernel cung cấp một core API để trao đổi các thông điệp qua bus S
 ## include <linux/spi/spi.h>
 
 static struct spi_driver myspi_driver = {
+
+## include <linux/spi/spi.h>
+
+struct spi_device *spi; /* Biểu diễn của một
+REPLACE:
+
+## include <linux/spi/spi.h>
+
+struct spi_device *spi; /* Biểu diễn của một
 .driver = {
 .name = "myspi",
 .bus = &spi_bus_type,

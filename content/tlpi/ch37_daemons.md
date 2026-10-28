@@ -1,4 +1,4 @@
-# Chương 37: TIẾN TRÌNH NỀN (DAEMONS)
+# Chương 37: Tiến trình nền (Daemons)
 
 Chương này khảo sát các đặc điểm của tiến trình nền (daemon process) và xem xét các bước cần thiết để biến một tiến trình thành một daemon. Chúng ta cũng sẽ tìm hiểu cách ghi log các thông điệp từ một daemon bằng cách sử dụng tiện ích `syslog`.
 
@@ -20,6 +20,7 @@ Nhiều daemon chuẩn chạy dưới dạng các tiến trình có đặc quy�
 
 Có một quy ước (không phải lúc nào cũng tuân thủ phổ biến) rằng các daemon có tên kết thúc bằng chữ cái `d`.
 
+> [!NOTE]
 > Trên Linux, một số daemon chạy dưới dạng các luồng nhân (kernel thread). Mã nguồn của các daemon như vậy là một phần của kernel và chúng thường được tạo ra trong quá trình khởi động hệ thống. Khi được liệt kê bằng lệnh `ps(1)`, tên của các daemon này được đặt trong dấu ngoặc vuông ([]). Một ví dụ về kernel thread là `pdflush`, có nhiệm vụ định kỳ xả (flush) các trang bẩn (dirty pages, ví dụ: các trang từ bộ đệm `buffer cache`) xuống đĩa.
 
 ## 37.2 Tạo một Daemon
@@ -50,7 +51,7 @@ Một số bản cài đặt UNIX (ví dụ: Solaris 9 và một số phiên b�
 
 Bây giờ chúng ta sẽ trình bày việc hiện thực một hàm, becomeDaemon(), thực hiện các bước được mô tả ở trên nhằm biến tiến trình gọi (caller) thành một daemon.
 
-```
+```c
 ## include <syslog.h>
 int becomeDaemon(int flags);
                                              Trả về 0 khi thành công, hoặc –1 khi lỗi
@@ -58,7 +59,7 @@ int becomeDaemon(int flags);
 
 Hàm becomeDaemon() nhận một tham số mặt nạ bit (bit-mask), flags, cho phép tiến trình gọi chọn lọc việc vô hiệu hóa một số bước, như được mô tả trong phần chú thích ở tệp tiêu đề (header file) trong [Listing 37-1](#page-37-0).
 
-```
+```c
 ––––––––––––––––––––––––––––––––––––––––––––––––––– daemons/become_daemon.h
 ## ifndef BECOME_DAEMON_H /* Ngăn chặn việc include nhiều lần */
 ## define BECOME_DAEMON_H
@@ -68,7 +69,7 @@ Hàm becomeDaemon() nhận một tham số mặt nạ bit (bit-mask), flags, cho
 ## define BD_NO_REOPEN_STD_FDS 04 /* Không mở lại stdin, stdout, và
  stderr vào /dev/null */
 ## define BD_NO_UMASK0 010 /* Không thực hiện umask(0) */
-## define BD_MAX_CLOSE 8192 /* Số lượng bộ mô tả tệp tối đa cần đóng nếu
+## define BD_MAX_CLOSE 8192 /* Số lượng file descriptor tối đa cần đóng nếu
  sysconf(_SC_OPEN_MAX) không xác định */
 int becomeDaemon(int flags);
 ## endif
@@ -81,7 +82,7 @@ Thư viện chuẩn C của GNU cung cấp một hàm phi chuẩn, daemon(), bi�
 
 **Listing 37-2:** Tạo một tiến trình daemon
 
-```
+```c
 ––––––––––––––––––––––––––––––––––––––––––––––––––– daemons/become_daemon.c
 ## include <sys/stat.h>
 ## include <fcntl.h>
@@ -105,7 +106,7 @@ becomeDaemon(int flags)
  }
 ```
 
-```
+```c
  if (!(flags & BD_NO_UMASK0))
  umask(0); /* Xóa mặt nạ tạo chế độ tệp (file mode creation mask) */
  if (!(flags & BD_NO_CHDIR))
@@ -118,7 +119,7 @@ becomeDaemon(int flags)
  close(fd);
  }
  if (!(flags & BD_NO_REOPEN_STD_FDS)) {
- close(STDIN_FILENO); /* Mở lại các bộ mô tả chuẩn tới /dev/null */
+ close(STDIN_FILENO); /* Mở lại các file descriptor chuẩn tới /dev/null */
  fd = open("/dev/null", O_RDWR);
  if (fd != STDIN_FILENO) /* 'fd' phải là 0 */
  return -1;
@@ -160,14 +161,16 @@ Việc nhiều daemon phải chạy liên tục đặt ra một vài rào cản 
 - Thông thường, một daemon đọc các tham số vận hành từ một tệp cấu hình (configuration file) liên kết khi khởi động. Đôi khi, chúng ta mong muốn có thể thay đổi các tham số này "khi đang chạy" (on the fly), mà không cần phải dừng và khởi động lại daemon.
 - Một số daemon tạo ra các tệp nhật ký (log file). Nếu daemon không bao giờ đóng tệp log, thì nó có thể phát triển vô hạn, cuối cùng làm nghẽn hệ thống tệp (file system). (Trong Mục 18.3, chúng ta đã lưu ý rằng ngay cả khi chúng ta xóa tên cuối cùng của một tệp, tệp đó vẫn tiếp tục tồn tại miễn là có bất kỳ tiến trình nào đang mở nó). Điều chúng ta cần là một cách để ra lệnh cho daemon đóng tệp log của nó và mở một tệp mới, để chúng ta có thể xoay vòng tệp log (rotate log files) theo yêu cầu.
 
-Giải pháp cho cả hai vấn đề này là để daemon thiết lập một trình xử lý cho `SIGTERM` hoặc `SIGHUP` (chỉnh sửa: `SIGHUP`), và thực hiện các bước cần thiết khi nhận được tín hiệu này. Trong Mục 34.4, chúng ta đã lưu ý rằng `SIGHUP` được sinh ra cho tiến trình điều khiển (controlling process) khi ngắt kết nối khỏi thiết bị đầu cuối điều khiển (controlling terminal). Vì daemon không có thiết bị đầu cuối điều khiển, kernel không bao giờ sinh tín hiệu này cho một daemon. Do đó, các daemon có thể sử dụng `SIGHUP` cho mục đích được mô tả ở đây.
+Giải pháp cho cả hai vấn đề này là để daemon thiết lập một trình xử lý tín hiệu cho `SIGHUP`, và thực hiện các bước cần thiết khi nhận được tín hiệu này. Trong Mục 34.4, chúng ta đã lưu ý rằng `SIGHUP` được sinh ra cho tiến trình điều khiển (controlling process) khi ngắt kết nối khỏi thiết bị đầu cuối điều khiển (controlling terminal). Vì daemon không có thiết bị đầu cuối điều khiển, kernel không bao giờ sinh tín hiệu này cho một daemon. Do đó, các daemon có thể sử dụng `SIGHUP` cho mục đích được mô tả ở đây.
 
+> [!NOTE]
 > Chương trình `logrotate` có thể được sử dụng để tự động hóa việc xoay vòng tệp log của daemon. Xem trang hướng dẫn sử dụng (manual page) `logrotate(8)` để biết thêm chi tiết.
 
 [Danh sách 37-3](#page-41-0) cung cấp một ví dụ về cách một daemon có thể sử dụng `SIGHUP`. Chương trình này thiết lập một trình xử lý cho `SIGHUP` w, trở thành một daemon e, mở tệp log r, và đọc tệp cấu hình của nó t. Trình xử lý `SIGHUP` q chỉ thiết lập một biến cờ toàn cục (global flag variable), `hupReceived`, biến này được kiểm tra bởi chương trình chính. Chương trình chính nằm trong một vòng lặp, in thông báo ra tệp log cứ sau 15 giây i. Các lệnh gọi hàm `sleep()` y trong vòng lặp này nhằm mô phỏng một loại xử lý nào đó được thực hiện bởi một ứng dụng thực tế. Sau mỗi lần trả về từ `sleep()` trong vòng lặp này, chương trình kiểm tra xem `hupReceived` đã được thiết lập hay chưa u; nếu có, nó sẽ mở lại tệp log, đọc lại tệp cấu hình và xóa cờ `hupReceived`.
 
 Để ngắn gọn, các hàm `logOpen()`, `logClose()`, `logMessage()` và `readConfigFile()` được lược bỏ khỏi [Danh sách 37-3](#page-41-0), nhưng được cung cấp cùng với bản phân phối mã nguồn của cuốn sách này. Ba hàm đầu tiên thực hiện những gì chúng ta mong đợi từ tên của chúng. Hàm `readConfigFile()` đơn giản là đọc một dòng từ tệp cấu hình và lặp lại (echo) nó vào tệp log.
 
+> [!NOTE]
 > Một số daemon sử dụng một phương pháp thay thế để khởi động lại chính chúng khi nhận được `SIGHUP`: chúng đóng tất cả các tệp và sau đó tự khởi động lại bằng lệnh gọi `exec()`.
 
 Dưới đây là một ví dụ về những gì chúng ta có thể thấy khi chạy chương trình trong [Danh sách 37-3](#page-41-0). Chúng ta bắt đầu bằng cách tạo một tệp cấu hình giả (dummy configuration file) và sau đó khởi chạy daemon:
@@ -211,62 +214,67 @@ $ killall daemon_SIGHUP Kill our daemon
 
 Lưu ý rằng các tệp log và tệp cấu hình của một daemon thường được đặt trong các thư mục tiêu chuẩn, chứ không phải trong thư mục `/tmp` như trong chương trình ở [Liệt kê 37-3.](#page-41-0) Theo quy ước, các tệp cấu hình được đặt trong `/etc` hoặc một trong các thư mục con của nó, trong khi các tệp log thường được đặt trong `/var/log`. Các chương trình daemon thường cung cấp các tùy chọn dòng lệnh (command-line option) để chỉ định các vị trí thay thế thay cho các giá trị mặc định.
 
-**Liệt kê 37-3:** Sử dụng `SIGHUP` để khởi初始化 (reinitialize) một daemon
+**Liệt kê 37-3:** Sử dụng `SIGHUP` để tái khởi tạo (reinitialize) một daemon
 
-```
+```c
 ––––––––––––––––––––––––––––––––––––––––––––––––––– daemons/daemon_SIGHUP.c
 ## include <sys/stat.h>
 ## include <signal.h>
 ## include "become_daemon.h"
 ## include "tlpi_hdr.h"
-  static const char *LOG_FILE = "/tmp/ds.log";
-  static const char *CONFIG_FILE = "/tmp/ds.conf";
-  /* Các định nghĩa của logMessage(), logOpen(), logClose(), và
-   readConfigFile() được lược bỏ khỏi đoạn mã này */
-  static volatile sig_atomic_t hupReceived = 0;
-   /* Được thiết lập khác 0 khi nhận được SIGHUP */
-   from
-  static void
-  sighupHandler(int sig)
-  {
+```
+
+static const char *LOG_FILE = "/tmp/ds.log";
+static const char *CONFIG_FILE = "/tmp/ds.conf";
+/* Các định nghĩa của logMessage(), logOpen(), logClose(), và
+readConfigFile() được lược bỏ khỏi đoạn mã này */
+static volatile sig_atomic_t hupReceived = 0;
+/* Được thiết lập khác 0 khi nhận được SIGHUP */
+from
+static void
+sighupHandler(int sig)
+{
 q hupReceived = 1;
-  }
-  int
-  main(int argc, char *argv[])
-  {
-   const int SLEEP_TIME = 15; /* Thời gian ngủ giữa các thông điệp */
-   int count = 0; /* Số khoảng thời gian SLEEP_TIME đã hoàn thành */
-   int unslept; /* Thời gian còn lại trong khoảng thời gian ngủ */
-   struct sigaction sa;
-   sigemptyset(&sa.sa_mask);
-   sa.sa_flags = SA_RESTART;
-   sa.sa_handler = sighupHandler;
+}
+int
+main(int argc, char *argv[])
+{
+const int SLEEP_TIME = 15; /* Thời gian ngủ giữa các thông điệp */
+int count = 0; /* Số khoảng thời gian SLEEP_TIME đã hoàn thành */
+int unslept; /* Thời gian còn lại trong khoảng thời gian ngủ */
+struct sigaction sa;
+sigemptyset(&sa.sa_mask);
+sa.sa_flags = SA_RESTART;
+sa.sa_handler = sighupHandler;
 w if (sigaction(SIGHUP, &sa, NULL) == -1)
-   errExit("sigaction");
+errExit("sigaction");
 e if (becomeDaemon(0) == -1)
-   errExit("becomeDaemon");
+errExit("becomeDaemon");
 r logOpen(LOG_FILE);
 t readConfigFile(CONFIG_FILE);
-   unslept = SLEEP_TIME;
-   for (;;) {
+unslept = SLEEP_TIME;
+for (;;) {
 y unslept = sleep(unslept); /* Trả về > 0 nếu bị ngắt */
 u if (hupReceived) { /* Nếu chúng ta nhận được SIGHUP... */
-   logClose();
+logClose();
+
 ```
 
 ```
- logOpen(LOG_FILE);
-   readConfigFile(CONFIG_FILE);
-   hupReceived = 0; /* Chuẩn bị cho SIGHUP tiếp theo */
-   }
-   if (unslept == 0) { /* Khi hoàn thành khoảng thời gian */
-   count++;
+
+logOpen(LOG_FILE);
+readConfigFile(CONFIG_FILE);
+hupReceived = 0; /* Chuẩn bị cho SIGHUP tiếp theo */
+}
+if (unslept == 0) { /* Khi hoàn thành khoảng thời gian */
+count++;
 i logMessage("Main: %d", count);
-   unslept = SLEEP_TIME; /* Đặt lại khoảng thời gian */
-   }
-   }
-  }
-  ––––––––––––––––––––––––––––––––––––––––––––––––––– daemons/daemon_SIGHUP.c
+unslept = SLEEP_TIME; /* Đặt lại khoảng thời gian */
+}
+}
+}
+––––––––––––––––––––––––––––––––––––––––––––––––––– daemons/daemon_SIGHUP.c
+
 ```
 
 ## 37.5 Ghi Log Thông Điệp và Lỗi Sử Dụng syslog
@@ -278,16 +286,18 @@ Khi viết một daemon, một vấn đề chúng ta gặp phải là làm thế
 Tiện ích syslog cung cấp một hệ thống ghi nhật ký (logging) tập trung duy nhất, có thể được sử dụng để ghi lại các thông điệp bởi tất cả các ứng dụng trên hệ thống. Tổng quan về tiện ích này được trình bày tại [Hình 37-1.](#page-42-0)
 
 ```mermaid
+
 flowchart TB
-    Kernel["Kernel"] -- printk() --> klogd["klogd"]
-    Kernel -. syslog(2), /proc/kmsg .-> klogd
-    klogd -- syslog(3) --> unixSocket["/dev/log\nUnix domain\ndatagram socket"]
-    UserProcess["User process"] -- syslog(3) --> unixSocket
-    RemoteProcess["Process on\nremote host"] -. TCP/IP network .-> udpSocket["UDP port 514\nInternet domain\ndatagram socket"]
-    unixSocket --> syslogd["syslogd"]
-    udpSocket --> syslogd
-    configFile(["Configuration file\nsyslog.conf"]) -.-> syslogd
-    syslogd --> Terminal["Terminal / console"] & FIFO["FIFO"] & DiskFile["Disk file"] & RemoteHost["Remote host"] & LoggedInUser["Logged-i nuser"]
+Kernel["Kernel"] -- printk() --> klogd["klogd"]
+Kernel -. syslog(2), /proc/kmsg .-> klogd
+klogd -- syslog(3) --> unixSocket["/dev/log\nUnix domain\ndatagram socket"]
+UserProcess["User process"] -- syslog(3) --> unixSocket
+RemoteProcess["Process on\nremote host"] -. TCP/IP network .-> udpSocket["UDP port 514\nInternet domain\ndatagram socket"]
+unixSocket --> syslogd["syslogd"]
+udpSocket --> syslogd
+configFile(["Configuration file\nsyslog.conf"]) -.-> syslogd
+syslogd --> Terminal["Terminal / console"] & FIFO["FIFO"] & DiskFile["Disk file"] & RemoteHost["Remote host"] & LoggedInUser["Logged-i nuser"]
+
 ```
 
 **Hình 37-1:** Tổng quan về hệ thống ghi nhật ký (system logging)
@@ -325,8 +335,11 @@ Không có hàm nào trong số này trả về giá trị trạng thái. Một 
 Hàm openlog() tùy chọn thiết lập kết nối tới cơ chế nhật ký hệ thống (system log facility) và thiết lập các giá trị mặc định áp dụng cho các lời gọi syslog() tiếp theo.
 
 ```c
+
 ## include <syslog.h>
+
 void openlog(const char *ident, int log_options, int facility);
+
 ```
 
 Đối số ident là một con trỏ trỏ tới chuỗi được đính kèm trong mỗi thông điệp được ghi bởi syslog(); thông thường, tên chương trình được chỉ định cho đối số này. Lưu ý rằng openlog() chỉ đơn thuần sao chép giá trị của con trỏ này. Miễn là nó vẫn tiếp tục gọi syslog(), ứng dụng phải đảm bảo rằng chuỗi được tham chiếu không bị thay đổi sau đó.
@@ -336,7 +349,9 @@ void openlog(const char *ident, int log_options, int facility);
 Đối số log\_options của openlog() là một mặt nạ bit (bit mask) được tạo bằng cách thực hiện phép toán OR các hằng số sau lại với nhau:
 
 ```c
+
 LOG_CONS
+
 ```
 
 Nếu có lỗi xảy ra khi gửi đến bộ ghi nhật ký hệ thống, hãy ghi thông điệp đó ra bảng điều khiển hệ thống (system console) (/dev/console).
@@ -391,9 +406,12 @@ Giá trị facility `LOG_KERN` được sử dụng cho các thông điệp củ
 
 Để ghi một thông điệp nhật ký, chúng ta gọi hàm `syslog()`.
 
-```
+```c
+
 ## include <syslog.h>
+
 void syslog(int priority, const char *format, ...);
+
 ```
 
 Tham số `priority` được tạo bằng cách thực hiện phép toán OR kết hợp giữa một giá trị facility và một giá trị level. Facility cho biết danh mục chung của ứng dụng đang ghi nhật ký và được chỉ định là một trong các giá trị được liệt kê trong Bảng 37-1. Nếu bị bỏ qua, facility sẽ nhận giá trị mặc định được chỉ định trong lời gọi `openlog()` trước đó, hoặc nhận `LOG_USER` nếu lời gọi đó bị bỏ qua. Giá trị level cho biết mức độ nghiêm trọng của thông điệp và được chỉ định là một trong các giá trị trong [Bảng 37-2.](#page-46-0) Tất cả các giá trị level được liệt kê trong bảng này đều có trong chuẩn SUSv3.
@@ -416,9 +434,11 @@ Các tham số còn lại của `syslog()` bao gồm một chuỗi định dạn
 Đoạn mã sau minh họa việc sử dụng `openlog()` và `syslog()`:
 
 ```
+
 openlog(argv[0], LOG_PID | LOG_CONS | LOG_NOWAIT, LOG_LOCALO);
 syslog(LOG_ERROR, "Bad argument: %s", argv[1]);
 syslog(LOG_USER | LOG_INFO, "Exiting");
+
 ```
 
 Vì không có facility nào được chỉ định trong lời gọi `syslog()` đầu tiên, giá trị mặc định do `openlog()` chỉ định (`LOG_LOCAL0`) sẽ được sử dụng. Trong lời gọi `syslog()` thứ hai, việc chỉ định rõ ràng `LOG_USER` sẽ ghi đè lên giá trị mặc định được thiết lập bởi `openlog()`.
@@ -428,22 +448,29 @@ Vì không có facility nào được chỉ định trong lời gọi `syslog()`
 Việc sử dụng `syslog()` để ghi một chuỗi do người dùng cung cấp theo cách sau đây là một lỗi:
 
 ```
+
 syslog(priority, user_supplied_string);
+
 ```
 
 Vấn đề với đoạn mã này là nó khiến ứng dụng gặp rủi ro trước cái gọi là các cuộc tấn công lỗi định dạng chuỗi (format-string attacks). Nếu chuỗi do người dùng cung cấp chứa các bộ chỉ định định dạng (ví dụ: `%s`), thì kết quả sẽ không thể đoán trước và từ góc độ bảo mật, có khả năng gây nguy hiểm. (Quan sát tương tự cũng áp dụng cho việc sử dụng hàm `printf()` thông thường). Thay vào đó, chúng ta nên viết lại lời gọi trên như sau:
 
 ```
+
 syslog(priority, "%s", user_supplied_string);
+
 ```
 
 ### Đóng bản ghi nhật ký (Closing the log)
 
 Khi đã hoàn tất việc ghi nhật ký (logging), chúng ta có thể gọi `closelog()` để giải phóng (deallocate) file descriptor được sử dụng cho socket `/dev/log`.
 
-```
+```c
+
 ## include <syslog.h>
+
 void closelog(void);
+
 ```
 
 Vì một tiến trình nền (daemon) thường duy trì kết nối liên tục đến system log, nên việc bỏ qua lời gọi `closelog()` là một thực tiễn phổ biến.
@@ -452,10 +479,13 @@ Vì một tiến trình nền (daemon) thường duy trì kết nối liên tụ
 
 Hàm `setlogmask()` thiết lập một mặt nạ (mask) dùng để lọc các thông điệp được ghi bởi `syslog()`.
 
-```
+```c
+
 ## include <syslog.h>
+
 int setlogmask(int mask_priority);
-                                              Trả về mặt nạ độ ưu tiên log trước đó
+Trả về mặt nạ độ ưu tiên log trước đó
+
 ```
 
 Bất kỳ thông điệp nào có mức độ không nằm trong cài đặt mặt nạ hiện tại sẽ bị loại bỏ. Giá trị mặt nạ mặc định cho phép tất cả các mức độ nghiêm trọng (severity levels) được ghi lại.
@@ -463,14 +493,18 @@ Bất kỳ thông điệp nào có mức độ không nằm trong cài đặt m�
 Macro `LOG_MASK()` (được định nghĩa trong `<syslog.h>`) chuyển đổi các giá trị mức độ của [Bảng 37-2](#page-46-0) thành các giá trị bit thích hợp để truyền vào `setlogmask()`. Ví dụ, để loại bỏ tất cả các thông điệp ngoại trừ những thông điệp có độ ưu tiên từ `LOG_ERR` trở lên, chúng ta sẽ thực hiện lời gọi sau:
 
 ```
+
 setlogmask(LOG_MASK(LOG_EMERG) | LOG_MASK(LOG_ALERT) |
- LOG_MASK(LOG_CRIT) | LOG_MASK(LOG_ERR));
+LOG_MASK(LOG_CRIT) | LOG_MASK(LOG_ERR));
+
 ```
 
 Macro `LOG_MASK()` được quy định bởi SUSv3. Hầu hết các cài đặt UNIX (bao gồm cả Linux) cũng cung cấp macro không chuẩn hóa `LOG_UPTO()`, tạo ra một mặt nạ bit lọc tất cả các thông điệp từ một mức độ nhất định trở lên. Sử dụng macro này, chúng ta có thể đơn giản hóa lời gọi `setlogmask()` trước đó thành:
 
 ```
+
 setlogmask(LOG_UPTO(LOG_ERR));
+
 ```
 
 ### 37.5.3 Tệp /etc/syslog.conf
@@ -478,15 +512,19 @@ setlogmask(LOG_UPTO(LOG_ERR));
 Tệp cấu hình `/etc/syslog.conf` điều khiển hoạt động của tiến trình nền `syslogd`. Tệp này bao gồm các quy tắc và chú thích (bắt đầu bằng ký tự `#`). Các quy tắc có dạng tổng quát sau:
 
 ```
+
 facility.level action
+
 ```
 
 Kết hợp lại, `facility` (lĩnh vực/nguồn) và `level` (mức độ) được gọi là bộ lựa chọn (selector), vì chúng chọn ra các thông điệp mà quy tắc đó áp dụng. Các trường này là chuỗi ký tự tương ứng với các giá trị được liệt kê trong Bảng 37-1 và [Bảng 37-2.](#page-46-0) Trường `action` (hành động) chỉ định nơi gửi các thông điệp khớp với bộ lựa chọn này. Khoảng trắng được dùng để phân tách phần bộ lựa chọn và phần hành động của một quy tắc. Dưới đây là các ví dụ về quy tắc:
 
 ```
+
 *.err /dev/tty10
 auth.notice root
 *.debug;mail.none;news.none -/var/log/messages
+
 ```
 
 Quy tắc đầu tiên nêu rằng các thông điệp từ mọi lĩnh vực (`*`) có mức độ từ `err` (`LOG_ERR`) trở lên phải được gửi đến thiết bị console `/dev/tty10`. Quy tắc thứ hai nêu rằng các thông điệp từ lĩnh vực xác thực (`LOG_AUTH`) có mức độ từ `notice` (`LOG_NOTICE`) trở lên phải được gửi đến bất kỳ console hoặc terminal nào mà người dùng `root` đang đăng nhập. Quy tắc cụ thể này sẽ cho phép một người dùng `root` đã đăng nhập có thể ngay lập tức nhìn thấy các thông điệp về các lần cố gắng thực hiện lệnh `su` thất bại chẳng hạn.
@@ -497,11 +535,10 @@ Bất cứ khi nào chúng ta thay đổi tệp `syslog.conf`, chúng ta phải 
 
 $ **killall -HUP syslogd** Gửi tín hiệu SIGHUP đến syslogd
 
-Các tính năng bổ sung của cú pháp quy tắc trong `syslog.conf` cho phép tạo ra các quy tắc mạnh mẽ hơn nhiều so với những gì chúng ta đã trình bày. Chi tiết đầy đủ được cung cấp trong trang hướng dẫn thủ công (man page) `syslog.conf(5)`.
-
-```
+Các tính năng bổ sung của cú pháp quy tắc trong `syslog.conf` cho phép tạo ra các quy tắc mạnh mẽ hơn nhiều so với những gì chúng ta đã trình bày. Chi tiết đầy đủ được cung cấp trong trang hướng dẫn sử dụng (man page) `syslog.conf(5)`.
 
 ## 37.6 Tổng kết
+```
 
 Daemon là một tiến trình chạy lâu dài (long-lived process) không có terminal điều khiển (tức là nó chạy ở chế độ nền - background). Các daemon thực hiện các tác vụ cụ thể, chẳng hạn như cung cấp tiện ích đăng nhập mạng hoặc phục vụ các trang web. Để trở thành một daemon, chương trình thực hiện một chuỗi các bước tiêu chuẩn, bao gồm các lời gọi đến `fork()` và `setsid()`.
 

@@ -1,4 +1,4 @@
-# Chương 33: LUỒNG: CÁC CHI TIẾT NÂNG CAO
+# Chương 33: Luồng: Các chi tiết bổ sung (Threads: Further Details)
 
 Chương này cung cấp thêm chi tiết về nhiều khía cạnh khác nhau của POSIX threads (Pthreads). Chúng ta sẽ thảo luận về sự tương tác giữa các luồng (thread) với các khía cạnh của API UNIX truyền thống—đặc biệt là tín hiệu (signal) và các nguyên thủy điều khiển tiến trình (`fork()`, `exec()`, và `_exit()`). Chúng ta cũng sẽ tổng quan về hai cài đặt POSIX threads có sẵn trên Linux—LinuxThreads và NPTL—đồng thời lưu ý những điểm mà mỗi cài đặt này lệch so với đặc tả SUSv3 của Pthreads.
 
@@ -6,7 +6,7 @@ Chương này cung cấp thêm chi tiết về nhiều khía cạnh khác nhau c
 
 Mỗi luồng có stack (vùng ngăn xếp) riêng với kích thước được cố định khi luồng được tạo. Trên Linux/x86-32, đối với tất cả các luồng ngoại trừ luồng chính (main thread), kích thước mặc định của stack cho mỗi luồng là 2 MB. (Trên một số kiến trúc 64-bit, kích thước mặc định lớn hơn; ví dụ, nó là 32 MB trên IA-64). Luồng chính có không gian lớn hơn nhiều cho sự phát triển của stack (tham khảo [Hình 29-1](#page-1-1), trang [618\)](#page-1-1)).
 
-Thỉnh thoảng, việc thay đổi kích thước stack của một luồng là hữu ích. Hàm `pthread_attr_setstacksize()` thiết lập một thuộc tính luồng (Mục [29.8\)](#page-11-2) để xác định kích thước stack trong các luồng được tạo bằng đối tượng thuộc tính luồng (thread attributes object). Hàm liên quan `pthread_attr_setstack()` có thể được sử dụng để kiểm soát cả kích thước lẫn vị trí của stack, nhưng việc thiết lập vị trí của stack có thể làm giảm khả năng diポート (portability) của ứng dụng. Các trang hướng dẫn sử dụng (man pages) cung cấp chi tiết về các hàm này.
+Thỉnh thoảng, việc thay đổi kích thước stack của một luồng là hữu ích. Hàm `pthread_attr_setstacksize()` thiết lập một thuộc tính luồng (Mục [29.8\)](#page-11-2) để xác định kích thước stack trong các luồng được tạo bằng đối tượng thuộc tính luồng (thread attributes object). Hàm liên quan `pthread_attr_setstack()` có thể được sử dụng để kiểm soát cả kích thước lẫn vị trí của stack, nhưng việc thiết lập vị trí của stack có thể làm giảm tính khả chuyển / tính di động (portability) của ứng dụng. Các trang hướng dẫn sử dụng (man pages) cung cấp chi tiết về các hàm này.
 
 Một lý do để thay đổi kích thước stack cho mỗi luồng là để cấp phát stack lớn hơn cho các luồng phân bổ các biến tự động (automatic variables) lớn hoặc thực hiện các lời gọi hàm lồng nhau với độ sâu lớn (có thể do đệ quy). Ngoài ra, một ứng dụng có thể muốn giảm kích thước stack cho mỗi luồng để cho phép số lượng luồng lớn hơn trong một tiến trình (process). Ví dụ, trên x86-32, nơi không gian địa chỉ ảo có thể truy cập bởi user space là 3 GB, kích thước stack mặc định là 2 MB có nghĩa là chúng ta có thể tạo tối đa khoảng 1500 luồng. (Mức tối đa chính xác phụ thuộc vào dung lượng bộ nhớ ảo bị tiêu thụ bởi các phân đoạn text và data, các thư viện chia sẻ, v.v.). Stack tối thiểu có thể được sử dụng trên một kiến trúc cụ thể có thể được xác định bằng cách gọi `sysconf(_SC_THREAD_STACK_MIN)`. Đối với cài đặt NPTL trên Linux/x86-32, lời gọi này trả về giá trị 16.384.
 
@@ -19,7 +19,7 @@ Mô hình tín hiệu UNIX được thiết kế dựa trên mô hình tiến tr
 
 Sự khác biệt giữa mô hình tín hiệu và mô hình luồng có nghĩa là việc kết hợp tín hiệu và luồng rất phức tạp, và nên tránh bất cứ khi nào có thể. Tuy nhiên, đôi khi chúng ta bắt buộc phải xử lý tín hiệu trong một chương trình đa luồng. Trong phần này, chúng ta thảo luận về sự tương tác giữa luồng và tín hiệu, đồng thời mô tả các hàm khác nhau hữu ích trong các chương trình đa luồng xử lý tín hiệu.
 
-### 33.2.1 Mô hình Tín hiệu UNIX Ánh xạ như thế nào vào các Tiến trình nhẹ (Threads)
+### 33.2.1 Mô hình Tín hiệu UNIX Ánh xạ vào Luồng (Threads) như thế nào
 
 Để hiểu cách các tín hiệu UNIX (UNIX signals) ánh xạ vào mô hình Pthreads, chúng ta cần biết khía cạnh nào của mô hình tín hiệu là mang tính toàn tiến trình (process-wide) — nghĩa là được chia sẻ bởi tất cả các thread trong tiến trình — trái ngược với những khía cạnh dành riêng cho từng thread riêng lẻ bên trong tiến trình. Danh sách sau đây tóm tắt các điểm chính:
 
@@ -45,41 +45,44 @@ Chính xác hơn, SUSv3 quy định rằng có một ngăn xếp tín hiệu tha
 
 Khi một luồng (thread) mới được tạo, nó sẽ kế thừa một bản sao mặt nạ tín hiệu (signal mask) của luồng đã tạo ra nó. Một luồng có thể sử dụng hàm `pthread_sigmask()` để thay đổi mặt nạ tín hiệu của chính nó, để lấy mặt nạ hiện tại, hoặc thực hiện cả hai việc.
 
-```
+```c
 ## include <signal.h>
 int pthread_sigmask(int how, const sigset_t *set, sigset_t *oldset);
-                       Trả về 0 khi thành công, hoặc một số lỗi dương khi thất bại
+                       Trả về 0 khi thành công, hoặc một số mã lỗi dương khi thất bại
 ```
 
 Ngoại trừ việc nó thao tác trên mặt nạ tín hiệu của luồng, cách sử dụng của `pthread_sigmask()` hoàn toàn giống với `sigprocmask()` (Mục 20.10).
 
+> [!NOTE]
 > SUSv3 lưu ý rằng việc sử dụng `sigprocmask()` trong một chương trình đa luồng (multithreaded program) là không được xác định (unspecified). Chúng ta không thể sử dụng `sigprocmask()` một cách có tính di động (portably) trong một chương trình đa luồng. Trên thực tế, `sigprocmask()` và `pthread_sigmask()` là giống hệt nhau trên nhiều hệ thống cài đặt (implementation), bao gồm cả Linux.
 
 ### 33.2.3 Gửi Tín hiệu đến một Luồng
 
 Hàm `pthread_kill()` gửi tín hiệu `sig` đến một luồng khác trong cùng tiến trình (process). Luồng đích được xác định bởi tham số `thread`.
 
-```
+```c
 ## include <signal.h>
 int pthread_kill(pthread_t thread, int sig);
-                        Trả về 0 khi thành công, hoặc một số lỗi dương khi thất bại
+                        Trả về 0 khi thành công, hoặc một số mã lỗi dương khi thất bại
 ```
 
 Vì ID của luồng (thread ID) chỉ được đảm bảo là duy nhất trong phạm vi một tiến trình (xem Mục [29.5](#page-7-1)), chúng ta không thể sử dụng `pthread_kill()` để gửi tín hiệu đến một luồng trong tiến trình khác.
 
+> [!NOTE]
 > Hàm `pthread_kill()` được cài đặt bằng cách sử dụng System Call đặc trưng của Linux là `tgkill(tgid, tid, sig)`, hàm này gửi tín hiệu `sig` đến luồng được xác định bởi `tid` (một ID luồng kernel có kiểu trả về bởi `gettid()`) nằm trong nhóm luồng (thread group) được xác định bởi `tgid`. Xem trang hướng dẫn (manual page) `tgkill(2)` để biết thêm chi tiết.
 
 Hàm `pthread_sigqueue()` đặc trưng của Linux kết hợp tính năng của `pthread_kill()` và `sigqueue()` (Mục 22.8.1): nó gửi một tín hiệu kèm theo dữ liệu đến một luồng khác trong cùng tiến trình.
 
-```
+```c
 ## define _GNU_SOURCE
 ## include <signal.h>
 int pthread_sigqueue(pthread_t thread, int sig, const union sigval value);
-                       Trả về 0 khi thành công, hoặc một số lỗi dương khi thất bại
+                       Trả về 0 khi thành công, hoặc một số mã lỗi dương khi thất bại
 ```
 
 Tương tự như `pthread_kill()`, `sig` chỉ định tín hiệu cần gửi, và `thread` xác định luồng đích. Tham số `value` chỉ định dữ liệu đi kèm với tín hiệu, và được sử dụng theo cách tương tự như tham số tương đương của `sigqueue()`.
 
+> [!NOTE]
 > Hàm `pthread_sigqueue()` được thêm vào glibc từ phiên bản 2.11 và yêu cầu sự hỗ trợ từ kernel. Hỗ trợ này được cung cấp bởi System Call `rt_tgsigqueueinfo()`, được thêm vào từ Linux 2.6.31.
 
 ### 33.2.4 Xử lý Tín hiệu Bất đồng bộ một cách Hợp lý
@@ -93,7 +96,7 @@ Trong các Chương từ 20 đến 22, chúng ta đã thảo luận về các y�
 
 Hàm `sigwait()` đợi việc phân phối một trong các tín hiệu nằm trong tập tín hiệu (signal set) do `set` trỏ tới, chấp nhận tín hiệu đó, và trả về số hiệu tín hiệu trong `sig`.
 
-```
+```c
 ## include <signal.h>
 int sigwait(const sigset_t *set, int *sig);
                       Trả về 0 khi thành công, hoặc một số mã lỗi dương khi có lỗi
@@ -152,7 +155,7 @@ Trong phần này, chúng ta đi sâu vào một số lý thuyết, xem xét ng�
 
 Trong các triển khai thread M:1, toàn bộ chi tiết về việc tạo thread, lập lịch và đồng bộ hóa (khóa mutex, chờ trên các biến điều kiện, v.v.) được xử lý hoàn toàn bên trong process bởi một thư viện thread ở không gian người dùng (user-space). Kernel hoàn toàn không biết gì về sự tồn tại của nhiều thread bên trong process đó.
 
-Các triển khai M:1 có một số ưu điểm. Ưu điểm lớn nhất là nhiều thao tác thread — ví dụ: tạo và hủy thread, chuyển đổi ngữ cảnh (context switch) giữa các thread, và các thao tác mutex, biến điều kiện — diễn ra nhanh chóng, vì không cần phải chuyển đổi sang chế độ kernel (kernel mode). Hơn nữa, vì không cần sự hỗ trợ của kernel cho thư viện thread, nên việc triển khai M:1 có thể đượcported (chuyển đổi nền tảng) tương đối dễ dàng từ hệ thống này sang hệ thống khác.
+Các triển khai M:1 có một số ưu điểm. Ưu điểm lớn nhất là nhiều thao tác thread — ví dụ: tạo và hủy thread, chuyển đổi ngữ cảnh (context switch) giữa các thread, và các thao tác mutex, biến điều kiện — diễn ra nhanh chóng, vì không cần phải chuyển đổi sang chế độ kernel (kernel mode). Hơn nữa, vì không cần sự hỗ trợ của kernel cho thư viện thread, nên việc triển khai M:1 có thể được port (chuyển dịch nền tảng) tương đối dễ dàng từ hệ thống này sang hệ thống khác.
 
 Tuy nhiên, các triển khai M:1 lại gặp phải một số nhược điểm nghiêm trọng:
 
@@ -169,6 +172,7 @@ Tuy nhiên, các thao tác như tạo thread, chuyển đổi ngữ cảnh (cont
 
 Bất chấp những nhược điểm này, việc triển khai 1:1 thường được ưu tiên hơn so với triển khai M:1. Cả hai triển khai thread của Linux — LinuxThreads và NPTL — đều áp dụng mô hình 1:1.
 
+> [!NOTE]
 > Trong quá trình phát triển NPTL, nỗ lực đáng kể đã được đầu tư vào việc viết lại bộ lập lịch của kernel và thiết kế một mô hình triển khai thread cho phép thực thi hiệu quả các process đa luồng (multithreaded process) chứa nhiều hàng nghìn thread. Các thử nghiệm tiếp theo cho thấy mục tiêu này đã đạt được.
 
 ## Các cài đặt nhiều-nhiều (M:N) (mô hình hai cấp)
@@ -179,6 +183,7 @@ Trong mô hình M:N, mỗi tiến trình (process) có thể liên kết với n
 
 Nhược điểm đáng kể nhất của mô hình M:N là độ phức tạp. Nhiệm vụ lập lịch luồng (thread scheduling) được chia sẻ giữa kernel và thư viện luồng ở không gian người dùng (user-space threading library), các thành phần này phải hợp tác và trao đổi thông tin với nhau. Việc quản lý tín hiệu (signal) theo các yêu cầu của chuẩn SUSv3 cũng rất phức tạp trong mô hình cài đặt M:N.
 
+> [!NOTE]
 > Một cài đặt M:N ban đầu đã được cân nhắc cho thư viện luồng NPTL, nhưng sau đó đã bị loại bỏ vì đòi hỏi những thay đổi đối với kernel quá rộng và có lẽ không cần thiết, do khả năng mở rộng tốt của bộ lập lịch Linux (Linux scheduler), ngay cả khi phải xử lý số lượng lớn các KSE.
 
 ## 33.5 Các cài đặt POSIX Threads trên Linux
@@ -186,7 +191,7 @@ Nhược điểm đáng kể nhất của mô hình M:N là độ phức tạp. 
 Linux có hai cài đặt chính của Pthreads API:
 
 - LinuxThreads: Đây là cài đặt luồng ban đầu của Linux, do Xavier Leroy phát triển.
-- NPTL (Native POSIX Threads Library): Đây là cài đặt luồng hiện đại trên Linux, do Ulrich Drepper và Ingo Molnar phát triển nhằm kế thừa LinuxThreads. NPTL cung cấp hiệu năng vượt trội hơn so com với LinuxThreads và tuân thủ chặt chẽ hơn đặc tả SUSv3 dành cho Pthreads. Việc hỗ trợ NPTL đòi hỏi những thay đổi đối với kernel và những thay đổi này xuất hiện từ phiên bản Linux 2.6.
+- NPTL (Native POSIX Threads Library): Đây là cài đặt luồng hiện đại trên Linux, do Ulrich Drepper và Ingo Molnar phát triển nhằm kế thừa LinuxThreads. NPTL cung cấp hiệu năng vượt trội hơn so với LinuxThreads và tuân thủ chặt chẽ hơn đặc tả SUSv3 dành cho Pthreads. Việc hỗ trợ NPTL đòi hỏi những thay đổi đối với kernel và những thay đổi này xuất hiện từ phiên bản Linux 2.6.
 
 Trong một khoảng thời gian, tưởng chừng như người kế nhiệm của LinuxThreads sẽ là một cài đặt khác mang tên Next Generation POSIX Threads (NGPT) — một thư viện luồng được phát triển tại IBM. NGPT áp dụng thiết kế M:N và đạt hiệu năng cao hơn đáng kể so với LinuxThreads. Tuy nhiên, các nhà phát triển NPTL đã quyết định theo đuổi một cài đặt mới. Cách tiếp cận này đã được chứng minh là đúng đắn — NPTL với thiết kế 1:1 cho thấy hiệu năng vượt trội hơn so với NGPT. Sau khi NPTL được phát hành, việc phát triển NGPT đã bị dừng lại.
 
@@ -211,7 +216,7 @@ CLONE_VM | CLONE_FILES | CLONE_FS | CLONE_SIGHAND
 
 ## Những điểm khác biệt của LinuxThreads so với hành vi được định nghĩa chuẩn
 
-LinuxThreads không tuân thủ đặc tả SUSv3 cho Pthreads ở một số điểm. (Việc triển khai LinuxThreads bị giới hạn bởi các tính năng của nhân hệ thống - kernel available tại thời điểm nó được phát triển; nó tuân thủ ở mức tối đa có thể trong những giới hạn đó). Danh sách sau đây tóm tắt những điểm không tương thích:
+LinuxThreads không tuân thủ đặc tả SUSv3 cho Pthreads ở một số điểm. (Việc triển khai LinuxThreads bị giới hạn bởi các tính năng của kernel khả dụng tại thời điểm nó được phát triển; nó tuân thủ ở mức tối đa có thể trong phạm vi những giới hạn đó). Danh sách sau đây tóm tắt những điểm không tương thích:
 
 - Các lời gọi đến `getpid()` trả về một giá trị khác nhau ở mỗi luồng của một tiến trình. Các lời gọi đến `getppid()` phản ánh thực tế là mọi luồng khác luồng chính đều được tạo bởi luồng quản lý của tiến trình (nghĩa là `getppid()` trả về PID của luồng quản lý). Các lời gọi đến `getppid()` trong các luồng khác đáng lẽ phải trả về giá trị giống như lời gọi `getppid()` trong luồng chính.
 - Nếu một luồng tạo ra một tiến trình con bằng cách sử dụng `fork()`, thì bất kỳ luồng nào khác cũng phải có khả năng lấy được trạng thái kết thúc của tiến trình con đó bằng cách sử dụng `wait()` (hoặc tương tự). Tuy nhiên, thực tế không phải vậy; chỉ có luồng tạo ra tiến trình con mới có thể gọi `wait()` cho tiến trình đó.
@@ -277,10 +282,12 @@ CLONE_CHILD_CLEARTID | CLONE_SYSVSEM
 
 Các thread NPTL chia sẻ tất cả thông tin mà các thread trong LinuxThreads chia sẻ, và nhiều hơn thế nữa. Cờ `CLONE_THREAD` có nghĩa là một thread được đặt vào cùng một thread group với tiến trình tạo ra nó và chia sẻ chung process ID và parent process ID (ID tiến trình cha). Cờ `CLONE_SYSVSEM` có nghĩa là một thread chia sẻ các giá trị hoàn tác semaphore System V với tiến trình tạo ra nó.
 
+> [!NOTE]
 > Khi chúng ta sử dụng `ps(1)` để liệt kê một tiến trình đa luồng đang chạy dưới NPTL, chúng ta chỉ thấy một dòng đầu ra duy nhất. Để xem thông tin về các thread bên trong một tiến trình, chúng ta có thể sử dụng tùy chọn `ps –L`.
 
 Việc cài đặt sử dụng nội bộ hai realtime signal (tín hiệu thời gian thực) đầu tiên. Các ứng dụng không được phép sử dụng các tín hiệu này.
 
+> [!NOTE]
 > Một trong những tín hiệu (signal) này được sử dụng để thực thi việc hủy thread (thread cancellation). Tín hiệu còn lại được sử dụng như một phần của kỹ thuật nhằm đảm bảo rằng tất cả các thread trong một tiến trình (process) có cùng ID người dùng (user ID) và ID nhóm (group ID). Kỹ thuật này là bắt buộc bởi vì, ở cấp độ kernel (kernel level), các thread có các thông tin xác thực (credential) về người dùng và nhóm hoàn toàn riêng biệt. Do đó, phần cài đặt NPTL thực hiện một số xử lý trong hàm bao (wrapper function) cho mỗi system call (System Call) có nhiệm vụ thay đổi ID người dùng và nhóm (như `setuid()`, `setresuid()`, v.v., và các hàm tương đương về nhóm) nhằm đồng bộ việc thay đổi ID này trên tất cả các thread của tiến trình.
 
 Không giống như LinuxThreads, NPTL không sử dụng các thread quản lý (manager thread).
@@ -377,7 +384,7 @@ Phạm vi các số phiên bản nhân có thể được chỉ định trong `L
 
 Một số tính năng nâng cao của Pthreads API bao gồm:
 
-- Lịch trình thời gian thực (Realtime scheduling): Chúng ta có thể thiết lập các chính sách lập lịch (scheduling policies) và mức độ ưu tiên thời gian thực cho các luồng (thread). Điều này tương tự như các System Call lập lịch thời gian thực của tiến trình (process) được mô tả trong Mục 35.3.
+- Lập lịch thời gian thực (Realtime scheduling): Chúng ta có thể thiết lập các chính sách lập lịch (scheduling policies) và mức độ ưu tiên thời gian thực cho các luồng (thread). Điều này tương tự như các system call lập lịch thời gian thực của tiến trình (process) được mô tả trong Mục 35.3.
 - Mutex và biến điều kiện chia sẻ giữa các tiến trình (Process shared mutexes and condition variables): SUSv3 định nghĩa một tùy chọn cho phép các mutex và biến điều kiện (condition variable) được chia sẻ giữa các tiến trình (thay vì chỉ giữa các luồng của một tiến trình đơn lẻ). Trong trường hợp này, biến điều kiện hoặc mutex phải nằm trong một vùng nhớ được chia sẻ giữa các tiến trình. NPTL hỗ trợ tính năng này.
 - Các nguyên thủy đồng bộ hóa luồng nâng cao (Advanced thread-synchronization primitives): Các cơ chế này bao gồm rào cản (barrier), khóa đọc-ghi (read-write lock) và khóa quay (spin lock).
 
@@ -385,7 +392,7 @@ Chi tiết hơn về tất cả các tính năng này có thể được tìm th
 
 ## 33.7 Tổng kết
 
-Luồng (thread) không tương thích tốt với tín hiệu (signal); các thiết kế ứng dụng đa luồng (multithreaded application) nên tránh sử dụng signal bất cứ khi nào có thể. Nếu một ứng dụng đa luồng bắt buộc phải xử lý các bất đồng bộ signal (asynchronous signal), cách sạch sẽ nhất thường là chặn signal ở tất cả các luồng, và chỉ định một luồng duy nhất chuyên trách tiếp nhận các signal đến bằng cách sử dụng `sigwait()` (hoặc tương tự). Luồng này sau đó có thể thực hiện các tác vụ một cách an toàn như sửa đổi các biến được chia sẻ (dưới sự kiểm soát của mutex) và gọi các hàm không an toàn với tín hiệu bất đồng bộ (non-async-signal-safe functions).
+Luồng (thread) không tương thích tốt với tín hiệu (signal); các thiết kế ứng dụng đa luồng (multithreaded application) nên tránh sử dụng signal bất cứ khi nào có thể. Nếu một ứng dụng đa luồng bắt buộc phải xử lý các tín hiệu bất đồng bộ (asynchronous signals), cách chuẩn mực nhất thường là chặn tín hiệu ở tất cả các luồng, và chỉ định một luồng duy nhất chuyên trách tiếp nhận các tín hiệu đến bằng cách sử dụng `sigwait()` (hoặc tương tự). Luồng này sau đó có thể thực hiện các tác vụ một cách an toàn như sửa đổi các biến được chia sẻ (dưới sự kiểm soát của mutex) và gọi các hàm không an toàn với tín hiệu bất đồng bộ (non-async-signal-safe functions).
 
 Có hai bản cài đặt luồng (threading implementation) thường có sẵn trên Linux: LinuxThreads và NPTL. LinuxThreads đã có mặt trên Linux trong nhiều năm, nhưng có một số điểm không tuân thủ các yêu cầu của SUSv3 và hiện đã lỗi thời. Bản cài đặt NPTL mới hơn cung cấp mức độ tuân thủ SUSv3 sát sao hơn cùng với hiệu năng vượt trội, và đây chính là bản cài đặt được cung cấp trong các bản phân phối Linux hiện đại.
 

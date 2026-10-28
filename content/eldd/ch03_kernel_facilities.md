@@ -1,4 +1,4 @@
-# Chương 3. Các Cơ chế của Kernel
+# Chương 3: Các tiện ích của Kernel (Kernel Facilities)
 
 ## **Trong Chương này** Kernel Threads (Tiến trình nhân) 56 Helper Interfaces (Giao diện hỗ trợ) 65 Looking at the Sources (Khảo sát mã nguồn) 85
 
@@ -103,7 +103,7 @@ static int mykthread(void *unused)
  if (signal_pending(current)) break;
  /* Điều khiển đến đây khi tiến trình được đánh thức */
  read_lock(&myevent_lock); /* Bắt đầu vùng găng (critical section) */
- if (myevent_id) { /* Phòng ngừa việc thức dậy giả mạo (spurious wakeups) */
+ if (myevent_id) { /* Phòng ngừa việc thức dậy giả (spurious wakeups) */
  event_id = myevent_id;
  read_unlock(&myevent_lock); /* Kết thúc vùng găng */
  /* Gọi trình trợ giúp chế độ người dùng đã đăng ký và
@@ -512,15 +512,16 @@ Vì kernel rất rộng lớn, bạn luôn có thể tìm thấy các phần ch�
 
 Để tạo ra các danh sách liên kết kép (doubly linked lists) cho các cấu trúc dữ liệu, hãy sử dụng các hàm được cung cấp trong *include/linux/list.h.* Về cơ bản, bạn nhúng một `struct list_head` vào bên trong cấu trúc dữ liệu của mình:
 
-```
 ## include <linux/list.h>
+
 struct list_head {
- struct list_head *next, *prev;
+struct list_head *next, *prev;
 };
 struct mydatastructure {
- struct list_head mylist; /* Nhúng */
- /* ... */ /* Các trường thực tế */
+struct list_head mylist; /* Nhúng */
+/* ... */ /* Các trường thực tế */
 };
+
 ```
 
 `mylist` là liên kết xâu chuỗi các thể hiện (instances) khác nhau của `mydatastructure`. Nếu bạn có nhiều `list_head` được nhúng bên trong `mydatastructure`, mỗi cái trong số chúng tạo thành một liên kết khiến `mydatastructure` trở thành thành viên của một danh sách mới. Bạn có thể sử dụng thư viện danh sách để thêm hoặc xóa tư cách thành viên khỏi các danh sách riêng lẻ.
@@ -549,18 +550,20 @@ struct mydatastructure {
 Trước tiên, hãy giới thiệu các cấu trúc dữ liệu trình điều khiển quan trọng được sử dụng trong ví dụ của chúng ta:
 
 ```
+
 static struct _mydrv_wq {
- struct list_head mydrv_worklist; /* Danh sách công việc */
- spinlock_t lock; /* Bảo vệ danh sách */
- wait_queue_head_t todo; /* Đồng bộ hóa tiến trình gửi
- và tiến trình xử lý */
+struct list_head mydrv_worklist; /* Danh sách công việc */
+spinlock_t lock; /* Bảo vệ danh sách */
+wait_queue_head_t todo; /* Đồng bộ hóa tiến trình gửi
+và tiến trình xử lý */
 } mydrv_wq;
 struct _mydrv_work {
- struct list_head mydrv_workitem; /* Chuỗi công việc */
- void (*worker_func)(void *); /* Công việc cần thực hiện */
- void *worker_data; /* Tham số truyền cho worker_func */
- /* ... */ /* Các trường khác */
+struct list_head mydrv_workitem; /* Chuỗi công việc */
+void (*worker_func)(void *); /* Công việc cần thực hiện */
+void *worker_data; /* Tham số truyền cho worker_func */
+/* ... */ /* Các trường khác */
 } mydrv_work;
+
 ```
 
 `mydrv_wq` là toàn cục cho tất cả các yêu cầu gửi công việc. Các thành viên của nó bao gồm một con trỏ trỏ đến đầu danh sách công việc và một hàng đợi chờ (wait queue) để giao tiếp giữa các hàm trình điều khiển thực hiện việc gửi công việc và luồng kernel thực hiện công việc đó. Các hàm hỗ trợ danh sách không tự động bảo vệ việc truy cập vào các thành viên danh sách, vì vậy bạn cần sử dụng các cơ chế đồng thời (concurrency mechanisms) để tuần tự hóa các tham chiếu con trỏ đồng thời. Điều này được thực hiện bằng cách sử dụng một `spinlock` cũng là một phần của `mydrv_wq`. Quy trình khởi tạo trình điều khiển `mydrv_init()` trong Liệt kê 3.2 (Listing 3.2) khởi tạo `spinlock`, đầu danh sách và hàng đợi chờ, đồng thời kích hoạt luồng xử lý công việc (worker thread).
@@ -568,46 +571,55 @@ struct _mydrv_work {
 #### Liệt kê 3.2. Khởi tạo cấu trúc dữ liệu
 
 ```
+
 static int __init
 mydrv_init(void)
 {
- /* Khởi tạo khóa để bảo vệ chống lại việc
- truy cập danh sách đồng thời */
- spin_lock_init(&mydrv_wq.lock);
- /* Khởi tạo hàng đợi chờ để giao tiếp
- giữa tiến trình gửi và tiến trình xử lý */
- init_waitqueue_head(&mydrv_wq.todo);
- /* Khởi tạo đầu danh sách */
- INIT_LIST_HEAD(&mydrv_wq.mydrv_worklist);
- /* Khởi động luồng xử lý. Xem Liệt kê 3.4 */
- kernel_thread(mydrv_worker, NULL,
- CLONE_FS | CLONE_FILES | CLONE_SIGHAND | SIGCHLD);
- return 0;
+/* Khởi tạo khóa để bảo vệ chống lại việc
+truy cập danh sách đồng thời */
+spin_lock_init(&mydrv_wq.lock);
+/* Khởi tạo hàng đợi chờ để giao tiếp
+giữa tiến trình gửi và tiến trình xử lý */
+init_waitqueue_head(&mydrv_wq.todo);
+/* Khởi tạo đầu danh sách */
+INIT_LIST_HEAD(&mydrv_wq.mydrv_worklist);
+/* Khởi động luồng xử lý. Xem Liệt kê 3.4 */
+kernel_thread(mydrv_worker, NULL,
+CLONE_FS | CLONE_FILES | CLONE_SIGHAND | SIGCHLD);
+return 0;
 }
+
 ```
 
 Trước khi tìm hiểu về luồng công việc (worker thread) thực thi công việc được gửi vào, chúng ta hãy xem xét cơ chế gửi việc (work submission). Liệt kê 3.3 (Listing 3.3) triển khai một hàm mà các phần khác của kernel có thể sử dụng để gửi công việc. Nó sử dụng `list_add_tail()` để thêm một hàm công việc vào cuối danh sách liên kết (list). Hãy xem Hình 3.1 để hình dung cấu trúc vật lý của danh sách công việc.
 
 ```
+
 mvd rv worklist-------------------------------------------
-     |                                                   |
-     v                                                   |
+
+|                                                   |
+v                                                   |
 +-----------------+                                      |
+
 |    mydrv_wq     |                                      |
 +-----------------+                                      |
-        ^                                                |
-        |                                                |
-        v                                                |
+^                                                |
+
+|                                                |
+v                                                |
 +-----------------+    <---->   +-----------------+      |
+
 |    mydrv_work   | <---------> |    mydrv_work   |<-----|
 |                 |             |                 |
 +-----------------+             +-----------------+
-                                         ^
-                                         |
-                                         |
-                                         v
-                          Membership in another list
-                          (Not shown in structure definition)
+^
+
+|
+|
+v
+Membership in another list
+(Not shown in structure definition)
+
 ```
 
 **Hình 3.1. Danh sách liên kết của các hàm công việc.**
@@ -615,38 +627,44 @@ mvd rv worklist-------------------------------------------
 **Liệt kê 3.3. Gửi công việc để thực thi sau**
 
 ```
+
 int
 submit_work(void (*func)(void *data), void *data)
 {
- struct _mydrv_work *mydrv_work;
- /* Cấp phát cấu trúc công việc */
- mydrv_work = kmalloc(sizeof(struct _mydrv_work), GFP_ATOMIC);
- if (!mydrv_work) return -1;
- /* Điền thông tin vào cấu trúc công việc */
- mydrv_work->worker_func = func; /* Hàm công việc */
- mydrv_work->worker_data = data; /* Tham số truyền vào */
- spin_lock(&mydrv_wq.lock); /* Bảo vệ danh sách */
- /* Thêm công việc của bạn vào cuối danh sách */
- list_add_tail(&mydrv_work->mydrv_workitem,
- &mydrv_wq.mydrv_worklist);
- /* Đánh thức luồng công việc (worker thread) */
- wake_up(&mydrv_wq.todo);
- spin_unlock(&mydrv_wq.lock);
- return 0;
+struct _mydrv_work *mydrv_work;
+/* Cấp phát cấu trúc công việc */
+mydrv_work = kmalloc(sizeof(struct _mydrv_work), GFP_ATOMIC);
+if (!mydrv_work) return -1;
+/* Điền thông tin vào cấu trúc công việc */
+mydrv_work->worker_func = func; /* Hàm công việc */
+mydrv_work->worker_data = data; /* Tham số truyền vào */
+spin_lock(&mydrv_wq.lock); /* Bảo vệ danh sách */
+/* Thêm công việc của bạn vào cuối danh sách */
+list_add_tail(&mydrv_work->mydrv_workitem,
+&mydrv_wq.mydrv_worklist);
+/* Đánh thức luồng công việc (worker thread) */
+wake_up(&mydrv_wq.todo);
+spin_unlock(&mydrv_wq.lock);
+return 0;
 }
+
 ```
 
 Để gửi một hàm công việc `void job(void *)` từ một điểm vào (entry point) của driver, hãy thực hiện như sau:
 
 ```
+
 submit_work(job, NULL);
+
 ```
 
 Sau khi gửi hàm công việc, Liệt kê 3.3 tiến hành đánh thức luồng công việc (worker thread). Cấu trúc tổng quát của luồng công việc được minh họa ở Liệt kê 3.4 có nét tương đồng với các kernel thread tiêu chuẩn đã được thảo luận ở phần trước. Luồng này sử dụng `list_entry()` để duyệt qua tất cả các node trong danh sách. `list_entry()` trả về cấu trúc dữ liệu chứa (container data structure) node của danh sách bên trong nó. Hãy quan sát kỹ hơn dòng lệnh có liên quan trong Liệt kê 3.4:
 
 ```
+
 mydrv_work = list_entry(mydrv_wq.mydrv_worklist.next,
- struct _mydrv_work, mydrv_workitem);
+struct _mydrv_work, mydrv_workitem);
+
 ```
 
 `mydrv_workitem` được nhúng (embed) bên trong `mydrv_work`, do đó `list_entry()` trả về một con trỏ trỏ đến cấu trúc `mydrv_work` tương ứng. Các tham số được truyền vào `list_entry()` lần lượt là địa chỉ của node danh sách được nhúng, kiểu của cấu trúc chứa (container structure), và tên trường của node danh sách được nhúng đó.
@@ -656,49 +674,51 @@ Sau khi thực thi một hàm công việc được gửi vào, luồng công vi
 #### Liệt kê 3.4. Luồng công việc (Worker Thread)
 
 ```
+
 static int
 mydrv_worker(void *unused)
 {
- DECLARE_WAITQUEUE(wait, current);
- void (*worker_func)(void *);
- void *worker_data;
- struct _mydrv_work *mydrv_work;
- set_current_state(TASK_INTERRUPTIBLE);
- /* Quay vòng (spin) cho đến khi nhận được yêu cầu kết thúc */
- while (!asked_to_die()) {
- add_wait_queue(&mydrv_wq.todo, &wait);
- if (list_empty(&mydrv_wq.mydrv_worklist)) {
- schedule();
- /* Được đánh thức bởi tiến trình gửi việc */
- } else {
- set_current_state(TASK_RUNNING);
- }
- remove_wait_queue(&mydrv_wq.todo, &wait);
- /* Bảo vệ quyền truy cập đồng thời (concurrent access) vào danh sách */
- spin_lock(&mydrv_wq.lock);
- /* Duyệt qua danh sách và xử lý triệt để các hàm công việc
- có trong mỗi node */
- while (!list_empty(&mydrv_wq.mydrv_worklist)) {
- /* Lấy phần tử đầu tiên trong danh sách */
- mydrv_work = list_entry(mydrv_wq.mydrv_worklist.next,
- struct _mydrv_work, mydrv_workitem);
- worker_func = mydrv_work->worker_func;
- worker_data = mydrv_work->worker_data;
- /* Node này đã được xử lý. Loại bỏ nó
- ra khỏi danh sách */
- list_del(mydrv_wq.mydrv_worklist.next);
- kfree(mydrv_work); /* Giải phóng node */
- /* Thực thi hàm công việc trong node này */
- spin_unlock(&mydrv_wq.lock); /* Giải phóng khóa */
- worker_func(worker_data);
- spin_lock(&mydrv_wq.lock); /* Chiếm lại khóa */
- }
- spin_unlock(&mydrv_wq.lock);
- set_current_state(TASK_INTERRUPTIBLE);
- }
- set_current_state(TASK_RUNNING);
- return 0;
+DECLARE_WAITQUEUE(wait, current);
+void (*worker_func)(void *);
+void *worker_data;
+struct _mydrv_work *mydrv_work;
+set_current_state(TASK_INTERRUPTIBLE);
+/* Quay vòng (spin) cho đến khi nhận được yêu cầu kết thúc */
+while (!asked_to_die()) {
+add_wait_queue(&mydrv_wq.todo, &wait);
+if (list_empty(&mydrv_wq.mydrv_worklist)) {
+schedule();
+/* Được đánh thức bởi tiến trình gửi việc */
+} else {
+set_current_state(TASK_RUNNING);
 }
+remove_wait_queue(&mydrv_wq.todo, &wait);
+/* Bảo vệ quyền truy cập đồng thời (concurrent access) vào danh sách */
+spin_lock(&mydrv_wq.lock);
+/* Duyệt qua danh sách và xử lý triệt để các hàm công việc
+có trong mỗi node */
+while (!list_empty(&mydrv_wq.mydrv_worklist)) {
+/* Lấy phần tử đầu tiên trong danh sách */
+mydrv_work = list_entry(mydrv_wq.mydrv_worklist.next,
+struct _mydrv_work, mydrv_workitem);
+worker_func = mydrv_work->worker_func;
+worker_data = mydrv_work->worker_data;
+/* Node này đã được xử lý. Loại bỏ nó
+ra khỏi danh sách */
+list_del(mydrv_wq.mydrv_worklist.next);
+kfree(mydrv_work); /* Giải phóng node */
+/* Thực thi hàm công việc trong node này */
+spin_unlock(&mydrv_wq.lock); /* Giải phóng khóa */
+worker_func(worker_data);
+spin_lock(&mydrv_wq.lock); /* Chiếm lại khóa */
+}
+spin_unlock(&mydrv_wq.lock);
+set_current_state(TASK_INTERRUPTIBLE);
+}
+set_current_state(TASK_RUNNING);
+return 0;
+}
+
 ```
 
 Vì lý tính đơn giản, đoạn mã ví dụ không thực hiện việc xử lý lỗi (error handling). Ví dụ, nếu lời gọi đến `kernel_thread()` trong Liệt kê 3.2 (Listing 3.2) thất bại, bạn cần giải phóng (free) bộ nhớ đã cấp phát cho cấu trúc công việc (work structure) tương ứng. Ngoài ra, hàm `asked_to_die()` trong Liệt kê 3.4 (Listing 3.4) được để trống chưa viết. Về cơ bản, hàm này sẽ thoát khỏi vòng lặp (loop) nếu nó phát hiện một tín hiệu được gửi tới (delivered signal) hoặc nhận được thông báo từ điểm nhập (entry point) `release()` rằng module sắp được gỡ khỏi Kernel (kernel).
@@ -706,18 +726,20 @@ Vì lý tính đơn giản, đoạn mã ví dụ không thực hiện việc x�
 Trước khi kết thúc phần này, chúng ta hãy xem xét một hàm tiện ích thư viện danh sách (list library routine) hữu ích khác, `list_for_each_entry()`. Với macro này, quá trình lặp (iteration) trở nên đơn giản và dễ đọc hơn vì bạn không phải sử dụng `list_entry()` bên trong vòng lặp. Hãy sử dụng biến thể `list_for_each_entry_safe()` nếu bạn định xóa các phần tử trong danh sách bên trong vòng lặp. Bạn có thể thay thế đoạn mã sau trong Liệt kê 3.4 (Listing 3.4):
 
 ```
+
 while (!list_empty(&mydrv_wq.mydrv_worklist)) {
- mydrv_work = list_entry(mydrv_wq.mydrv_worklist.next,
- struct _mydrv_work, mydrv_workitem);
- /* ... */
+mydrv_work = list_entry(mydrv_wq.mydrv_worklist.next,
+struct _mydrv_work, mydrv_workitem);
+/* ... */
 }
 bằng:
 struct _mydrv_work *temp;
 list_for_each_entry_safe(mydrv_work, temp,
- &mydrv_wq.mydrv_worklist,
- mydrv_workitem) {
- /* ... */
+&mydrv_wq.mydrv_worklist,
+mydrv_workitem) {
+/* ... */
 }
+
 ```
 
 Bạn không thể sử dụng `list_for_each_entry()` trong trường hợp này vì bạn đang xóa phần tử trỏ bởi `mydrv_work` bên trong vòng lặp ở Liệt kê 3.4 (Listing 3.4). `list_for_each_entry_safe()` giải quyết vấn đề này bằng cách sử dụng biến tạm thời được truyền vào làm đối số thứ hai (`temp`) để lưu trữ địa chỉ của phần tử tiếp theo trong danh sách (list).
@@ -727,12 +749,14 @@ Bạn không thể sử dụng `list_for_each_entry()` trong trường hợp nà
 Việc cài đặt danh sách liên kết kép (doubly linked list implementation) được thảo luận trước đó không tối ưu cho các trường hợp bạn muốn triển khai các cấu trúc dữ liệu liên kết như bảng băm (hash tables). Lý do là các bảng băm chỉ cần một đầu danh sách (list head) chứa một con trỏ duy nhất. Để giảm chi phí bộ nhớ (memory overhead) cho các ứng dụng như vậy, Kernel cung cấp các danh sách băm (hay *hlists*), một biến thể của danh sách. Không giống như các danh sách thông thường sử dụng cùng một cấu trúc cho đầu danh sách và các nút danh sách (list nodes), hlists có các định nghĩa riêng biệt:
 
 ```
+
 struct hlist_head {
- struct hlist_node *first;
+struct hlist_node *first;
 };
 struct hlist_node {
- struct hlist_node *next, **pprev;
+struct hlist_node *next, **pprev;
 };
+
 ```
 
 Để phù hợp với sơ đồ đầu hlist một con trỏ, các nút duy trì địa chỉ của con trỏ trỏ tới nút trước đó, thay vì chính con trỏ đó.
@@ -759,44 +783,51 @@ Thư viện hỗ trợ hàng đợi công việc cung cấp hai cấu trúc giao
 
 Hãy viết lại Danh sách 3.2 đến 3.4 để tận dụng lợi thế của giao diện hàng đợi công việc. Việc này được thực hiện trong Danh sách 3.5. Toàn bộ kernel thread, cũng như spinlock và hàng đợi chờ (wait queue), đều biến mất bên trong giao diện hàng đợi công việc. Ngay cả lệnh gọi `create_singlethread_workqueue()` cũng không còn cần thiết nếu bạn đang sử dụng worker thread mặc định của kernel.
 
-**Danh sách 3.5. Sử dụng Hàng đợi Công việc để Hoãn Công việc**
+**Mã nguồn 3.5. Sử dụng Hàng đợi Công việc để Hoãn Công việc**
 
-```
+```c
+
 ## include <linux/workqueue.h>
+
 struct workqueue_struct *wq;
 /* Khởi tạo Driver */
 static int __init
 mydrv_init(void)
 {
- /* ... */
- wq = create_singlethread_workqueue("mydrv");
- return 0;
+/* ... */
+wq = create_singlethread_workqueue("mydrv");
+return 0;
 }
- /* Gửi Công việc. Đối số đầu tiên là hàm công việc, và
- đối số thứ hai là tham số truyền vào hàm công việc */
- int
- submit_work(void (*func)(void *data), void *data)
- {
- struct work_struct *hardwork;
- hardwork = kmalloc(sizeof(struct work_struct), GFP_KERNEL);
- /* Khởi tạo cấu trúc công việc */
- INIT_WORK(hardwork, func, data);
- /* Đưa công việc vào hàng đợi */
- queue_work(wq, hardwork);
- return 0;
+/* Gửi Công việc. Đối số đầu tiên là hàm công việc, và
+đối số thứ hai là tham số truyền vào hàm công việc */
+int
+submit_work(void (*func)(void *data), void *data)
+{
+struct work_struct *hardwork;
+hardwork = kmalloc(sizeof(struct work_struct), GFP_KERNEL);
+/* Khởi tạo cấu trúc công việc */
+INIT_WORK(hardwork, func, data);
+/* Đưa công việc vào hàng đợi */
+queue_work(wq, hardwork);
+return 0;
 }
+
 ```
 
 Nếu bạn đang sử dụng hàng đợi công việc, bạn sẽ gặp lỗi liên kết (linker error) trừ khi bạn khai báo module của mình được cấp phép theo giấy phép GPL. Điều này là do kernel chỉ xuất các hàm này cho mã nguồn tuân thủ GPL. Nếu bạn xem xét việc triển khai hàng đợi công việc của kernel, bạn sẽ thấy sự hạn chế này được thể hiện qua các câu lệnh như sau:
 
 ```
+
 EXPORT_SYMBOL_GPL(queue_work);
+
 ```
 
 Để thông báo rằng module của bạn mang tính chất *copyleft* theo GPL, hãy khai báo như sau:
 
 ```
+
 MODULE_LICENSE("GPL");
+
 ```
 
 ### Chuỗi thông báo (Notifier Chains)
@@ -818,106 +849,82 @@ Liệt kê (Listing) 3.6 chứa các ví dụ về việc sử dụng các bộ 
 
 | Chuỗi thông báo (Notifier Chain) | Mô tả (Description) |
 |----------------|-------------|
-|----------------|-------------|
-
-**Chuỗi thông báo Die (Die Notifier Chain)** (die\_chain) my\_die\_event\_handler() gắn kết vào chuỗi thông báo die, die\_chain, bằng cách sử dụng register\_die\_notifier(). Để kích hoạt việc gọi my\_die\_event\_handler(), hãy tạo ra một phép tham chiếu con trỏ không hợp lệ (invalid dereference) ở đâu đó trong mã nguồn của bạn, chẳng hạn như sau:
-
-int \*q = 0; \*q = 1;
-
-Khi đoạn mã này được thực thi, my\_die\_event\_handler() sẽ được gọi, và bạn sẽ thấy một thông báo như thế này:
-
-```
-my_die_event_handler: OOPs! at EIP=f00350e7
-```
-
-Bộ thông báo sự kiện die truyền cấu trúc die\_args tới trình xử lý sự kiện đã đăng ký. Đối số này chứa một con trỏ trỏ tới cấu trúc regs, mang một bản chụp (snapshot) nội dung các thanh ghi bộ xử lý khi xảy ra lỗi. my\_die\_event\_handler() in ra nội dung của thanh ghi con trỏ lệnh (instruction pointer register).
-
-**Chuỗi thông báo thiết bị mạng (Netdevice Notifier Chain)** (netdev\_chain) my\_dev\_event\_handler() gắn kết vào chuỗi thông báo thiết bị mạng, netdev\_chain, bằng cách sử dụng register\_netdevice\_notifier(). Bạn có thể tạo sự kiện này bằng cách thay đổi trạng thái của một giao diện mạng như Ethernet (ethX) hoặc loopback (lo):
-
-**bash> ifconfig eth0 up**
-
-Điều này dẫn đến việc thực thi my\_dev\_event\_handler(). Trình xử lý được truyền một con trỏ trỏ tới struct net\_device làm đối số, chứa tên của giao diện mạng. my\_dev\_event\_handler() sử dụng thông tin này để tạo ra thông báo sau:
-
-```
-my_dev_event_handler: Val=1, Interface=eth0
-```
-
-Val=1 tương ứng với sự kiện NETDEV\_UP được định nghĩa trong *include/linux/notifier.h*.
-
-**Chuỗi thông báo do người dùng định nghĩa (User-Defined Notifier Chain)** Liệt kê 3.6 cũng triển khai một chuỗi thông báo do người dùng định nghĩa, my\_noti\_chain. Giả sử bạn muốn một sự kiện được tạo ra bất cứ khi nào người dùng đọc từ một tệp cụ thể trong hệ thống tệp tiến trình (process filesystem - procfs). Thêm đoạn sau vào hàm đọc procfs liên quan: blocking\_notifier\_call\_chain(&my\_noti\_chain, 100, NULL);
-
-> Điều này dẫn đến việc gọi my\_event\_handler() bất cứ khi nào bạn đọc từ tệp */proc* tương ứng và tạo ra thông báo sau:
-
-```
-my_event_handler: Val=100
-```
-
-Val chứa định danh của sự kiện được tạo ra, là 100 đối với ví dụ này. Đối số hàm không được sử dụng.
+| **Die Notifier Chain** (`die_chain`) | Đăng ký qua `register_die_notifier()`. Được kích hoạt khi xảy ra lỗi nghiêm trọng (oops, page fault, điểm ngắt). Trình xử lý nhận được cấu trúc `die_args` chứa bản chụp trạng thái thanh ghi CPU tại thời điểm lỗi. |
+| **Net Device Notifier Chain** (`netdev_chain`) | Đăng ký qua `register_netdevice_notifier()`. Phát sự kiện khi giao diện mạng thay đổi trạng thái (ví dụ `NETDEV_UP` khi chạy `ifconfig eth0 up`). Trình xử lý nhận tham số là con trỏ `struct net_device`. |
+| **User-Defined Notifier Chain** | Chuỗi thông báo do người dùng tự định nghĩa (ví dụ `my_noti_chain`). Được kích hoạt thủ công bằng `blocking_notifier_call_chain()` để phát các sự kiện tùy biến nội bộ. |
 
 Bạn phải hủy đăng ký (unregister) các trình xử lý sự kiện khỏi các chuỗi thông báo khi mô-đun của bạn được giải phóng khỏi kernel. Ví dụ, nếu bạn thực hiện *up* hoặc *down* một giao diện mạng sau khi gỡ mô-đun (unloading) mã nguồn trong Liệt kê 3.6, bạn sẽ gặp lỗi "oops", trừ khi bạn thực hiện register\_netdevice\_notifier(&my\_dev\_notifier) từ phương thức release() của mô-đun. Điều này là do chuỗi thông báo vẫn tiếp tục hiểu rằng mã nguồn trình xử lý là hợp lệ, mặc dù nó đã bị kéo ra khỏi kernel.
 
-#### Liệt kê 3.6. Các trình xử lý sự kiện thông báo
+#### Mã nguồn 3.6. Các trình xử lý sự kiện thông báo
 
 ```c
+
 ## include <linux/notifier.h>
+
 ## include <asm/kdebug.h>
+
 ## include <linux/netdevice.h>
+
 ## include <linux/inetdevice.h>
+
 /* Die Notifier Definition */
 static struct notifier_block my_die_notifier = {
- .notifier_call = my_die_event_handler,
+.notifier_call = my_die_event_handler,
 };
 /* Die notification event handler */
 int
 my_die_event_handler(struct notifier_block *self,
- unsigned long val, void *data)
+unsigned long val, void *data)
 {
- struct die_args *args = (struct die_args *)data;
- if (val == 1) { /* '1' corresponds to an "oops" */
- printk("my_die_event: OOPs! at EIP=%lx\n", args->regs->eip);
+struct die_args *args = (struct die_args *)data;
+if (val == 1) { /* '1' corresponds to an "oops" */
+printk("my_die_event: OOPs! at EIP=%lx\n", args->regs->eip);
+
 ```
 
 ```
- } /* else ignore */
- return 0;
+
+} /* else ignore */
+return 0;
 }
 /* Net Device notifier definition */
 static struct notifier_block my_dev_notifier = {
- .notifier_call = my_dev_event_handler,
+.notifier_call = my_dev_event_handler,
 };
 /* Net Device notification event handler */
 int my_dev_event_handler(struct notifier_block *self,
- unsigned long val, void *data)
+unsigned long val, void *data)
 {
- printk("my_dev_event: Val=%ld, Interface=%s\n", val,
- ((struct net_device *) data)->name);
- return 0;
+printk("my_dev_event: Val=%ld, Interface=%s\n", val,
+((struct net_device *) data)->name);
+return 0;
 }
 /* User-defined notifier chain implementation */
 static BLOCKING_NOTIFIER_HEAD(my_noti_chain);
 static struct notifier_block my_notifier = {
- .notifier_call = my_event_handler,
+.notifier_call = my_event_handler,
 };
 /* User-defined notification event handler */
 int my_event_handler(struct notifier_block *self,
- unsigned long val, void *data)
+unsigned long val, void *data)
 {
- printk("my_event: Val=%ld\n", val);
- return 0;
+printk("my_event: Val=%ld\n", val);
+return 0;
 }
 /* Driver Initialization */
 static int __init
 my_init(void)
 {
- /* ... */
- /* Register Die Notifier */
- register_die_notifier(&my_die_notifier);
- /* Register Net Device Notifier */
- register_netdevice_notifier(&my_dev_notifier);
- /* Register a user-defined Notifier */
- blocking_notifier_chain_register(&my_noti_chain, &my_notifier);
- /* ... */
+/* ... */
+/* Register Die Notifier */
+register_die_notifier(&my_die_notifier);
+/* Register Net Device Notifier */
+register_netdevice_notifier(&my_dev_notifier);
+/* Register a user-defined Notifier */
+blocking_notifier_chain_register(&my_noti_chain, &my_notifier);
+/* ... */
 }
+
 ```
 
 `my_noti_chain` trong Liệt kê (Listing) 3.6 được khai báo là một bộ thông báo chặn (blocking notifier) bằng cách sử dụng macro `BLOCKING_NOTIFIER_HEAD()` và được đăng ký thông qua hàm `blocking_notifier_chain_register()`. Điều này có nghĩa là trình xử lý thông báo (notifier handler) luôn được gọi từ ngữ cảnh tiến trình (process context). Do đó, hàm xử lý `my_event_handler()` được phép chuyển sang trạng thái ngủ (go to sleep). Nếu trình xử lý thông báo của bạn có thể được gọi từ ngữ cảnh ngắt (interrupt context), hãy khai báo chuỗi thông báo (notifier chain) bằng `ATOMIC_NOTIFIER_HEAD()` và đăng ký nó thông qua `atomic_notifier_chain_register()`.
@@ -939,6 +946,7 @@ Một số kịch bản sử dụng ví dụ bao gồm:
 #### Liệt kê 3.7. Đồng bộ hóa sử dụng các hàm hoàn thành (Completion Functions)
 
 ```
+
 static DECLARE_COMPLETION(my_thread_exit); /* Biến hoàn thành */
 static DECLARE_WAIT_QUEUE_HEAD(my_thread_wait); /* Hàng đợi chờ */
 int pink_slip = 0; /* Cờ thoát */
@@ -946,52 +954,55 @@ int pink_slip = 0; /* Cờ thoát */
 static int
 my_thread(void *unused)
 {
- DECLARE_WAITQUEUE(wait, current);
- daemonize("my_thread");
- add_wait_queue(&my_thread_wait, &wait);
- while (1) {
- /* Nhường bộ xử lý cho đến khi sự kiện xảy ra */
+DECLARE_WAITQUEUE(wait, current);
+daemonize("my_thread");
+add_wait_queue(&my_thread_wait, &wait);
+while (1) {
+/* Nhường bộ xử lý cho đến khi sự kiện xảy ra */
+
 ```
 
 ```
- set_current_state(TASK_INTERRUPTIBLE);
- schedule();
- /* Điều khiển đến đây khi luồng được đánh thức
- khỏi hàng đợi chờ my_thread_wait */
- /* Thoát nếu được phép */
- if (pink_slip) {
- break;
- }
- /* Thực hiện công việc thực tế */
- /* ... */
- }
- /* Thoát khỏi hàng đợi chờ */
- __set_current_state(TASK_RUNNING);
- remove_wait_queue(&my_thread_wait, &wait);
- /* Báo hiệu hoàn thành một cách nguyên tử và thoát */
- complete_and_exit(&my_thread_exit, 0);
+
+set_current_state(TASK_INTERRUPTIBLE);
+schedule();
+/* Điều khiển đến đây khi luồng được đánh thức
+khỏi hàng đợi chờ my_thread_wait */
+/* Thoát nếu được phép */
+if (pink_slip) {
+break;
+}
+/* Thực hiện công việc thực tế */
+/* ... */
+}
+/* Thoát khỏi hàng đợi chờ */
+__set_current_state(TASK_RUNNING);
+remove_wait_queue(&my_thread_wait, &wait);
+/* Báo hiệu hoàn thành một cách nguyên tử và thoát */
+complete_and_exit(&my_thread_exit, 0);
 }
 /* Khởi tạo Module */
 static int __init
 my_init(void)
 {
- /* ... */
- /* Khởi động luồng */
- kernel_thread(my_thread, NULL,
- CLONE_FS | CLONE_FILES | CLONE_SIGHAND | SIGCHLD);
- /* ... */
+/* ... */
+/* Khởi động luồng */
+kernel_thread(my_thread, NULL,
+CLONE_FS | CLONE_FILES | CLONE_SIGHAND | SIGCHLD);
+/* ... */
 }
 /* Giải phóng Module */
 static void __exit
 my_release(void)
 {
- /* ... */
- pink_slip = 1; /* my_thread phải kết thúc */
- wake_up(&my_thread_wait); /* Kích hoạt my_thread */
- wait_for_completion(&my_thread_exit); /* Chờ cho đến khi my_thread
- thoát */
- /* ... */
+/* ... */
+pink_slip = 1; /* my_thread phải kết thúc */
+wake_up(&my_thread_wait); /* Kích hoạt my_thread */
+wait_for_completion(&my_thread_exit); /* Chờ cho đến khi my_thread
+thoát */
+/* ... */
 }
+
 ```
 
 Một đối tượng completion có thể được khai báo tĩnh (statically) bằng cách sử dụng `DECLARE_COMPLETION()` hoặc được tạo động (dynamically) bằng `init_completion()`. Một luồng có thể báo hiệu hoàn thành với sự trợ giúp của `complete()` hoặc `complete_all()`. Một tiến trình gọi (caller) có thể chờ hoàn thành thông qua `wait_for_completion()`.
@@ -1013,125 +1024,150 @@ Liệt kê 3.8 viết lại Liệt kê 3.7 bằng cách sử dụng giao diện 
 
 Giao diện kthread cung cấp cho bạn quyền truy cập miễn phí vào một cơ chế đồng bộ hóa thoát (exit synchronization mechanism) tích hợp sẵn, được thực thi bằng cách sử dụng giao diện completion. Do đó, giống như những gì my_release() thực hiện trong Liệt kê 3.8, bạn có thể gọi trực tiếp kthread_stop() thay vì phải tốn công thiết lập pink_slip, đánh thức my_thread() (waking up), và chờ đợi nó hoàn thành bằng cách sử dụng wait_for_completion(). Tương tự, my_thread() có thể thực hiện một lời gọi gọn gàng tới kthread_should_stop() để kiểm tra xem nó có nên dừng lại hay không (call it a day).
 
-**Liệt kê 3.8. Đồng bộ hóa sử dụng các hàm hỗ trợ Kthread**
+**Mã nguồn 3.8. Đồng bộ hóa sử dụng các hàm hỗ trợ Kthread**
 
-```
-/* '+' và '-' thể hiện các điểm khác biệt so với Liệt kê 3.7 */
+```c
+
+/* '+' và '-' thể hiện các điểm khác biệt so với Mã nguồn 3.7 */
+
 ## include <linux/kthread.h>
+
 /* Luồng phụ (Assistant Thread) */
 static int
 my_thread(void *unused)
 {
- DECLARE_WAITQUEUE(wait, current);
+DECLARE_WAITQUEUE(wait, current);
+
 - daemonize("my_thread");
 - while (1) {
-+ /* Tiếp tục công việc nếu không có luồng nào khác
-+ * đã gọi kthread_stop() */
-+ while (!kthread_should_stop()) {
- /* ... */
+- /* Tiếp tục công việc nếu không có luồng nào khác
+- * đã gọi kthread_stop() */
+- while (!kthread_should_stop()) {
+/* ... */
+
 - /* Thoát nếu được cho phép */
 - if (pink_slip) {
 - break;
 - }
- /* ... */
- }
- __set_current_state(TASK_RUNNING);
- remove_wait_queue(&my_thread_wait, &wait);
+/* ... */
+}
+__set_current_state(TASK_RUNNING);
+remove_wait_queue(&my_thread_wait, &wait);
+
 ```
 
 ```
+
 - complete_and_exit(&my_thread_exit, 0);
-+ return 0;
- }
-+ struct task_struct *my_task;
- /* Khởi tạo Module (Module Initialization) */
- static int __init
- my_init(void)
- {
- /* ... */
+- return 0;
+}
+
+- struct task_struct *my_task;
+/* Khởi tạo Module (Module Initialization) */
+static int __init
+my_init(void)
+{
+/* ... */
+
 - kernel_thread(my_thread, NULL,
 - CLONE_FS | CLONE_FILES | CLONE_SIGHAND |
- SIGCHLD);
-+ my_task = kthread_create(my_thread, NULL, "%s", "my_thread");
-+ if (my_task) wake_up_process(my_task);
- /* ... */
- }
- /* Giải phóng Module (Module Release) */
- static void __exit
- my_release(void)
- {
- /* ... */
+SIGCHLD);
+
+- my_task = kthread_create(my_thread, NULL, "%s", "my_thread");
+- if (my_task) wake_up_process(my_task);
+/* ... */
+}
+/* Giải phóng Module (Module Release) */
+static void __exit
+my_release(void)
+{
+/* ... */
+
 - pink_slip = 1;
 - wake_up(&my_thread_wait);
 - wait_for_completion(&my_thread_exit);
-+ kthread_stop(my_task);
- /* ... */
- }
+- kthread_stop(my_task);
+/* ... */
+}
+
 ```
 
 Thay vì tạo luồng bằng kthread_create() và kích hoạt nó thông qua wake_up_process() như đã làm trong Liệt kê 3.8, bạn có thể sử dụng một lời gọi duy nhất sau đây:
 
 ```
+
 kthread_run(my_thread, NULL, "%s", "my_thread");
+
 ```
 
 #### Các công cụ hỗ trợ xử lý lỗi (Error-Handling Aids)
 
 Một số hàm trong kernel trả về giá trị con trỏ (pointer values). Trong khi các hàm gọi зазвичай kiểm tra lỗi bằng cách so sánh giá trị trả về với NULL, chúng thường cần thêm thông tin để giải mã bản chất chính xác của lỗi đã xảy ra. Do các địa chỉ kernel (kernel addresses) có các bit dư thừa, chúng có thể được nạp chồng (overloaded) để mã hóa ngữ nghĩa lỗi (error semantics). Điều này được thực hiện với sự trợ giúp của một tập hợp các hàm hỗ trợ. Liệt kê 3.9 thực thi một ví dụ sử dụng đơn giản.
 
-#### Liệt kê 3.9. Sử dụng các công cụ hỗ trợ xử lý lỗi
+#### Mã nguồn 3.9. Sử dụng các công cụ hỗ trợ xử lý lỗi
 
-```
+```c
+
 ## include <linux/err.h>
+
 char *
 collect_data(char *userbuffer)
 {
- char *buffer;
- /* ... */
- buffer = kmalloc(100, GFP_KERNEL);
- if (!buffer) { /* Hết bộ nhớ (Out of memory) */
- return ERR_PTR(-ENOMEM);
- }
- /* ... */
- if (copy_from_user(buffer, userbuffer, 100)) {
- return ERR_PTR(-EFAULT);
- }
- /* ... */
- return(buffer);
+char *buffer;
+/* ... */
+buffer = kmalloc(100, GFP_KERNEL);
+if (!buffer) { /* Hết bộ nhớ (Out of memory) */
+return ERR_PTR(-ENOMEM);
+}
+/* ... */
+if (copy_from_user(buffer, userbuffer, 100)) {
+return ERR_PTR(-EFAULT);
+}
+/* ... */
+return(buffer);
 }
 int
 my_function(char *userbuffer)
 {
- char *buf;
- /* ... */
- buf = collect_data(userbuffer);
- if (IS_ERR(buf)) {
- printk("Error returned is %d!\n", PTR_ERR(buf));
- }
- /* ... */
+char *buf;
+/* ... */
+buf = collect_data(userbuffer);
+if (IS_ERR(buf)) {
+printk("Error returned is %d!\n", PTR_ERR(buf));
 }
+/* ... */
+}
+
 ```
 
 Nếu kmalloc() thất bại bên trong collect_data() ở Liệt kê 3.9, bạn sẽ nhận được thông báo sau:
 
 ```
+
 Error returned is -12!
+
 ```
 
 Tuy nhiên, nếu collect_data() thành công, nó sẽ trả về một con trỏ hợp lệ trỏ tới bộ đệm dữ liệu (data buffer). Như một ví dụ khác, chúng ta hãy thêm phần xử lý lỗi bằng cách sử dụng IS_ERR() và PTR_ERR() vào mã tạo luồng trong Liệt kê 3.8:
 
 ```
- my_task = kthread_create(my_thread, NULL, "%s", "mydrv");
-+ if (!IS_ERR(my_task)) {
-+ /* Thành công (Success) */
- wake_up_process(my_task);
-+ } else {
-+ /* Thất bại (Failure) */
+
+my_task = kthread_create(my_thread, NULL, "%s", "mydrv");
+
+- if (!IS_ERR(my_task)) {
+- /* Thành công (Success) */
+wake_up_process(my_task);
+
+- } else {
+- /* Thất bại (Failure) */
+
 ```
 
 ```
-+ printk("Error value returned=%d\n", PTR_ERR(my_task));
-+ }
+
+- printk("Error value returned=%d\n", PTR_ERR(my_task));
+- }
+
 ```
 
 ## Xem xét mã nguồn (Looking at the Sources)

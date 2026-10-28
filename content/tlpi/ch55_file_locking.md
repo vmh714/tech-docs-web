@@ -1,4 +1,4 @@
-# Chương 55: KHÓ TỆP (FILE LOCKING)
+# Chương 55: Khóa tệp (File Locking)
 
 Các chương trước đã đề cập đến nhiều kỹ thuật khác nhau mà các tiến trình (process) có thể sử dụng để đồng bộ hóa hành động của chúng, bao gồm tín hiệu (signal) (Chương 20 đến 22) và semaphore (Chương 47 và 53). Trong chương này, chúng ta sẽ xem xét các kỹ thuật đồng bộ hóa tiếp theo được thiết kế dành riêng cho các tệp (file).
 
@@ -48,6 +48,7 @@ Vấn đề đã rõ: vào cuối các bước này, tệp chứa giá trị 100
 
 Mặc dù chúng ta có thể sử dụng (chẳng hạn) semaphore để thực hiện việc đồng bộ hóa cần thiết, nhưng việc sử dụng khóa tệp (file lock) thường được ưu tiên hơn, bởi vì kernel tự động liên kết các khóa với các tệp.
 
+> [!NOTE]
 > [Stevens & Rago, 2005] ghi nhận việc triển khai khóa tệp UNIX đầu tiên vào năm 1980, và lưu ý rằng khóa `fcntl()`, thứ mà chúng ta tập trung chính trong chương này, đã xuất hiện trong System V Release 2 vào năm 1984.
 
 Trong chương này, chúng ta mô tả hai API khác nhau để đặt khóa tệp:
@@ -79,7 +80,7 @@ Trong phần còn lại của chương này, chúng ta sẽ phân biệt các lo
 
 Mặc dù `fcntl()` cung cấp một tập siêu tập (superset) các tính năng so với `flock()`, chúng ta vẫn mô tả `flock()` vì nó vẫn được sử dụng trong một số ứng dụng, và vì nó khác với `fcntl()` ở một số ngữ nghĩa về sự kế thừa và giải phóng khóa.
 
-```
+```c
 ## include <sys/file.h>
 int flock(int fd, int operation);
                                              Trả về 0 khi thành công, hoặc –1 khi lỗi
@@ -114,6 +115,7 @@ Một khóa chia sẻ hiện có có thể được chuyển đổi thành khóa
 
 Việc chuyển đổi khóa không được đảm bảo là tính nguyên tử (atomic). Trong quá trình chuyển đổi, khóa hiện có trước tiên bị xóa, sau đó một khóa mới được thiết lập. Giữa hai bước này, yêu cầu đang chờ xử lý của một tiến trình khác đối với một khóa không tương thích có thể được chấp thuận. Nếu điều này xảy ra, quá trình chuyển đổi sẽ bị chặn, hoặc nếu `LOCK_NB` được chỉ định, quá trình chuyển đổi sẽ thất bại và tiến trình sẽ mất khóa ban đầu của mình. (Hành vi này xuất hiện trong cài đặt `flock()` gốc của BSD và cũng xuất hiện trên nhiều bản cài đặt UNIX khác.)
 
+> [!NOTE]
 > Mặc dù không phải là một phần của tiêu chuẩn SUSv3, `flock()` vẫn xuất hiện trên hầu hết các bản cài đặt UNIX. Một số bản cài đặt yêu cầu bao gồm (include) `<fcntl.h>` hoặc `<sys/fcntl.h>` thay vì `<sys/file.h>`. Do `flock()` bắt nguồn từ BSD, các khóa do nó thiết lập đôi khi được gọi là khóa tệp BSD (BSD file locks).
 
 [Liệt kê 55-1](#page-4-0) minh họa việc sử dụng `flock()`. Chương trình này khóa một tệp, tạm dừng hoạt động (sleep) trong một số giây được chỉ định, và sau đó mở khóa tệp đó. Chương trình nhận tối đa ba đối số dòng lệnh (command-line arguments). Đối số đầu tiên là tệp cần khóa. Đối số thứ hai chỉ định loại khóa (chia sẻ hoặc độc quyền) và có bao gồm cờ `LOCK_NB` (không chặn) hay không. Đối số thứ ba chỉ định số giây cần sleep giữa thời điểm nhận được khóa và thời điểm giải phóng khóa; đối số này là tùy chọn và mặc định là 10 giây.
@@ -254,6 +256,7 @@ Sử dụng `fcntl()` (Mục 5.2), chúng ta có thể đặt khóa trên bất 
 
 Thông thường, `fcntl()` được sử dụng để khóa các dải byte tương ứng với các ranh giới bản ghi do ứng dụng xác định bên trong tập tin; do đó xuất phát từ thuật ngữ khóa bản ghi. Các thuật ngữ dải byte (byte range), vùng tập tin (file region), và phân đoạn tập tin (file segment) ít được sử dụng hơn, nhưng là những mô tả chính xác hơn về loại khóa này. (Vì đây là loại khóa duy nhất được quy định trong tiêu chuẩn POSIX.1 gốc và trong SUSv3, nên nó đôi khi cũng được gọi là khóa tập tin POSIX - POSIX file locking.)
 
+> [!NOTE]
 > SUSv3 yêu cầu khóa bản ghi (record locking) phải được hỗ trợ đối với các tập tin thông thường (regular files) và cho phép hỗ trợ đối với các loại tập tin khác. Mặc dù việc áp dụng khóa bản ghi chỉ cho các tập tin thông thường thường là hợp lý (vì đối với hầu hết các loại tập tin khác, việc bàn về các khoảng byte cho dữ liệu chứa trong tập tin là không có ý nghĩa), nhưng trên Linux, có thể áp dụng khóa bản ghi cho bất kỳ loại File Descriptor nào.
 
 [Hình 55-2](#page-8-0) minh họa cách khóa bản ghi có thể được sử dụng để đồng bộ hóa quyền truy cập của hai Process vào cùng một vùng của một tập tin. (Trong sơ đồ này, chúng ta giả định rằng tất cả các yêu cầu khóa đều ở chế độ chặn (blocking), do đó chúng sẽ phải chờ nếu một khóa đang bị giữ bởi Process khác).
@@ -339,6 +342,7 @@ Kể từ phiên bản kernel 2.4.21, Linux cho phép một giá trị âm đư�
 
 Nhìn chung, các ứng dụng nên khóa phạm vi byte tối thiểu cần thiết. Điều này cho phép mức độ đồng thời (concurrency) cao hơn cho các tiến trình khác đang cố gắng khóa đồng thời các vùng khác nhau của cùng một tệp.
 
+> [!NOTE]
 > Thuật ngữ "phạm vi tối thiểu" cần được làm rõ thêm trong một số trường hợp. Việc kết hợp khóa bản ghi (record lock) và các lời gọi đến `mmap()` có thể gây ra những hậu quả khó chịu trên các hệ thống tệp mạng (network file system) như NFS và CIFS. Vấn đề xảy ra vì `mmap()` ánh xạ (map) các tệp theo các đơn vị kích thước trang hệ thống (system page size). Nếu một khóa tệp được căn chỉnh theo trang (page-aligned), thì mọi thứ đều ổn, vì khóa sẽ bao phủ toàn bộ vùng tương ứng với một trang bẩn (dirty page). Tuy nhiên, nếu khóa không được căn chỉnh theo trang, thì sẽ có một tình trạng tranh chấp (race condition) — kernel có thể ghi vào vùng không được khóa nếu bất kỳ phần nào của trang được ánh xạ đã bị sửa đổi.
 
 Việc chỉ định 0 trong `l_len` có ý nghĩa đặc biệt là "khóa tất cả các byte từ điểm được chỉ định bởi `l_start` và `l_whence` cho đến cuối tệp, bất kể tệp phát triển lớn đến đâu." Điều này rất thuận tiện nếu chúng ta không biết trước có bao nhiêu byte sẽ được thêm vào tệp. Để khóa toàn bộ tệp, chúng ta có thể chỉ định `l_whence` là `SEEK_SET` và cả `l_start` lẫn `l_len` bằng 0.
@@ -365,6 +369,7 @@ Kiểm tra xem liệu có thể lấy được khóa được chỉ định tron
 
 Lưu ý rằng có những tình trạng tranh chấp tiềm ẩn (potential race condition) khi kết hợp việc sử dụng `F_GETLK` với một lời gọi `F_SETLK` hoặc `F_SETLKW` tiếp theo. Vào thời điểm chúng ta thực hiện thao tác sau, thông tin do `F_GETLK` trả về có thể đã lỗi thời. Do đó, `F_GETLK` ít hữu ích hơn so với vẻ bề ngoài của nó. Ngay cả khi `F_GETLK` cho biết có thể đặt khóa, chúng ta vẫn phải chuẩn bị tinh thần nhận mã lỗi trả về từ `F_SETLK` hoặc việc `F_SETLKW` sẽ bị chặn (block).
 
+> [!NOTE]
 > Thư viện GNU C cũng thực thi hàm `lockf()`, đây chỉ là một giao diện được đơn giản hóa nằm chồng lên trên `fcntl()`. (SUSv3 quy định `lockf()`, nhưng không quy định mối quan hệ giữa `lockf()` và `fcntl()`. Tuy nhiên, hầu hết các hệ thống UNIX đều thực thi `lockf()` dựa trên nền tảng của `fcntl()`). Một lời gọi có dạng `lockf(fd, operation, size)` tương đương với một lời gọi đến `fcntl()` với `l_whence` được thiết lập thành `SEEK_CUR`, `l_start` thiết lập thành 0, và `l_len` thiết lập thành `size`; nghĩa là, `lockf()` khóa một chuỗi byte bắt đầu tại vị trí con trỏ tệp hiện tại (current file offset). Tham số `operation` của `lockf()` tương tự như tham số `cmd` của `fcntl()`, nhưng các hằng số khác nhau được sử dụng cho việc lấy, giải phóng và kiểm tra sự tồn tại của khóa. Hàm `lockf()` chỉ đặt các khóa độc quyền (exclusive lock, tức là khóa ghi). Xem trang hướng dẫn (manual page) `lockf(3)` để biết thêm chi tiết.
 
 ## Chi tiết về việc cấp phát và giải phóng khóa
@@ -687,6 +692,7 @@ Các khóa bản ghi có thể được thiết lập và giải phóng nhanh đ
 
 Cấu trúc dữ liệu của kernel được sử dụng để duy trì thông tin về các khóa được thiết kế để đáp ứng các yêu cầu này. Mỗi tệp đang mở (open file) có một danh sách liên kết (linked list) các khóa liên quan được nắm giữ đối với tệp đó. Các khóa trong danh sách được sắp xếp, đầu tiên theo ID tiến trình (process ID), và sau đó theo offset bắt đầu. Một ví dụ về danh sách như vậy được minh họa trong [Hình 55-6.](#page-18-0)
 
+> [!NOTE]
 > Kernel cũng duy trì các khóa `flock()` và lease tệp (file leases) trong danh sách liên kết các khóa liên quan đến một tệp đang mở. (Chúng ta sẽ mô tả ngắn gọn về lease tệp khi thảo luận về tệp `/proc/locks` ở [Mục 55.5](#page-23-0)). Tuy nhiên, các loại khóa này thường có số lượng ít hơn rất nhiều và do đó ít có khả năng ảnh hưởng đến hiệu năng, nên chúng ta sẽ bỏ qua chúng trong phần thảo luận này.
 
 ```
@@ -748,6 +754,7 @@ Ngữ nghĩa được mô tả ở điểm cuối cùng áp dụng cho dù các 
 
 Ngữ nghĩa kế thừa và giải phóng khóa của `fcntl()` là một điểm hạn chế về mặt kiến trúc (architectural blemish). Ví dụ, chúng làm cho việc sử dụng khóa bản ghi từ các gói thư viện (library package) trở nên có vấn đề, vì một hàm thư viện không thể ngăn chặn khả năng người gọi nó sẽ đóng một file descriptor trỏ đến một tệp đang bị khóa và do đó làm mất khóa do mã nguồn thư viện lấy. Một sơ đồ cài đặt thay thế đáng lẽ là liên kết khóa với một file descriptor thay vì với một i-node. Tuy nhiên, ngữ nghĩa hiện tại là hành vi lịch sử và nay đã trở thành tiêu chuẩn của khóa bản ghi. Thật không may, ngữ nghĩa này làm giảm đáng kể tính hữu dụng của cơ chế khóa `fcntl()`.
 
+> [!NOTE]
 > Với `flock()`, một khóa chỉ được liên kết với một mô tả tệp mở (open file description), và vẫn có hiệu lực cho đến khi bất kỳ tiến trình nào nắm giữ tham chiếu đến khóa thực hiện giải phóng khóa một cách tường minh hoặc tất cả các file descriptor trỏ đến mô tả tệp mở đó đều bị đóng.
 
 ### 55.3.6 Hiện tượng đói khóa (Lock Starvation) và Thứ tự ưu tiên của các yêu cầu khóa trong hàng đợi
@@ -772,19 +779,19 @@ Các loại khóa mà chúng ta đã mô tả cho đến nay đều là khóa kh
 
 Linux, giống như nhiều hệ thống UNIX khác, cũng cho phép các record lock của `fcntl()` trở thành khóa bắt buộc (mandatory). Điều này có nghĩa là mọi thao tác I/O trên file đều được kiểm tra xem nó có tương thích với bất kỳ khóa nào do các process khác đang giữ trên vùng file mà I/O đang diễn ra hay không.
 
+> [!NOTE]
 > Khóa ở chế độ khuyến nghị (Advisory mode locking) đôi khi được gọi là khóa tùy ý (discretionary locking), trong khi khóa bắt buộc (mandatory locking) đôi khi được gọi là khóa chế độ thực thi (enforcement-mode locking). SUSv3 không quy định về mandatory locking, nhưng nó có sẵn (với một số khác biệt nhỏ về chi tiết) trên hầu hết các hệ thống UNIX hiện đại.
 
 Để sử dụng mandatory locking trên Linux, chúng ta phải bật tính năng này trên file system chứa các file mà chúng ta muốn khóa và trên từng file cần khóa. Chúng ta bật mandatory locking trên một file system bằng cách mount nó với tùy chọn `-o mand` (đặc trưng của Linux):
 
-```
 ## mount -o mand /dev/sda10 /testfs
+
 ```
 
 Từ một chương trình, chúng ta có thể đạt được kết quả tương tự bằng cách chỉ định cờ `MS_MANDLOCK` khi gọi `mount(2)` (Mục 14.8.1).
 
 Chúng ta có thể kiểm tra xem một file system đã được mount có bật mandatory locking hay không bằng cách xem đầu ra của lệnh `mount(8)` mà không có tùy chọn nào:
 
-```
 ## mount | grep sda10
 /dev/sda10 on /testfs type ext3 (rw,mand)
 ```
@@ -925,12 +932,14 @@ $ cat /proc/locks
 
 Các dòng được hiển thị với các ký tự `->` ngay sau số hiệu khóa đại diện cho các yêu cầu khóa bị chặn bởi số hiệu khóa tương ứng. Do đó, chúng ta thấy một yêu cầu bị chặn trên khóa 1 (khóa khuyến nghị - advisory lock được tạo bằng `fcntl()`), hai yêu cầu bị chặn trên khóa 2 (khóa bắt buộc - mandatory lock được tạo bằng `fcntl()`), và một yêu cầu bị chặn trên khóa 3 (khóa được tạo bằng `flock()`).
 
+> [!NOTE]
 > Tệp `/proc/locks` cũng hiển thị thông tin về bất kỳ sự cho thuê tệp (file lease) nào đang được nắm giữ bởi các tiến trình trên hệ thống. File lease là một cơ chế đặc thù của Linux có sẵn từ phiên bản Linux 2.4 trở đi. Nếu một tiến trình thiết lập lease trên một tệp, nó sẽ nhận được thông báo (thông qua việc gửi một tín hiệu - signal) nếu một tiến trình khác cố gắng `open()` hoặc `truncate()` tệp đó. (Việc bao gồm `truncate()` là cần thiết vì đây là System Call duy nhất có thể được sử dụng để thay đổi nội dung của tệp mà không cần mở tệp đó trước). File lease được cung cấp nhằm cho phép Samba hỗ trợ tính năng khóa cơ hội (opportunistic lock - oplock) của giao thức Microsoft SMB và cho phép NFS phiên bản 4 hỗ trợ các quyền ủy quyền - delegation (tương tự như SMB oplock). Các chi tiết bổ sung về file lease có thể được tìm thấy dưới phần mô tả của thao tác `F_SETLEASE` trong trang hướng dẫn (man page) `fcntl(2)`.
 
 ## 55.6 Chạy Chỉ Một Thể Hiện Duy Nhất Của Một Chương Trình
 
 Một số chương trình—đặc biệt là nhiều tiến trình nền (daemon)—cần đảm bảo rằng chỉ có duy nhất một thể hiện của chương trình đang chạy trên hệ thống tại một thời điểm. Một phương pháp phổ biến để thực hiện điều này là yêu cầu daemon tạo một tệp trong một thư mục tiêu chuẩn và đặt một khóa ghi (write lock) lên tệp đó. Daemon giữ khóa tệp này trong suốt thời gian thực thi và xóa tệp ngay trước khi kết thúc. Nếu một thể hiện khác của daemon được khởi động, nó sẽ không thể lấy được khóa ghi trên tệp. Kết quả là, nó sẽ nhận ra rằng một thể hiện khác của daemon chắc chắn đang chạy, và tiến hành kết thúc (terminate).
 
+> [!NOTE]
 > Nhiều máy chủ mạng (network server) sử dụng một quy ước thay thế là giả định rằng một thể hiện máy chủ đã đang chạy nếu cổng socket nổi tiếng (well-known socket port) mà máy chủ liên kết (bind) tới đã được sử dụng (Mục 61.10).
 
 Thư mục `/var/run` là vị trí thông thường cho các tệp khóa như vậy. Ngoài ra, vị trí của tệp có thể được chỉ định bằng một dòng trong tệp cấu hình của daemon.

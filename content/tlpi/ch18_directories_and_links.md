@@ -1,4 +1,4 @@
-# Chương 18: THƯ MỤC VÀ LIÊN KẾT (DIRECTORIES AND LINKS)
+# Chương 18: Thư mục và Liên kết (Directories and Links)
 
 Trong chương này, chúng ta kết thúc phần thảo luận về các chủ đề liên quan đến tập tin bằng cách xem xét các thư mục (directory) và liên kết (link). Sau phần tổng quan về cách thức triển khai của chúng, chúng ta sẽ mô tả các system call (lệnh hệ thống) được sử dụng để tạo và xóa thư mục cũng như liên kết. Tiếp theo, chúng ta xem xét các hàm thư viện (library function) cho phép một tiến trình (process) quét nội dung của một thư mục đơn lẻ và duyệt qua (tức là kiểm tra từng tập tin trong) một cây thư mục (directory tree).
 
@@ -15,8 +15,10 @@ Một thư mục được lưu trữ trong hệ thống tập tin (file system) 
 
 Trên hầu hết các hệ thống tập tin nguyên bản của Linux (native Linux file system), tên tập tin có thể dài tới 255 ký tự. Mối quan hệ giữa các thư mục và i-node được minh họa trong [Hình 18-1,](#page-1-0) hiển thị một phần nội dung của bảng i-node hệ thống tập tin và các tập tin thư mục có liên quan được duy trì cho một tập tin ví dụ (/etc/passwd).
 
+> [!NOTE]
 > Mặc dù một tiến trình có thể mở (open) một thư mục, nhưng nó không thể sử dụng `read()` để đọc nội dung của thư mục đó. Để truy xuất nội dung của một thư mục, thay vào đó, tiến trình phải sử dụng các system call và hàm thư viện được thảo luận sau trong chương này. (Trên một số bản cài đặt UNIX, việc thực hiện `read()` trên một thư mục là khả thi, nhưng điều này không có tính di động (portable).) Tiến trình cũng không thể trực tiếp thay đổi nội dung của thư mục bằng `write()`; nó chỉ có thể thay đổi nội dung một cách gián tiếp (tức là yêu cầu kernel) bằng cách sử dụng các system call như `open()` (để tạo một tập tin mới), `link()`, `mkdir()`, `symlink()`, `unlink()`, và `rmdir()`. (Tất cả các system call này được mô tả sau trong chương này, ngoại trừ `open()`, đã được mô tả ở Mục 4.3.)
 
+> [!NOTE]
 > Bảng i-node được đánh số bắt đầu từ 1, thay vì 0, bởi vì số 0 trong trường i-node của một mục nhập thư mục (directory entry) cho biết mục nhập đó không được sử dụng. I-node 1 được sử dụng để ghi lại các khối bị lỗi (bad block) trong hệ thống tập tin. Thư mục gốc (/) của một hệ thống tập tin luôn được lưu trữ trong mục nhập i-node 2 (như được hiển thị trong [Hình 18-1\)](#page-1-0), để kernel biết nơi bắt đầu khi phân giải một đường dẫn (pathname).
 
 ```mermaid
@@ -45,6 +47,7 @@ graph LR
 
 Nếu chúng ta xem xét lại danh sách thông tin được lưu trữ trong i-node của tập tin (Mục 14.4), chúng ta thấy rằng i-node không chứa tên tập tin; nó chỉ là phép ánh xạ trong danh sách thư mục dùng để xác định tên của tập tin. Điều này mang lại một hệ quả hữu ích: chúng ta có thể tạo nhiều tên—trong cùng một thư mục hoặc trong các thư mục khác nhau—mỗi tên đều trỏ đến cùng một i-node. Những tên đa dạng này được gọi là liên kết (link), hoặc đôi khi là liên kết cứng (hard link) để phân biệt chúng với liên kết tượng trưng (symbolic link), mà chúng ta sẽ thảo luận ngay sau đây.
 
+> [!NOTE]
 > Tất cả các hệ thống tập tin nguyên bản của Linux và UNIX đều hỗ trợ liên kết cứng. Tuy nhiên, nhiều hệ thống tập tin phi UNIX (ví dụ: VFAT của Microsoft) thì không. (Hệ thống tập tin NTFS của Microsoft có hỗ trợ liên kết cứng.)
 
 Từ shell, chúng ta có thể tạo các liên kết cứng mới trỏ đến một tập tin hiện có bằng cách sử dụng lệnh `ln`, như minh họa trong nhật ký phiên làm việc shell sau đây:
@@ -78,6 +81,7 @@ Tất cả các tên (liên kết) của một tệp đều có giá trị ngang
 
 Một câu hỏi thường được đặt ra trên các diễn đàn trực tuyến là "Làm thế nào tôi có thể tìm tên tệp liên quan đến bộ mô tả tệp (file descriptor) X trong chương trình của mình?" Câu trả lời ngắn gọn là chúng ta không thể — ít nhất là không theo cách có tính di động (portable) và rõ ràng — vì một file descriptor trỏ đến một i-node, và nhiều tên tệp (hoặc thậm chí, như được mô tả trong Mục [18.3,](#page-5-0) không có tên nào cả) có thể cùng trỏ tới i-node này.
 
+> [!NOTE]
 > Trên Linux, chúng ta có thể xem những tệp nào đang được mở bởi một tiến trình (process) bằng cách sử dụng `readdir()` (Mục [18.8](#page-13-0)) để quét nội dung của thư mục đặc trưng của Linux `/proc/PID/fd`, nơi chứa các liên kết tượng trưng (symbolic link) cho từng file descriptor hiện đang được mở bởi tiến trình đó. Các công cụ `lsof(1)` và `fuser(1)`, vốn đã được chuyển port (port) sang nhiều hệ thống UNIX, cũng rất hữu ích trong trường hợp này.
 
 Hard link (liên kết cứng) có hai hạn chế, cả hai đều có thể được khắc phục bằng cách sử dụng symbolic link:
@@ -99,6 +103,7 @@ Từ shell, symbolic link được tạo bằng lệnh `ln –s`. Lệnh `ls –
 
 Symbolic link không có trạng thái giống như hard link. Cụ thể, một symbolic link không được tính vào số lượng liên kết của tệp mà nó trỏ tới. (Do đó, số lượng liên kết của i-node 61 trong [Hình 18-2](#page-4-0) là 2, chứ không phải 3). Do đó, nếu tên tệp mà symbolic link trỏ tới bị xóa, chính symbolic link đó vẫn tiếp tục tồn tại, mặc dù nó không còn có thể được giải tham chiếu (dereferenced - đi theo liên kết) nữa. Chúng ta gọi đó là một liên kết treo (dangling link). Thậm chí có thể tạo một symbolic link trỏ đến một tên tệp không hề tồn tại tại thời điểm liên kết được tạo.
 
+> [!NOTE]
 > Symbolic link được giới thiệu bởi 4.2BSD. Mặc dù chúng không có trong POSIX.1-1990, nhưng sau đó chúng đã được đưa vào SUSv1, và do đó có mặt trong SUSv3.
 
 ```mermaid
@@ -148,6 +153,7 @@ Trong một số ít trường hợp cần có chức năng tương tự cho c�
 
 Một điểm nhìn chung được áp dụng: các liên kết tượng trưng nằm trong phần thư mục của một đường dẫn (pathname) (tức là tất cả các thành phần đứng trước dấu gạch chéo cuối cùng) sẽ luôn luôn được giải tham chiếu. Do đó, trong đường dẫn `/somedir/somesubdir/file`, `somedir` và `somesubdir` sẽ luôn luôn được giải tham chiếu nếu chúng là liên kết tượng trưng, và `file` có thể được giải tham chiếu hay không còn tùy thuộc vào system call mà đường dẫn đó được truyền vào.
 
+> [!NOTE]
 > Trong Mục [18.11](#page-26-0), chúng tôi mô tả một tập hợp các system call được bổ sung từ Linux 2.6.16, nhằm mở rộng chức năng của một số giao diện hiển thị trong Bảng 18-1. Đối với một số system call này, hành vi liên quan đến việc đi theo liên kết tượng trưng có thể được điều khiển thông qua tham số cờ (`flags`) truyền vào hàm.
 
 ### Quyền hạn và chủ sở hữu của liên kết tượng trưng (symbolic link)
@@ -209,6 +215,7 @@ Với đường dẫn của một tệp hiện có trong `oldpath`, lời gọi 
 
 Trên Linux, lời gọi hệ thống `link()` không giải tham chiếu (dereference) các liên kết tượng trưng. Nếu `oldpath` là một liên kết tượng trưng, thì `newpath` được tạo như một liên kết cứng mới trỏ đến chính tệp liên kết tượng trưng đó. (Nói cách khác, `newpath` cũng là một liên kết tượng trưng trỏ đến cùng một tệp mà `oldpath` trỏ tới). Hành vi này không tuân thủ SUSv3, tiêu chuẩn quy định rằng tất cả các hàm thực hiện phân giải đường dẫn (pathname resolution) phải giải tham chiếu các liên kết tượng trưng trừ khi được chỉ định khác (và không có ngoại lệ nào được chỉ định cho `link()`). Hầu hết các bản cài đặt UNIX khác hoạt động theo cách được quy định bởi SUSv3. Một ngoại lệ đáng chú ý là Solaris, cung cấp hành vi giống như Linux theo mặc định, nhưng cung cấp hành vi tuân thủ SUSv3 nếu các tùy chọn trình biên dịch thích hợp được sử dụng. Hệ quả của sự thiếu nhất quán này giữa các hệ thống là các ứng dụng khả chuyển (portable application) nên tránh chỉ định liên kết tượng trưng cho tham số `oldpath`.
 
+> [!NOTE]
 > SUSv4 thừa nhận sự không nhất quán giữa các cài đặt (implementation) hiện có và quy định rằng việc lựa chọn `link()` có giải tham chiếu (dereference) các symbolic link hay không là do cài đặt quyết định (implementation-defined). SUSv4 cũng bổ sung đặc tả của `linkat()`, thực hiện tác vụ giống như `link()`, nhưng có thêm một tham số `flags` có thể được sử dụng để kiểm soát việc system call này có giải tham chiếu các symbolic link hay không. Xem Mục [18.11](#page-26-0) để biết thêm chi tiết.
 
 ```c
@@ -221,6 +228,7 @@ System call `unlink()` xóa một liên kết (xóa một tên tệp - filename)
 
 Chúng ta không thể sử dụng `unlink()` để xóa một thư mục; tác vụ đó yêu cầu `rmdir()` hoặc `remove()`, mà chúng ta sẽ xem xét ở Mục [18.6](#page-11-0).
 
+> [!NOTE]
 > SUSv3 quy định rằng nếu `pathname` chỉ định một thư mục, thì `unlink()` phải thất bại với lỗi `EPERM`. Tuy nhiên, trên Linux, `unlink()` lại thất bại với lỗi `EISDIR` trong trường hợp này. (LSB cho phép một cách rõ ràng sự sai lệch này so với SUSv3.) Một ứng dụng khả chuyển (portable application) nên sẵn sàng xử lý cả hai giá trị nếu kiểm tra trường hợp này.
 
 System call `unlink()` không giải tham chiếu symbolic link. Nếu `pathname` là một symbolic link, chính liên kết đó sẽ bị xóa, chứ không phải tên tệp mà nó trỏ tới.
@@ -240,8 +248,6 @@ Chương trình trong [Danh sách 18-1](#page-8-0) minh họa rằng ngay cả k
 ## define BUF_SIZE 1024
 int
 main(int argc, char *argv[])
-```
-
 {
 int fd, j, numBlocks;
 char shellCmd[CMD_SIZE]; /* Lệnh được truyền vào system() */

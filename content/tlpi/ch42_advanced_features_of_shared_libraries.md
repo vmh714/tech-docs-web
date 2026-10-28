@@ -1,6 +1,4 @@
-## Chapter 42
-
-## CÁC TÍNH NĂNG NÂNG CAO CỦA THƯ VIỆN DÙNG CHUNG
+# Chương 42: Các tính năng nâng cao của Thư viện chia sẻ (Advanced Features of Shared Libraries)
 
 Chương trước đã trình bày các nguyên lý cơ bản của thư viện dùng chung (shared library). Chương này mô tả một số tính năng nâng cao của thư viện dùng chung, bao gồm các nội dung sau:
 
@@ -113,6 +111,7 @@ void *dlsym(void *handle, char *symbol);
 
 Nếu tìm thấy `symbol`, `dlsym()` sẽ trả về địa chỉ của nó; ngược lại, `dlsym()` trả về `NULL`. Đối số `handle` thông thường là một handle thư viện (library handle) được trả về bởi lần gọi `dlopen()` trước đó. Ngoài ra, nó cũng có thể là một trong các giả handle (pseudohandle) được mô tả bên dưới.
 
+> [!NOTE]
 > Một hàm liên quan là `dlvsym(handle, symbol, version)`, có điểm tương đồng với `dlsym()`, nhưng có thể được sử dụng để tìm kiếm trong một thư viện có phiên bản symbol (symbol-versioned library) nhằm lấy định nghĩa của symbol có phiên bản khớp với chuỗi được chỉ định trong `version`. (Chúng ta sẽ mô tả về phiên bản symbol trong Mục [42.3.2](#page-137-0)). Macro kiểm tra tính năng `_GNU_SOURCE` phải được định nghĩa để có thể lấy được khai báo của hàm này từ `<dlfcn.h>`.
 
 Giá trị của một `symbol` do `dlsym()` trả về có thể là `NULL`, điều này không thể phân biệt được với giá trị trả về khi "không tìm thấy symbol". Để phân biệt hai khả năng này, chúng ta phải gọi `dlerror()` trước đó (để đảm bảo rằng bất kỳ chuỗi lỗi nào được lưu giữ trước đó đã bị xóa) và sau đó, nếu sau lệnh gọi `dlsym()`, hàm `dlerror()` trả về một giá trị khác `NULL` (`non-NULL`), chúng ta biết rằng đã xảy ra lỗi.
@@ -157,7 +156,7 @@ Thay vì sử dụng cú pháp `*(void **)` được hiển thị ở trên, ng�
 (void *) funcp = dlsym(handle, symbol);
 ```
 
-Tuy nhiên, đối với đoạn mã này, `gcc –pedantic` sẽ đưa ra cảnh báo rằng "ANSI C cấm sử dụng các biểu thức ép kiểu làm v-value (lvalue)." Cú pháp `*(void **)` không gây ra cảnh báo này vì chúng ta đang gán giá trị cho một địa chỉ được trỏ tới bởi lvalue của phép gán.
+Tuy nhiên, đối với đoạn mã này, `gcc –pedantic` sẽ đưa ra cảnh báo rằng "ANSI C cấm sử dụng các biểu thức ép kiểu làm lvalue (giá trị vế trái)." Cú pháp `*(void **)` không gây ra cảnh báo này vì chúng ta đang gán giá trị cho một địa chỉ được trỏ tới bởi lvalue của phép gán.
 
 Trên nhiều cài đặt UNIX, chúng ta có thể sử dụng các phép ép kiểu như sau để loại bỏ các cảnh báo từ trình biên dịch C (C compiler):
 
@@ -167,6 +166,7 @@ funcp = (int (*) (int)) dlsym(handle, symbol);
 
 Tuy nhiên, bản đặc tả của `dlsym()` trong SUSv3 Technical Corrigendum Number 1 lưu ý rằng tiêu chuẩn C99 vẫn yêu cầu các trình biên dịch phải tạo ra cảnh báo cho một phép chuyển đổi kiểu như vậy, đồng thời đề xuất sử dụng cú pháp `*(void **)` đã nêu ở trên.
 
+> [!NOTE]
 > SUSv3 TC1 lưu ý rằng do nhu cầu sử dụng cú pháp `*(void **)`, một phiên bản tương lai của tiêu chuẩn có thể sẽ định nghĩa các API dạng `dlsym()` riêng biệt để xử lý con trỏ dữ liệu và con trỏ hàm. Tuy nhiên, SUSv4 không chứa bất kỳ thay đổi nào liên quan đến điểm này.
 
 ### Sử dụng các pseudohandle của thư viện với dlsym()
@@ -239,10 +239,11 @@ main(int argc, char *argv[])
 
 Hàm `dlclose()` dùng để đóng một thư viện.
 
-```
 ## include <dlfcn.h>
+
 int dlclose(void *handle);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Hàm `dlclose()` giảm bộ đếm tham chiếu mở (open reference counter) của hệ thống đối với thư viện được trỏ tới bởi `handle`. Nếu bộ đếm tham chiếu này giảm về 0, và không có ký hiệu (symbol) nào trong thư viện bị yêu cầu bởi các thư viện khác, thì thư viện đó sẽ được gỡ tải (unloaded). Quy trình này cũng được thực hiện (một cách đệ quy) đối với các thư viện nằm trong cây phụ thuộc (dependency tree) của thư viện này. Một lệnh `dlclose()` ẩn (implicit) đối với tất cả các thư viện sẽ được thực thi khi tiến trình (process) kết thúc.
@@ -253,7 +254,6 @@ Hàm `dlclose()` giảm bộ đếm tham chiếu mở (open reference counter) c
 
 Cho một địa chỉ trong `addr` (thường là địa chỉ lấy được từ lời gọi `dlsym()` trước đó), hàm `dladdr()` trả về một cấu trúc chứa thông tin về địa chỉ đó.
 
-```
 ## define _GNU_SOURCE
 ## include <dlfcn.h>
 int dladdr(const void *addr, Dl_info *info);
@@ -297,6 +297,7 @@ $ gcc -export-dynamic main.c
 
 Việc sử dụng một trong các tùy chọn này cho phép một thư viện được tải động có thể truy cập các ký hiệu toàn cục trong chương trình chính.
 
+> [!NOTE]
 > Tùy chọn `gcc -rdynamic` và tùy chọn `gcc -Wl,-E` là các từ đồng nghĩa khác cho `Wl,--export-dynamic`.
 
 ## 42.2 Kiểm soát Khả năng Hiển thị của Ký hiệu (Symbol Visibility)
@@ -325,6 +326,7 @@ func(void) {
 
 Trong khi từ khóa `static` giới hạn khả năng hiển thị của một ký hiệu (symbol) trong phạm vi một tệp mã nguồn duy nhất, thuộc tính `hidden` làm cho ký hiệu đó có sẵn trên tất cả các tệp mã nguồn cấu thành nên thư viện chia sẻ (shared library), nhưng ngăn không cho nó hiển thị bên ngoài thư viện đó.
 
+> [!NOTE]
 > Giống như từ khóa `static`, thuộc tính `hidden` cũng mang lại hiệu quả ngược lại là ngăn chặn việc chèn ép ký hiệu (symbol interposition) tại thời điểm chạy (run time).
 
 - Các script phiên bản (Version scripts - Mục [42.3](#page-135-0)) có thể được sử dụng để kiểm soát chính xác khả năng hiển thị của ký hiệu và lựa chọn phiên bản của ký hiệu mà một tham chiếu được liên kết (bound).
@@ -481,40 +483,32 @@ Các phụ thuộc có thể được nối chuỗi (chain), sao cho chúng ta c
 
 Tên của các thẻ phiên bản tự bản thân chúng không mang ý nghĩa gì đặc biệt. Mối quan hệ giữa chúng chỉ được xác định bởi các phụ thuộc phiên bản đã chỉ định, và chúng ta chọn các tên `VER_1` và `VER_2` đơn giản là để gợi ý về các mối quan hệ này. Để hỗ trợ công tác bảo trì, thực tiễn được khuyến nghị là sử dụng các thẻ phiên bản bao gồm tên gói (package name) và số phiên bản. Ví dụ, glibc sử dụng các thẻ phiên bản có tên như `GLIBC_2.0`, `GLIBC_2.1`, v.v.
 
-```
-
 Thẻ phiên bản `VER_2` cũng chỉ định rằng hàm mới `pqr()` được xuất (export) bởi thư viện và liên kết (bind) với thẻ phiên bản `VER_2`. Nếu chúng ta không khai báo `pqr()` theo cách này, thì chỉ thị `local` mà thẻ phiên bản `VER_2` kế thừa từ thẻ phiên bản `VER_1` sẽ làm cho `pqr()` trở nên ẩn (invisible) đối với bên ngoài thư viện. Lưu ý rằng nếu chúng ta lược bỏ hoàn toàn chỉ thị `local`, thì các ký hiệu (symbol) `xyz_old()` và `xyz_new()` cũng sẽ được xuất bởi thư viện (điều này thông thường không phải là thứ chúng ta muốn).
 
 Bây giờ chúng ta xây dựng phiên bản mới của thư viện theo cách thông thường:
 
 ```
-
 $ gcc -g -c -fPIC -Wall sv_lib_v2.c
 $ gcc -g -shared -o libsv.so sv_lib_v2.o -Wl,--version-script,sv_v2.map
-
 ```
 
 Bây giờ chúng ta có thể tạo một chương trình mới, `p2`, sử dụng định nghĩa mới của `xyz()`, trong khi chương trình `p1` sử dụng phiên bản cũ của `xyz()`.
 
 ```
-
 $ gcc -g -o p2 sv_prog.c libsv.so
 $ LD_LIBRARY_PATH=. ./p2
 v2 xyz Uses xyz@VER_2
 $ LD_LIBRARY_PATH=. ./p1
 v1 xyz Uses xyz@VER_1
-
 ```
 
 Các phụ thuộc về thẻ phiên bản của một tệp thực thi (executable) được ghi lại tại thời điểm liên kết tĩnh (static link time). Chúng ta có thể sử dụng `objdump -t` để hiển thị bảng ký hiệu (symbol table) của mỗi tệp thực thi, từ đó cho thấy các phụ thuộc thẻ phiên bản khác nhau của từng chương trình:
 
 ```
-
 $ objdump -t p1 | grep xyz
 08048380 F *UND* 0000002e xyz@@VER_1
 $ objdump -t p2 | grep xyz
 080483a0 F *UND* 0000002e xyz@@VER_2
-
 ```
 
 Chúng ta cũng có thể sử dụng `readelf -s` để thu được thông tin tương tự.
@@ -549,6 +543,7 @@ void __attribute__ ((destructor)) some_name_unload(void)
 
 Tên hàm `some_name_load()` và `some_name_unload()` có thể được thay thế bằng bất kỳ tên nào mong muốn.
 
+> [!NOTE]
 > Cũng có thể sử dụng các thuộc tính `constructor` và `destructor` của `gcc` để tạo các hàm khởi tạo và kết thúc trong một chương trình chính (main program).
 
 ### Các hàm \_init() và \_fini()

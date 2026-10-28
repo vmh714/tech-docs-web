@@ -1,4 +1,4 @@
-# Chương 40: KẾ TOÁN ĐĂNG NHẬP (LOGIN ACCOUNTING)
+# Chương 40: Ghi nhận đăng nhập (Login Accounting)
 
 Kế toán đăng nhập (login accounting) liên quan đến việc ghi lại những người dùng nào hiện đang đăng nhập vào hệ thống (system), và ghi lại các phiên đăng nhập (login) cũng như đăng xuất (logout) trong quá khứ. Chương này xem xét các tệp kế toán đăng nhập và các hàm thư viện (library function) được sử dụng để truy xuất và cập nhật thông tin mà chúng chứa đựng. Chúng tôi cũng mô tả các bước mà một ứng dụng cung cấp dịch vụ đăng nhập nên thực hiện để cập nhật các tệp này khi người dùng đăng nhập và đăng xuất.
 
@@ -11,6 +11,7 @@ Các hệ thống UNIX duy trì hai tệp dữ liệu chứa thông tin về vi�
 
 Trên Linux, tệp utmp nằm tại `/var/run/utmp`, và tệp wtmp nằm tại `/var/log/wtmp`. Nhìn chung, các ứng dụng không cần phải biết về các đường dẫn (pathname) này, vì chúng được biên dịch sẵn (compiled into) vào glibc. Các chương trình cần tham chiếu đến vị trí của các tệp này nên sử dụng các hằng số đường dẫn `_PATH_UTMP` và `_PATH_WTMP`, được định nghĩa trong `<paths.h>` (và `<utmpx.h>`), thay vì mã hóa cứng (hard-coding) các đường dẫn trực tiếp vào chương trình.
 
+> [!NOTE]
 > SUSv3 không chuẩn hóa bất kỳ tên ký hiệu nào cho đường dẫn của các tệp utmp và wtmp. Các tên `_PATH_UTMP` và `_PATH_WTMP` được sử dụng trên Linux và các hệ thống BSD. Nhiều cài đặt UNIX khác thay vào đó định nghĩa các hằng số `UTMP_FILE` và `WTMP_FILE` cho các đường dẫn này. Linux cũng định nghĩa các tên này trong `<utmp.h>`, nhưng không định nghĩa chúng trong `<utmpx.h>` hay `<paths.h>`.
 
 ## 40.2 Giao diện lập trình ứng dụng utmpx (utmpx API)
@@ -21,6 +22,7 @@ Trong chương này, chúng tôi mô tả utmpx API của Linux, đây là một
 
 Đặc tả SUSv3 không bao hàm tất cả các khía cạnh của utmpx API (ví dụ: vị trí của các tệp utmp và wtmp không được chỉ định). Nội dung chính xác của các tệp kế toán đăng nhập có phần khác nhau giữa các phiên bản cài đặt, và các cài đặt khác nhau cung cấp các hàm kế toán đăng nhập bổ sung không được quy định trong SUSv3.
 
+> [!NOTE]
 > Chương 17 của [Frisch, 2002] tóm tắt một số biến thể về vị trí và cách sử dụng của các tệp wtmp và utmp trên các cài đặt UNIX khác nhau. Nó cũng mô tả việc sử dụng lệnh ac(1), có thể được dùng để tổng hợp thông tin đăng nhập từ tệp wtmp.
 
 ## 40.3 Cấu trúc utmpx
@@ -33,34 +35,39 @@ Kiểu dữ liệu `int32_t` được sử dụng để định nghĩa trường
 
 **Liệt kê 40-1:** Định nghĩa cấu trúc `utmpx`
 
-```
 ## define _GNU_SOURCE /* Nếu không có _GNU_SOURCE, hai tên trường
+
 struct exit_status { ở dưới sẽ có tiền tố "__" ở phía trước */
- short e_termination; /* Trạng thái kết thúc tiến trình (signal) */
- short e_exit; /* Trạng thái thoát của tiến trình */
+short e_termination; /* Trạng thái kết thúc tiến trình (signal) */
+short e_exit; /* Trạng thái thoát của tiến trình */
 };
+
 ## define __UT_LINESIZE 32
+
 ## define __UT_NAMESIZE 32
+
 ## define __UT_HOSTSIZE 256
+
 struct utmpx {
- short ut_type; /* Loại bản ghi */
- pid_t ut_pid; /* PID của tiến trình đăng nhập */
- char ut_line[__UT_LINESIZE]; /* Tên thiết bị terminal */
- char ut_id[4]; /* Hậu tố từ tên terminal, hoặc
- trường ID từ inittab(5) */
- char ut_user[__UT_NAMESIZE]; /* Tên người dùng */
- char ut_host[__UT_HOSTSIZE]; /* Tên máy cho đăng nhập từ xa, hoặc phiên bản
- kernel cho thông báo mức chạy (run-level) */
- struct exit_status ut_exit; /* Trạng thái thoát của tiến trình được đánh dấu
- là DEAD_PROCESS (không được điền
- bởi init(8) trên Linux) */
- long ut_session; /* ID phiên làm việc (Session ID) */
- struct timeval ut_tv; /* Thời điểm bản ghi được tạo */
- int32_t ut_addr_v6[4]; /* Địa chỉ IP của máy chủ từ xa (địa chỉ IPv4
- chỉ sử dụng ut_addr_v6[0],
- các phần tử còn lại được đặt thành 0) */
- char __unused[20]; /* Dành riêng cho sử dụng trong tương lai */
+short ut_type; /* Loại bản ghi */
+pid_t ut_pid; /* PID của tiến trình đăng nhập */
+char ut_line[__UT_LINESIZE]; /* Tên thiết bị terminal */
+char ut_id[4]; /* Hậu tố từ tên terminal, hoặc
+trường ID từ inittab(5) */
+char ut_user[__UT_NAMESIZE]; /* Tên người dùng */
+char ut_host[__UT_HOSTSIZE]; /* Tên máy cho đăng nhập từ xa, hoặc phiên bản
+kernel cho thông báo mức chạy (run-level) */
+struct exit_status ut_exit; /* Trạng thái thoát của tiến trình được đánh dấu
+là DEAD_PROCESS (không được điền
+bởi init(8) trên Linux) */
+long ut_session; /* ID phiên làm việc (Session ID) */
+struct timeval ut_tv; /* Thời điểm bản ghi được tạo */
+int32_t ut_addr_v6[4]; /* Địa chỉ IP của máy chủ từ xa (địa chỉ IPv4
+chỉ sử dụng ut_addr_v6[0],
+các phần tử còn lại được đặt thành 0) */
+char __unused[20]; /* Dành riêng cho sử dụng trong tương lai */
 };
+
 ```
 
 Mỗi trường chuỗi (string field) trong cấu trúc `utmpx` đều được kết thúc bằng ký tự null (null-terminated) trừ khi nó lấp đầy hoàn toàn mảng tương ứng.
@@ -81,7 +88,7 @@ Bản ghi này cho biết sự thay đổi về mức chạy (run-level) của h
 
 ### BOOT\_TIME (2)
 
-Bản ghi này chứa thời gian khởi động hệ thống trong trường `ut_tv`. Tác giả thông thường của các bản ghi `RUN_LVL` và `BOOT_TIME` là `init`. Các bản ghi này được ghi vào cả tệp utmp và tệp wtmp.
+Bản ghi này chứa thời gian khởi động hệ thống trong trường `ut_tv`. Tiến trình thường khởi tạo và ghi các bản ghi `RUN_LVL` và `BOOT_TIME` là `init`. Các bản ghi này được ghi vào cả tệp utmp và tệp wtmp.
 
 ### NEW\_TIME (3)
 
@@ -110,7 +117,9 @@ Bản ghi này xác định một tiến trình đã thoát (exited).
 Chúng tôi hiển thị các giá trị số của các hằng số này vì nhiều ứng dụng phụ thuộc vào việc các hằng số có thứ tự số như trên. Ví dụ, trong mã nguồn của chương trình `agetty`, chúng ta bắt gặp các phép kiểm tra như sau:
 
 ```
+
 utp->ut_type >= INIT_PROCESS && utp->ut_type <= DEAD_PROCESS
+
 ```
 
 Các bản ghi loại `INIT_PROCESS` thường tương ứng với việc gọi `getty(8)` (hoặc một chương trình tương tự, chẳng hạn như `agetty(8)` hoặc `mingetty(8)`). Khi khởi động hệ thống, tiến trình `init` tạo ra một tiến trình con cho mỗi đường truyền terminal (terminal line) và console ảo, và mỗi tiến trình con sẽ gọi `exec` chương trình `getty`. Chương trình `getty` mở terminal, nhắc người dùng nhập tên đăng nhập, và sau đó gọi `exec` `login(1)`. Sau khi xác thực thành công người dùng và thực hiện các bước khác nhau, `login` tạo ra một tiến trình con (fork) gọi `exec` shell đăng nhập của người dùng. Toàn bộ vòng đời của một phiên đăng nhập như vậy được thể hiện bằng bốn bản ghi được ghi vào tệp wtmp theo thứ tự sau:
@@ -132,7 +141,6 @@ Các hàm này áp dụng khái niệm vị trí hiện tại trong tệp mà t�
 
 Hàm `setutxent()` đưa con trỏ tệp `utmp` quay lại vị trí ban đầu.
 
-```
 ## include <utmpx.h>
 void setutxent(void);
 ```
@@ -141,14 +149,14 @@ Thông thường, chúng ta nên gọi `setutxent()` trước khi sử dụng b�
 
 Hàm `setutxent()` và các hàm `getutx*()` sẽ mở tệp `utmp` nếu nó chưa được mở. Khi chúng ta đã sử dụng xong tệp, chúng ta có thể đóng nó lại bằng hàm `endutxent()`.
 
-```
 ## include <utmpx.h>
+
 void endutxent(void);
+
 ```
 
 Các hàm `getutxent()`, `getutxid()`, và `getutxline()` đọc một bản ghi từ tệp `utmp` và trả về một con trỏ trỏ đến một cấu trúc (structure) `utmpx` (được cấp phát tĩnh).
 
-```
 ## include <utmpx.h>
 struct utmpx *getutxent(void);
 struct utmpx *getutxid(const struct utmpx *ut);
@@ -162,7 +170,7 @@ Hàm `getutxent()` truy xuất bản ghi tuần tự tiếp theo từ tệp `utm
 Hàm `getutxid()` tìm kiếm trong tệp `utmp` một bản ghi dựa trên các giá trị được chỉ định trong các trường `ut_type` và `ut_id` của đối số `ut`:
 
 - Nếu trường `ut_type` là `RUN_LVL`, `BOOT_TIME`, `NEW_TIME`, hoặc `OLD_TIME`, thì `getutxid()` sẽ tìm bản ghi tiếp theo có trường `ut_type` khớp với giá trị được chỉ định. (Các bản ghi thuộc các loại này không tương ứng với việc người dùng đăng nhập.) Điều này cho phép tìm kiếm các bản ghi về việc thay đổi thời gian hệ thống và mức chạy (run-level).
-- Nếu trường `ut_type` là một trong các giá trị hợp lệ còn lại (`INIT_PROCESS`, `LOGIN_PROCESS`, `USER_PROCESS`, hoặc `DEAD_PROCESS`), thì `getutxent()` sẽ tìm bản ghi tiếp theo có trường `ut_type` khớp với bất kỳ giá trị nào trong số này và có trường `ut_id` khớp với giá trị được chỉ định trong đối số `ut` của nó. Điều này cho phép quét tệp để tìm các bản ghi tương ứng với một thiết bị đầu cuối (terminal) cụ thể.
+- Nếu trường `ut_type` là một trong các giá trị hợp lệ còn lại (`INIT_PROCESS`, `LOGIN_PROCESS`, `USER_PROCESS`, hoặc `DEAD_PROCESS`), thì `getutxid()` sẽ tìm bản ghi tiếp theo có trường `ut_type` khớp với bất kỳ giá trị nào trong số này và có trường `ut_id` khớp với giá trị được chỉ định trong đối số `ut` của nó. Điều này cho phép quét tệp để tìm các bản ghi tương ứng với một thiết bị đầu cuối (terminal) cụ thể.
 
 Hàm `getutxline()` tìm kiếm hướng về phía trước để tìm một bản ghi có trường `ut_type` là `LOGIN_PROCESS` hoặc `USER_PROCESS`, và có trường `ut_line` khớp với giá trị được chỉ định trong đối số `ut`. Điều này rất hữu ích để tìm các bản ghi tương ứng với việc người dùng đăng nhập.
 
@@ -180,15 +188,18 @@ res = getutxline(&ut);
 
 Việc triển khai trong glibc không thực hiện kiểu bộ đệm này, nhưng chúng ta vẫn nên áp dụng kỹ thuật này vì mục đích tính di động (portability).
 
+> [!NOTE]
 > Do các hàm `getutx*()` trả về một con trỏ trỏ đến một cấu trúc được cấp phát tĩnh, nên chúng không thể tái nhập (non-reentrant). Thư viện GNU C cung cấp các phiên bản tái nhập cho các hàm `utmp` truyền thống (`getutent_r()`, `getutid_r()`, và `getutline_r()`), nhưng không cung cấp các phiên bản tái nhập cho các hàm tương đương thuộc `utmpx`. (SUSv3 không quy định các phiên bản tái nhập này.)
 
 Theo mặc định, tất cả các hàm getutx\*() đều hoạt động trên tệp utmp tiêu chuẩn. Nếu chúng ta muốn sử dụng một tệp khác, chẳng hạn như tệp wtmp, thì trước tiên chúng ta phải gọi hàm utmpxname(), chỉ định đường dẫn tệp (pathname) mong muốn.
 
-```
 ## define _GNU_SOURCE
+
 ## include <utmpx.h>
+
 int utmpxname(const char *file);
-                                              Trả về 0 khi thành công, hoặc –1 nếu có lỗi
+Trả về 0 khi thành công, hoặc –1 nếu có lỗi
+
 ```
 
 Hàm utmpxname() chỉ đơn thuần ghi lại một bản sao của đường dẫn (pathname) được truyền cho nó. Hàm này không mở tệp, nhưng sẽ đóng bất kỳ tệp nào đã được mở trước đó bởi một trong các lời gọi khác. Điều này có nghĩa là utmpxname() không trả về lỗi nếu một đường dẫn không hợp lệ được chỉ định. Thay vào đó, khi một trong các hàm getutx\*() được gọi sau đó, nó sẽ trả về lỗi (tức là trả về NULL, đồng thời biến errno được thiết lập thành ENOENT) khi không thể mở tệp.
@@ -214,51 +225,61 @@ Vì lý do ngắn gọn, chúng tôi đã lược bỏ phần lớn đầu ra do
 Đầu ra sau đây được tạo ra bằng cách kết xuất tệp `/var/log/wtmp` cho thấy rằng khi một người dùng đăng nhập và đăng xuất, hai bản ghi (record) được ghi vào tệp wtmp. (Chúng tôi đã lược bỏ tất cả các đầu ra khác do chương trình tạo ra). Bằng cách tìm kiếm tuần tự (sequential search) qua tệp wtmp (sử dụng getutxline()), các bản ghi này có thể được khớp thông qua trường `ut_line`.
 
 ```
+
 $ ./dump_utmpx /var/log/wtmp
 user type PID line id host date/time
 lynley USER_PR 10482 tty3 3 Sat Oct 23 10:19:43 2010
- DEAD_PR 10482 tty3 3 2.4.20-4G Sat Oct 23 10:32:54 2010
+DEAD_PR 10482 tty3 3 2.4.20-4G Sat Oct 23 10:32:54 2010
+
 ```
 
 **Liệt kê 40-2:** Hiển thị nội dung của một tệp định dạng utmpx
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––– loginacct/dump_utmpx.c
+
 ## define _GNU_SOURCE
+
 ## include <time.h>
+
 ## include <utmpx.h>
+
 ## include <paths.h>
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- struct utmpx *ut;
- if (argc > 1 && strcmp(argv[1], "--help") == 0)
- usageErr("%s [utmp-pathname]\n", argv[0]);
- if (argc > 1) /* Sử dụng tệp thay thế nếu được cung cấp */
- if (utmpxname(argv[1]) == -1)
- errExit("utmpxname");
- setutxent();
- printf("user type PID line id host date/time\n");
- while ((ut = getutxent()) != NULL) { /* Quét tuần tự đến EOF */
- printf("%-8s ", ut->ut_user);
- printf("%-9.9s ",
- (ut->ut_type == EMPTY) ? "EMPTY" :
- (ut->ut_type == RUN_LVL) ? "RUN_LVL" :
- (ut->ut_type == BOOT_TIME) ? "BOOT_TIME" :
- (ut->ut_type == NEW_TIME) ? "NEW_TIME" :
- (ut->ut_type == OLD_TIME) ? "OLD_TIME" :
- (ut->ut_type == INIT_PROCESS) ? "INIT_PR" :
- (ut->ut_type == LOGIN_PROCESS) ? "LOGIN_PR" :
- (ut->ut_type == USER_PROCESS) ? "USER_PR" :
- (ut->ut_type == DEAD_PROCESS) ? "DEAD_PR" : "???");
- printf("%5ld %-6.6s %-3.5s %-9.9s ", (long) ut->ut_pid,
- ut->ut_line, ut->ut_id, ut->ut_host);
- printf("%s", ctime((time_t *) &(ut->ut_tv.tv_sec)));
- }
- endutxent();
- exit(EXIT_SUCCESS);
+struct utmpx *ut;
+if (argc > 1 && strcmp(argv[1], "--help") == 0)
+usageErr("%s [utmp-pathname]\n", argv[0]);
+if (argc > 1) /* Sử dụng tệp thay thế nếu được cung cấp */
+if (utmpxname(argv[1]) == -1)
+errExit("utmpxname");
+setutxent();
+printf("user type PID line id host date/time\n");
+while ((ut = getutxent()) != NULL) { /* Quét tuần tự đến EOF */
+printf("%-8s ", ut->ut_user);
+printf("%-9.9s ",
+(ut->ut_type == EMPTY) ? "EMPTY" :
+(ut->ut_type == RUN_LVL) ? "RUN_LVL" :
+(ut->ut_type == BOOT_TIME) ? "BOOT_TIME" :
+(ut->ut_type == NEW_TIME) ? "NEW_TIME" :
+(ut->ut_type == OLD_TIME) ? "OLD_TIME" :
+(ut->ut_type == INIT_PROCESS) ? "INIT_PR" :
+(ut->ut_type == LOGIN_PROCESS) ? "LOGIN_PR" :
+(ut->ut_type == USER_PROCESS) ? "USER_PR" :
+(ut->ut_type == DEAD_PROCESS) ? "DEAD_PR" : "???");
+printf("%5ld %-6.6s %-3.5s %-9.9s ", (long) ut->ut_pid,
+ut->ut_line, ut->ut_id, ut->ut_host);
+printf("%s", ctime((time_t *) &(ut->ut_tv.tv_sec)));
 }
+endutxent();
+exit(EXIT_SUCCESS);
+}
+
 ```
 
 –––––––––––––––––––––––––––––––––––––––––––––––––––– **loginacct/dump\_utmpx.c**
@@ -267,7 +288,6 @@ main(int argc, char *argv[])
 
 Hàm `getlogin()` trả về tên của người dùng đang đăng nhập trên thiết bị đầu cuối điều khiển (controlling terminal) của tiến trình gọi (`calling process`). Hàm này sử dụng thông tin được duy trì trong tệp `utmp`.
 
-```
 ## include <unistd.h>
 char *getlogin(void);
                             Trả về con trỏ tới chuỗi tên người dùng, hoặc NULL nếu có lỗi
@@ -279,8 +299,10 @@ Nếu không tìm thấy bản ghi khớp hoặc xảy ra lỗi, `getlogin()` tr
 
 Ngay cả trong trường hợp (không phổ biến) khi một ID người dùng (user ID) có nhiều tên đăng nhập trong `/etc/passwd`, `getlogin()` vẫn có thể trả về tên người dùng thực tế đã được sử dụng để đăng nhập trên terminal này nhờ dựa vào tệp `utmp`. Ngược lại, việc sử dụng `getpwuid(getuid())` luôn truy xuất bản ghi khớp đầu tiên từ `/etc/passwd`, bất kể tên nào đã thực sự được sử dụng để đăng nhập.
 
+> [!NOTE]
 > Một phiên bản tái nhập (reentrant version) của `getlogin()` được quy định bởi chuẩn SUSv3 dưới dạng `getlogin_r()`, và hàm này được cung cấp bởi glibc.
 
+> [!NOTE]
 > Biến môi trường `LOGNAME` cũng có thể được sử dụng để tìm tên đăng nhập của người dùng. Tuy nhiên, giá trị của biến này có thể bị thay đổi bởi người dùng, đồng nghĩa với việc nó không thể được dùng để định danh người dùng một cách bảo mật.
 
 ## 40.6 Cập nhật các Tệp utmp và wtmp cho một Phiên Đăng nhập
@@ -289,16 +311,19 @@ Khi viết một ứng dụng tạo phiên đăng nhập (theo cách thức củ
 
 Khi đăng nhập, một bản ghi phải được ghi vào tệp `utmp` để chỉ ra rằng người dùng này đã đăng nhập. Ứng dụng phải kiểm tra xem bản ghi cho terminal này đã tồn tại trong tệp `utmp` hay chưa. Nếu đã tồn tại bản ghi trước đó, nó sẽ bị ghi đè; ngược lại, một bản ghi mới sẽ được nối thêm (appended) vào tệp. Thường thì việc gọi hàm `pututxline()` (được mô tả ngay sau đây) là đủ để đảm bảo các bước này được thực hiện chính xác (xem [Liệt kê 40-3](#page-95-0) để biết ví dụ). Bản ghi `utmpx` đầu ra phải được điền ít nhất các trường `ut_type`, `ut_user`, `ut_tv`, `ut_pid`, `ut_id`, và `ut_line`. Trường `ut_type` phải được đặt thành `USER_PROCESS`. Trường `ut_id` phải chứa phần hậu tố (suffix) của tên thiết bị (tức là terminal hoặc pseudoterminal) mà người dùng đang đăng nhập, và trường `ut_line` phải chứa tên của thiết bị đăng nhập, với chuỗi `/dev/` ở đầu đã được loại bỏ. (Ví dụ về nội dung của hai trường này được hiển thị trong các lần chạy mẫu của chương trình tại [Liệt kê 40-2.](#page-91-0)) Một bản ghi chứa thông tin y hệt được nối thêm vào tệp `wtmp`.
 
+> [!NOTE]
 > Tên terminal đóng vai trò (thông qua các trường `ut_line` và `ut_id`) như một khóa duy nhất (unique key) cho các bản ghi trong tệp `utmp`.
 
 Khi đăng xuất (logout), bản ghi đã được ghi trước đó vào tệp `utmp` phải được xóa sạch. Thao tác này được thực hiện bằng cách tạo một bản ghi có `ut_type` được đặt thành `DEAD_PROCESS`, cùng giá trị `ut_id` và `ut_line` như bản ghi được ghi trong quá trình đăng nhập, nhưng với trường `ut_user` được đặt về giá trị không (zeroed out). Bản ghi này được ghi đè lên bản ghi trước đó. Một bản sao của chính bản ghi này được nối thêm vào tệp `wtmp`.
 
+> [!NOTE]
 > Nếu chúng ta không dọn dẹp bản ghi `utmp` khi đăng xuất, có thể do chương trình bị treo/sập (crash), thì ở lần khởi động lại (`reboot`) tiếp theo, `init` sẽ tự động dọn dẹp bản ghi đó, thiết lập `ut_type` thành `DEAD_PROCESS` và đặt các trường khác của bản ghi về giá trị không.
 
 Các tệp `utmp` và `wtmp` thường được bảo vệ sao cho chỉ người dùng có đặc quyền (`privileged users`) mới có thể thực hiện cập nhật trên các tệp này. Tính chính xác của `getlogin()` phụ thuộc vào tính toàn vẹn của tệp `utmp`. Vì lý do này, cũng như các lý do khác, quyền hạn trên các tệp `utmp` và `wtmp` không bao giờ được thiết lập cho phép người dùng không có đặc quyền ghi dữ liệu vào.
 
 Thế nào được coi là một phiên đăng nhập? Đúng như chúng ta dự đoán, các lượt đăng nhập thông qua `login`, `telnet`, và `ssh` được ghi lại trong các tệp kế toán đăng nhập (login accounting files). Hầu hết các cài đặt `ftp` cũng tạo các bản ghi kế toán đăng nhập. Tuy nhiên, liệu các bản ghi kế toán đăng nhập có được tạo cho mỗi cửa sổ terminal được khởi động trên hệ thống hay cho các lệnh gọi `su` chẳng hạn hay không? Câu trả lời cho câu hỏi đó khác nhau tùy theo các bản cài đặt UNIX khác nhau.
 
+> [!NOTE]
 > Dưới một số chương trình mô phỏng terminal (ví dụ: `xterm`), các tùy chọn dòng lệnh (command-line options) hoặc các cơ chế khác có thể được sử dụng để xác định xem chương trình có cập nhật các tệp kế toán đăng nhập hay không.
 
 Hàm `pututxline()` ghi cấu trúc `utmpx` được trỏ tới bởi `ut` vào tệp `/var/run/utmp` (hoặc một tệp thay thế nếu hàm `utmpxname()` đã được gọi trước đó).
@@ -312,6 +337,7 @@ struct utmpx *pututxline(const struct utmpx *ut);
 
 Trước khi ghi bản ghi (record), `pututxline()` trước tiên sử dụng `getutxid()` để tìm kiếm tiến về phía trước một bản ghi có thể bị ghi đè. Nếu tìm thấy một bản ghi như vậy, nó sẽ bị ghi đè; nếu không, một bản ghi mới sẽ được nối thêm (append) vào cuối tệp (file). Trong nhiều trường hợp, một ứng dụng gọi một trong các hàm `getutx*()` trước lệnh gọi `pututxline()`, hàm này thiết lập vị trí tệp hiện tại đến bản ghi chính xác — nghĩa là bản ghi khớp với các tiêu chí kiểu `getutxid()` trong cấu trúc `utmpx` được trỏ bởi `ut`. Nếu `pututxline()` xác định rằng điều này đã xảy ra, nó sẽ không gọi `getutxid()`.
 
+> [!NOTE]
 > Nếu `pututxline()` thực hiện một lệnh gọi nội bộ đến `getutxid()`, lệnh gọi này không làm thay đổi vùng tĩnh (static area) được sử dụng bởi các hàm `getutx*()` để trả về cấu trúc `utmpx`. Tiêu chuẩn SUSv3 yêu cầu hành vi này từ một bản cài đặt (implementation).
 
 Khi cập nhật tệp `wtmp`, chúng ta chỉ đơn giản là mở tệp và nối thêm một bản ghi vào đó. Vì đây là một thao tác tiêu chuẩn, glibc đóng gói nó trong hàm `updwtmpx()`.
@@ -390,7 +416,7 @@ cecilia tty1 Feb 1 21:39
 
 Dòng đầu ra cuối cùng cho thấy rằng `who` đã bỏ qua bản ghi `DEAD_PROCESS`.
 
-Khi chúng ta kiểm tra tệp `wtmp`, chúng ta thấy rằng bản ghi `wtmp` đã được bổ sung thay thế (superseded):
+Khi chúng ta kiểm tra tệp `wtmp`, chúng ta thấy rằng bản ghi `wtmp` đã được ghi nối tiếp vào tệp:
 
 ```bash
 ## ./dump_utmpx /var/log/wtmp
@@ -480,22 +506,26 @@ Giống như các tệp utmp và wtmp, vị trí và định dạng của tệp 
 
 Các bản ghi (record) trong tệp lastlog có định dạng sau (được định nghĩa trong `<lastlog.h>`):
 
-```
 ## define UT_NAMESIZE 32
+
 ## define UT_HOSTSIZE 256
+
 struct lastlog {
- time_t ll_time; /* Time of last login */
- char ll_line[UT_NAMESIZE]; /* Terminal for remote login */
- char ll_host[UT_HOSTSIZE]; /* Hostname for remote login */
+time_t ll_time; /* Time of last login */
+char ll_line[UT_NAMESIZE]; /* Terminal for remote login */
+char ll_host[UT_HOSTSIZE]; /* Hostname for remote login */
 };
+
 ```
 
 Lưu ý rằng các bản ghi này không bao gồm tên người dùng (username) hoặc ID người dùng (user ID). Thay vào đó, tệp lastlog bao gồm một chuỗi các bản ghi được chỉ mục (index) theo user ID. Do đó, để tìm bản ghi lastlog cho user ID 1000, chúng ta sẽ dịch chuyển con trỏ tệp (seek) đến byte `(1000 * sizeof(struct lastlog))` của tệp. Điều này được minh họa trong [Liệt kê 40-4](#page-98-0), một chương trình cho phép chúng ta xem các bản ghi lastlog cho (các) người dùng được liệt kê trên dòng lệnh của nó. Điều này tương tự với chức năng được cung cấp bởi lệnh `lastlog(1)`. Dưới đây là ví dụ về đầu ra được tạo ra khi chạy chương trình này:
 
 ```
+
 $ ./view_lastlog annie paulh
 annie tty2 Mon Jan 17 11:00:12 2011
 paulh pts/11 Sat Aug 14 09:22:14 2010
+
 ```
 
 Việc thực hiện cập nhật trên tệp lastlog cũng tương tự, bao gồm việc mở tệp, dịch chuyển con trỏ đến đúng vị trí và thực hiện ghi dữ liệu (write).
@@ -505,43 +535,52 @@ Vì tệp lastlog được chỉ mục theo user ID, nên không thể phân bi�
 **Liệt kê 40-4:** Hiển thị thông tin từ tệp lastlog
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––– loginacct/view_lastlog.c
+
 ## include <time.h>
+
 ## include <lastlog.h>
+
 ## include <paths.h> /* Định nghĩa của _PATH_LASTLOG */
+
 ## include <fcntl.h>
+
 ## include "ugid_functions.h" /* Khai báo của userIdFromName() */
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- struct lastlog llog;
- int fd, j;
- uid_t uid;
- if (argc > 1 && strcmp(argv[1], "--help") == 0)
- usageErr("%s [username...]\n", argv[0]);
- fd = open(_PATH_LASTLOG, O_RDONLY);
- if (fd == -1)
- errExit("open");
- for (j = 1; j < argc; j++) {
- uid = userIdFromName(argv[j]);
- if (uid == -1) {
- printf("No such user: %s\n", argv[j]);
- continue;
- }
- if (lseek(fd, uid * sizeof(struct lastlog), SEEK_SET) == -1)
- errExit("lseek");
- if (read(fd, &llog, sizeof(struct lastlog)) <= 0) {
- printf("read failed for %s\n", argv[j]); /* EOF hoặc lỗi */
- continue;
- }
- printf("%-8.8s %-6.6s %-20.20s %s", argv[j], llog.ll_line,
- llog.ll_host, ctime((time_t *) &llog.ll_time));
- }
- close(fd);
- exit(EXIT_SUCCESS);
+struct lastlog llog;
+int fd, j;
+uid_t uid;
+if (argc > 1 && strcmp(argv[1], "--help") == 0)
+usageErr("%s [username...]\n", argv[0]);
+fd = open(_PATH_LASTLOG, O_RDONLY);
+if (fd == -1)
+errExit("open");
+for (j = 1; j < argc; j++) {
+uid = userIdFromName(argv[j]);
+if (uid == -1) {
+printf("No such user: %s\n", argv[j]);
+continue;
+}
+if (lseek(fd, uid * sizeof(struct lastlog), SEEK_SET) == -1)
+errExit("lseek");
+if (read(fd, &llog, sizeof(struct lastlog)) <= 0) {
+printf("read failed for %s\n", argv[j]); /* EOF hoặc lỗi */
+continue;
+}
+printf("%-8.8s %-6.6s %-20.20s %s", argv[j], llog.ll_line,
+llog.ll_host, ctime((time_t *) &llog.ll_time));
+}
+close(fd);
+exit(EXIT_SUCCESS);
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––– loginacct/view_lastlog.c
+
 ```
 
 ## 40.8 Tổng kết

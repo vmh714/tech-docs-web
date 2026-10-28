@@ -1,4 +1,4 @@
-# Chương 6: Các Thao Tác Nâng Cao Trên Char Driver (Char Driver Operations)
+# Chương 6: Thao tác nâng cao trên Driver ký tự (Advanced Char Driver Operations)
 
 Trong Chương 3, chúng ta đã xây dựng một device driver hoàn chỉnh mà tiến trình người dùng (user) có thể ghi vào và đọc từ đó. Nhưng một thiết bị thực tế thường cung cấp nhiều tính năng hơn là các thao tác *read* và *write* đồng bộ (synchronous). Giờ đây, khi chúng ta đã được trang bị các công cụ gỡ lỗi (debugging tools) nếu có sự cố xảy ra—và sự hiểu biết vững chắc về các vấn đề đồng thời (concurrency issues) để giúp ngăn ngừa sự cố—chúng ta có thể tự tin tiến hành tạo ra một driver nâng cao hơn.
 
@@ -366,7 +366,7 @@ Tuy nhiên, đôi khi bạn có thể chọn làm theo hướng ngược lại: 
 
 Trở lại Chương 3, chúng ta đã xem xét cách triển khai các phương thức *read* và *write* của driver. Tuy nhiên, tại thời điểm đó, chúng ta đã bỏ qua một vấn đề quan trọng: driver phản ứng thế nào nếu nó không thể ngay lập tức đáp ứng yêu cầu? Một lời gọi *read* có thể xảy ra khi
 
-không có dữ liệu nào sẵn sàng, nhưng dữ liệu được mong đợi sẽ đến trong tương lai. Hoặc một tiến trình (process) có thể cố gắng thực hiện *write*, nhưng thiết bị của bạn chưa sẵn sàng chấp nhận dữ liệu vì bộ đệm đầu ra (output buffer) đã đầy. Tiến trình gọi зазвичай (thông thường) không quan tâm đến các vấn đề như vậy; lập trình viên đơn giản là mong đợi gọi *read* hoặc *write* và lời gọi sẽ trả về sau khi công việc cần thiết đã hoàn thành. Vì vậy, trong những trường hợp như thế, driver của bạn nên (theo mặc định) *chặn* (*block*) tiến trình đó, đưa nó vào trạng thái ngủ (sleep) cho đến khi yêu cầu có thể tiếp tục.
+không có dữ liệu nào sẵn sàng, nhưng dữ liệu được mong đợi sẽ đến trong tương lai. Hoặc một tiến trình (process) có thể cố gắng thực hiện *write*, nhưng thiết bị của bạn chưa sẵn sàng chấp nhận dữ liệu vì bộ đệm đầu ra (output buffer) đã đầy. Tiến trình gọi thông thường không quan tâm đến các vấn đề như vậy; lập trình viên đơn giản là mong đợi gọi *read* hoặc *write* và lời gọi sẽ trả về sau khi công việc cần thiết đã hoàn thành. Vì vậy, trong những trường hợp như thế, driver của bạn nên (theo mặc định) *chặn* (*block*) tiến trình đó, đưa nó vào trạng thái ngủ (sleep) cho đến khi yêu cầu có thể tiếp tục.
 
 Phần này cho thấy cách đưa một tiến trình vào trạng thái ngủ và đánh thức nó dậy sau đó. Tuy nhiên, như thường lệ, trước tiên chúng ta phải giải thích một số khái niệm.
 
@@ -908,7 +908,7 @@ Mã nguồn này đơn giản là thêm hai hàng đợi chờ (wait queue) củ
 
 Ví dụ, với các FIFO thực tế, trình đọc sẽ thấy kết thúc tệp khi tất cả các trình ghi đóng tệp lại, trong khi ở *scullpipe*, trình đọc không bao giờ nhìn thấy kết thúc tệp. Hành vi này khác nhau vì FIFO nhằm mục đích làm kênh giao tiếp giữa hai tiến trình, trong khi *scullpipe* giống như một thùng rác nơi mọi người có thể đưa dữ liệu vào miễn là có ít nhất một trình đọc. Hơn nữa, việc cài đặt lại những gì đã có sẵn trong kernel là điều vô nghĩa, vì vậy chúng tôi chọn cài đặt một hành vi khác trong ví dụ của mình.
 
-Việc cài đặt kết thúc tệp theo cách giống như các FIFO làm đồng nghĩa với việc kiểm tra `dev->nwriters`, ở cả *read* và *poll*, và báo cáo kết thúc tệp (như vừa mô tả) nếu không có tiến trình nào mở thiết bị để ghi. Tuy nhiên, thật không may, với cách cài đặt này, nếu một trình đọc mở thiết bị *scullpipe* trước trình trình ghi, nó sẽ thấy kết thúc tệp mà không có cơ hội chờ dữ liệu. Cách tốt nhất để khắc phục vấn đề này là thực hiện chặn (blocking) bên trong *open* giống như các FIFO thực tế vẫn làm; nhiệm vụ này được để lại như một bài tập cho người đọc.
+Việc cài đặt kết thúc tệp theo cách giống như các FIFO làm đồng nghĩa với việc kiểm tra `dev->nwriters`, ở cả *read* và *poll*, và báo cáo kết thúc tệp (như vừa mô tả) nếu không có tiến trình nào mở thiết bị để ghi. Tuy nhiên, thật không may, với cách cài đặt này, nếu một trình đọc mở thiết bị *scullpipe* trước trình ghi, nó sẽ thấy kết thúc tệp mà không có cơ hội chờ dữ liệu. Cách tốt nhất để khắc phục vấn đề này là thực hiện chặn (blocking) bên trong *open* giống như các FIFO thực tế vẫn làm; nhiệm vụ này được để lại như một bài tập cho người đọc.
 
 ### Tương tác với read và write
 
@@ -1396,8 +1396,8 @@ _IOC_SIZE(nr)
 
 Các Macro được sử dụng để giải mã một lệnh. Cụ thể, \_IOC\_TYPE(nr) là sự kết hợp theo phép OR của \_IOC\_READ và \_IOC\_WRITE.
 
-```
 ## include <asm/uaccess.h>
+
 ```
 
 int access\_ok(int type, const void \*addr, unsigned long size);
@@ -1405,13 +1405,14 @@ int access\_ok(int type, const void \*addr, unsigned long size);
 Kiểm tra xem một con trỏ trỏ tới vùng nhớ người dùng (User Space) có thực sự sử dụng được hay không. *access\_ok* trả về một giá trị khác không nếu quyền truy cập được phép.
 
 ```
+
 VERIFY_READ
 VERIFY_WRITE
+
 ```
 
 Các giá trị có thể có cho đối số type trong hàm *access\_ok*. VERIFY\_WRITE là một tập siêu (superset) của VERIFY\_READ.
 
-```
 ## include <asm/uaccess.h>
 int put_user(datum,ptr);
 int get_user(local,ptr);
@@ -1423,19 +1424,20 @@ Các Macro được sử dụng để lưu trữ hoặc lấy một dữ liệu 
 
 *access\_ok* trước, trong khi các phiên bản đủ điều kiện (*\_\_put\_user* và *\_\_get\_user*) giả định rằng *access\_ok* đã được gọi trước đó.
 
-```
 ## include <linux/capability.h>
+
 ```
 
 Định nghĩa các ký hiệu CAP\_ khác nhau mô tả các đặc quyền (capabilities) mà một tiến trình ở vùng nhớ người dùng (user-space process) có thể có.
 
 ```
+
 int capable(int capability);
+
 ```
 
 Trả về giá trị khác không nếu tiến trình có đặc quyền được chỉ định.
 
-```
 ## include <linux/wait.h>
 typedef struct { /* ... */ } wait_queue_head_t;
 void init_waitqueue_head(wait_queue_head_t *queue);
@@ -1466,40 +1468,47 @@ void wake_up_interruptible_sync(struct wait_queue **q);
 
 Đánh thức các tiến trình đang ngủ trên hàng đợi q. Dạng *\_interruptible* chỉ đánh thức các tiến trình có thể ngắt (interruptible processes). Thông thường, chỉ có một tiến trình chờ độc quyền (exclusive waiter) được đánh thức, nhưng hành vi đó có thể được thay đổi với các dạng *\_nr* hoặc *\_all*. Phiên bản *\_sync* không thực hiện lập lịch lại (reschedule) CPU trước khi trả về.
 
-```
 ## include <linux/sched.h>
+
 set_current_state(int state);
+
 ```
 
 Thiết lập trạng thái thực thi của tiến trình hiện tại. TASK\_RUNNING có nghĩa là tiến trình sẵn sàng chạy, trong khi các trạng thái ngủ là TASK\_INTERRUPTIBLE và TASK\_UNINTERRUPTIBLE.
 
 ```
+
 void schedule(void);
+
 ```
 
 Chọn một tiến trình có thể chạy từ hàng đợi chạy (run queue). Tiến trình được chọn có thể là tiến trình hiện tại (`current`) hoặc một tiến trình khác.
 
 ```
+
 typedef struct { /* ... */ } wait_queue_t;
 init_waitqueue_entry(wait_queue_t *entry, struct task_struct *task);
-    Kiểu wait_queue_t được sử dụng để đưa một tiến trình vào hàng đợi chờ.
+Kiểu wait_queue_t được sử dụng để đưa một tiến trình vào hàng đợi chờ.
 void prepare_to_wait(wait_queue_head_t *queue, wait_queue_t *wait, int state);
 void prepare_to_wait_exclusive(wait_queue_head_t *queue, wait_queue_t *wait,
- int state);
+int state);
 void finish_wait(wait_queue_head_t *queue, wait_queue_t *wait);
-    Các hàm hỗ trợ có thể được sử dụng để viết mã cho trạng thái ngủ thủ công (manual sleep).
+Các hàm hỗ trợ có thể được sử dụng để viết mã cho trạng thái ngủ thủ công (manual sleep).
 void sleep_on(wiat_queue_head_t *queue);
 void interruptible_sleep_on(wiat_queue_head_t *queue);
-    Các hàm đã lỗi thời và không còn được khuyến nghị sử dụng (deprecated), chúng đưa tiến trình hiện tại vào trạng thái ngủ một cách vô điều kiện.
+Các hàm đã lỗi thời và không còn được khuyến nghị sử dụng (deprecated), chúng đưa tiến trình hiện tại vào trạng thái ngủ một cách vô điều kiện.
+
 ## include <linux/poll.h>
+
 void poll_wait(struct file *filp, wait_queue_head_t *q, poll_table *p)
-    Đưa tiến trình hiện tại vào hàng đợi chờ mà không lập lịch lại ngay lập tức. Nó được thiết kế để sử dụng bởi phương thức `poll` của các trình điều khiển thiết bị (device drivers).
+Đưa tiến trình hiện tại vào hàng đợi chờ mà không lập lịch lại ngay lập tức. Nó được thiết kế để sử dụng bởi phương thức `poll` của các trình điều khiển thiết bị (device drivers).
 int fasync_helper(struct inode *inode, struct file *filp, int mode, struct
- fasync_struct **fa);
-    Một hàm "hỗ trợ" (helper) để triển khai phương thức thiết bị `fasync`. Đối số `mode` là giá trị tương tự được truyền cho phương thức, trong khi `fa` trỏ tới một cấu trúc `fasync_struct *` đặc thù của thiết bị.
+fasync_struct **fa);
+Một hàm "hỗ trợ" (helper) để triển khai phương thức thiết bị `fasync`. Đối số `mode` là giá trị tương tự được truyền cho phương thức, trong khi `fa` trỏ tới một cấu trúc `fasync_struct *` đặc thù của thiết bị.
 void kill_fasync(struct fasync_struct *fa, int sig, int band);
-    Nếu trình điều khiển hỗ trợ thông báo bất đồng bộ (asynchronous notification), hàm này có thể được sử dụng để gửi tín hiệu (signal) tới các tiến trình đã đăng ký trong `fa`.
+Nếu trình điều khiển hỗ trợ thông báo bất đồng bộ (asynchronous notification), hàm này có thể được sử dụng để gửi tín hiệu (signal) tới các tiến trình đã đăng ký trong `fa`.
 int nonseekable_open(struct inode *inode, struct file *filp);
+
 ```
 
 phương thức.

@@ -1,4 +1,4 @@
-# Chương 15: CÁC THUỘC TÍNH TỆP (FILE ATTRIBUTES)
+# Chương 15: Thuộc tính tập tin (File Attributes)
 
 Trong chương này, chúng ta sẽ tìm hiểu về các thuộc tính khác nhau của tệp (metadata của tệp). Chúng ta bắt đầu với mô tả về system call `stat()`, trả về một cấu trúc chứa nhiều thuộc tính trong số này, bao gồm dấu thời gian của tệp (file timestamps), quyền sở hữu tệp (file ownership) và quyền truy cập tệp (file permissions). Tiếp theo, chúng ta sẽ xem xét các system call khác nhau được sử dụng để thay đổi những thuộc tính này. (Thảo luận về quyền tệp sẽ tiếp tục ở Chương 17, nơi chúng ta xem xét danh sách kiểm soát truy cập - access control lists). Chúng ta kết thúc chương bằng phần thảo luận về các cờ i-node (còn được gọi là các thuộc tính mở rộng tệp của ext2 - ext2 extended file attributes), những cờ này kiểm soát các khía cạnh khác nhau trong cách kernel xử lý tệp.
 
@@ -44,6 +44,7 @@ struct stat {
 
 Các kiểu dữ liệu khác nhau được sử dụng cho các trường trong cấu trúc `stat` đều được quy định trong SUSv3. Xem Mục 3.6.2 để biết thêm thông tin chi tiết về các kiểu dữ liệu này.
 
+> [!NOTE]
 > Theo tiêu chuẩn SUSv3, khi `lstat()` được áp dụng cho một liên kết tượng trưng (symbolic link), nó chỉ cần trả về thông tin hợp lệ trong trường `st_size` và trong thành phần loại tệp (sẽ được mô tả ngay sau đây) của trường `st_mode`. Không có trường nào khác (ví dụ: các trường thời gian) bắt buộc phải chứa thông tin hợp lệ. Điều này tạo sự linh hoạt cho việc triển khai hệ thống trong việc không duy trì các trường đó nhằm tối ưu hiệu năng. Cụ thể, ý đồ của các chuẩn UNIX trước đây là cho phép một liên kết tượng trưng có thể được hiện thực hóa dưới dạng một i-node hoặc dưới dạng một mục (entry) trực tiếp trong thư mục. Dưới cách triển khai thứ hai, hệ thống không thể hỗ trợ đầy đủ tất cả các trường mà cấu trúc `stat` yêu cầu. (Trên tất cả các triển khai UNIX hiện đại ngày nay, liên kết tượng trưng đều được hiện thực hóa dưới dạng i-node). Trên Linux, `lstat()` trả về đầy đủ thông tin trong tất cả các trường của `stat` khi áp dụng cho liên kết tượng trưng.
 
 Trong các trang tiếp theo, chúng ta sẽ xem xét kỹ hơn một số trường của cấu trúc `stat` và kết thúc bằng một chương trình mẫu hiển thị toàn bộ cấu trúc `stat`.
@@ -99,6 +100,7 @@ Toàn bộ tập hợp các macro kiểm tra loại tệp (được định ngh�
 
 Tiêu chuẩn POSIX.1 ban đầu không quy định các hằng số được hiển thị ở cột đầu tiên của Bảng 15-1, mặc dù phần lớn chúng xuất hiện trên hầu hết các hệ thống UNIX. Tiêu chuẩn SUSv3 yêu cầu các hằng số này.
 
+> [!NOTE]
 > Để lấy được các định nghĩa của `S_IFSOCK` và `S_ISSOCK()` từ `<sys/stat.h>`, chúng ta phải định nghĩa macro kiểm tra tính năng `_BSD_SOURCE` hoặc định nghĩa `_XOPEN_SOURCE` với giá trị lớn hơn hoặc bằng 500. (Các quy tắc có đôi chút khác biệt giữa các phiên bản glibc: trong một số trường hợp, `_XOPEN_SOURCE` phải được định nghĩa với giá trị từ 600 trở lên).
 
 | Bảng 15-1: Các macro kiểm tra loại tệp trong trường st_mode của cấu trúc stat |  |
@@ -123,6 +125,7 @@ Tiêu chuẩn POSIX.1 ban đầu không quy định các hằng số được hi
 
 Trường `st_blocks` biểu thị tổng số khối được cấp phát cho tệp, tính theo đơn vị khối 512-byte. Tổng số này bao gồm dung lượng được cấp phát cho các khối con trỏ (pointer blocks) (xem [Hình 14-2,](#page-25-0) ở trang [258\)](#page-25-0). Việc lựa chọn đơn vị đo lường 512-byte mang tính lịch sử—đây là kích thước khối nhỏ nhất trên bất kỳ hệ thống tệp (file system) nào từng được triển khai dưới hệ điều hành UNIX. Các hệ thống tệp hiện đại hơn sử dụng kích thước khối logic (logical block sizes) lớn hơn. Ví dụ, dưới hệ thống tệp ext2, giá trị trong `st_blocks` luôn là bội số của 2, 4 hoặc 8, tùy thuộc vào việc kích thước khối logic của ext2 là 1024, 2048 hay 4096 byte.
 
+> [!NOTE]
 > SUSv3 không định nghĩa các đơn vị mà `st_blocks` được đo lường, điều này cho phép khả năng một bản triển khai sử dụng một đơn vị khác ngoài 512 byte. Hầu hết các bản triển khai UNIX đều sử dụng đơn vị 512-byte, nhưng HP-UX 11 sử dụng các đơn vị đặc trưng cho hệ thống tệp (ví dụ: 1024 byte trong một số trường hợp).
 
 Trường `st_blocks` ghi lại số lượng khối đĩa thực tế được cấp phát. Nếu tệp chứa các khoảng trống (holes) (Mục 4.7), giá trị này sẽ nhỏ hơn mức có thể mong đợi từ số lượng byte tương ứng (`st_size`) có trong tệp. (Lệnh sử dụng đĩa, `du –k file`, hiển thị dung lượng thực tế được cấp phát cho một tệp tính bằng kilobyte; nghĩa là, một con số được tính toán từ giá trị `st_blocks` của tệp, thay vì giá trị `st_size`.)

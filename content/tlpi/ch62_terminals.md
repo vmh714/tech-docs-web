@@ -1,7 +1,8 @@
-# Chương 62: TERMINAL
+# Chương 62: Thiết bị đầu cuối (Terminals)
 
 Về mặt lịch sử, người dùng truy cập hệ thống UNIX bằng cách sử dụng một terminal được kết nối qua đường truyền nối tiếp (serial line) (kết nối RS-232). Terminal là các ống tia âm cực (Cathode Ray Tube - CRT) có khả năng hiển thị ký tự và trong một số trường hợp là đồ họa sơ khai. Thông thường, CRT cung cấp màn hình đơn sắc gồm 24 dòng và 80 cột. Theo tiêu chuẩn ngày nay, các màn hình CRT đó vừa nhỏ vừa đắt đỏ. Thậm chí trong thời kỳ đầu hơn, terminal đôi khi là các thiết bị teletype in giấy cứng (hard-copy). Các đường truyền nối tiếp cũng được sử dụng để kết nối các thiết bị khác, chẳng hạn như máy in và modem, với máy tính hoặc để kết nối máy tính này với máy tính khác.
 
+> [!NOTE]
 > Trên các hệ thống UNIX thời kỳ đầu, các đường terminal kết nối với hệ thống được thể hiện bằng các thiết bị ký tự (character device) có tên dạng `/dev/ttyn`. (Trên Linux, các thiết bị `/dev/ttyn` là các console ảo trên hệ thống.) Viết tắt `tty` (bắt nguồn từ teletype) thường được dùng làm từ viết tắt cho terminal.
 
 Đặc biệt trong những năm đầu của UNIX, các thiết bị terminal không được tiêu chuẩn hóa, điều đó có nghĩa là cần có các chuỗi ký tự khác nhau để thực hiện các thao tác như di chuyển con trỏ về đầu dòng hoặc đầu màn hình. (Cuối cùng, một số phần cài đặt chuỗi thoát (escape sequence) của nhà vendor — ví dụ: VT-100 của Digital — đã trở thành tiêu chuẩn thực tế (de facto) và cuối cùng là tiêu chuẩn ANSI, nhưng vẫn tiếp tục tồn tại rất nhiều loại terminal khác nhau.) Sự thiếu tiêu chuẩn hóa này có nghĩa là rất khó để viết các chương trình di động (portable program) sử dụng các tính năng của terminal. Trình soạn thảo `vi` là một ví dụ điển hình thời kỳ đầu về một chương trình có các yêu cầu như vậy. Cơ sở dữ liệu `termcap` và `terminfo` (được mô tả trong [Strang et al., 1988]), chuyên lập bảng cách thực hiện các thao tác điều khiển màn hình khác nhau cho rất nhiều loại terminal, và thư viện `curses` ([Strang, 1986]) được phát triển để đáp ứng lại sự thiếu tiêu chuẩn hóa này.
@@ -23,8 +24,10 @@ Terminal driver cũng thông dịch một loạt các ký tự đặc biệt, ch
 
 Một terminal driver vận hành hai hàng đợi (queue) (Hình 62-1): một cho các ký tự đầu vào được truyền từ thiết bị terminal đến (các) tiến trình đọc và hàng đợi còn lại cho các ký tự đầu xuất được truyền từ các tiến trình đến terminal. Nếu tính năng vọng lại của terminal (terminal echoing) được bật, thì terminal driver sẽ tự động nối thêm một bản sao của bất kỳ ký tự đầu vào nào vào cuối hàng đợi đầu xuất, sao cho các ký tự đầu vào cũng xuất hiện trên terminal.
 
+> [!NOTE]
 > SUSv3 quy định giới hạn `MAX_INPUT`, mà một bản cài đặt (implementation) có thể sử dụng để chỉ ra độ dài tối đa của hàng đợi đầu vào của terminal. Một giới hạn liên quan là `MAX_CANON`, xác định số lượng byte tối đa trong một dòng đầu vào ở chế độ chuẩn. Trên Linux, `sysconf(_SC_MAX_INPUT)` và `sysconf(_SC_MAX_CANON)` đều trả về giá trị 255. Tuy nhiên, không có giới hạn nào trong số này thực sự được kernel sử dụng; thay vào đó, kernel chỉ đơn giản áp dụng giới hạn 4096 byte cho hàng đợi đầu vào. Một giới hạn tương ứng về kích thước của hàng đợi đầu xuất cũng tồn tại. Tuy nhiên, các ứng dụng không cần phải bận tâm về điều này, bởi vì nếu một tiến trình tạo ra dữ liệu đầu xuất nhanh hơn mức terminal driver có thể xử lý, kernel sẽ tạm dừng việc thực thi tiến trình ghi cho đến khi lại có không gian trống trong hàng đợi đầu xuất.
 
+> [!NOTE]
 > Trên Linux, chúng ta có thể gọi `ioctl(fd, FIONREAD, &cnt)` để lấy số lượng byte chưa đọc trong hàng đợi đầu vào của terminal được trỏ bởi file descriptor `fd`. Tính năng này không được quy định trong SUSv3.
 
 ```
@@ -55,11 +58,11 @@ Một terminal driver vận hành hai hàng đợi (queue) (Hình 62-1): một c
 
 Các hàm `tcgetattr()` và `tcsetattr()` thực hiện việc truy xuất và sửa đổi các thuộc tính của một terminal.
 
-```
+```c
 ## include <termios.h>
 int tcgetattr(int fd, struct termios *termios_p);
 int tcsetattr(int fd, int optional_actions, const struct termios *termios_p);
-                                         Cả hai đều trả về 0 khi thành công, hoặc –1 khi lỗi
+                                         /* Cả hai đều trả về 0 khi thành công, hoặc –1 khi lỗi */
 ```
 
 Tham số `fd` là một mô tả tệp (File Descriptor) trỏ đến một terminal. (Nếu `fd` không trỏ đến terminal, các hàm này sẽ thất bại với mã lỗi `ENOTTY`.)
@@ -94,6 +97,7 @@ Mảng `c_cc` chứa các ký tự đặc biệt của terminal (ngắt, tạm d
 
 Các trường `c_ispeed` và `c_ospeed` không được sử dụng trên Linux (và không được chỉ định trong SUSv3). Chúng tôi giải thích cách Linux lưu trữ tốc độ đường truyền terminal trong Mục [62.7.](#page-27-0)
 
+> [!NOTE]
 > Trình điều khiển terminal (thường gọi là tty driver) trong Phiên bản thứ bảy (Seventh Edition) và các hệ thống BSD thời kỳ đầu đã phình to theo thời gian đến mức nó sử dụng không dưới bốn cấu trúc dữ liệu khác nhau để biểu diễn thông tin tương đương với cấu trúc `termios`. System V đã thay thế cơ chế phức tạp này bằng một cấu trúc duy nhất có tên là `termios`. Ủy ban POSIX ban đầu đã chọn API của System V gần như nguyên trạng, đồng thời đổi tên nó thành `termios`.
 
 Khi thay đổi các thuộc tính terminal bằng `tcsetattr()`, tham số `optional_actions` xác định thời điểm thay đổi có hiệu lực. Tham số này được chỉ định bằng một trong các giá trị sau:
@@ -123,8 +127,10 @@ if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &tp) == -1)
 
 Hàm `tcsetattr()` trả về thành công nếu bất kỳ thay đổi nào được yêu cầu đối với thuộc tính terminal có thể được thực hiện; nó chỉ thất bại khi không có thay đổi nào trong số các yêu cầu có thể thực hiện được. Điều này có nghĩa là, khi thực hiện nhiều thay đổi thuộc tính cùng lúc, đôi khi cần phải gọi thêm `tcgetattr()` để truy xuất các thuộc tính terminal mới và so sánh chúng với các thay đổi đã yêu cầu.
 
+> [!NOTE]
 > Trong Mục 34.7.2, chúng ta đã lưu ý rằng nếu `tcsetattr()` được gọi từ một tiến trình nằm trong một nhóm tiến trình nền (background process group), thì trình điều khiển terminal sẽ tạm dừng nhóm tiến trình đó bằng cách gửi tín hiệu `SIGTTOU`, và nếu được gọi từ một nhóm tiến trình mồ côi (orphaned process group), `tcsetattr()` sẽ thất bại với mã lỗi `EIO`. Các phát biểu tương tự cũng áp dụng cho nhiều hàm khác được mô tả trong chương này, bao gồm `tcflush()`, `tcflow()`, `tcsendbreak()` và `tcdrain()`.
 
+> [!NOTE]
 > Trong các cài đặt UNIX trước đây, các thuộc tính của thiết bị đầu cuối (terminal attributes) được truy cập thôngging qua các lời gọi `ioctl()` (`ioctl() calls`). Giống như một số hàm khác được mô tả trong chương này, các hàm `tcgetattr()` và `tcsetattr()` là những phát minh của POSIX được thiết kế để giải quyết vấn đề kiểm tra kiểu dữ liệu (type checking) của đối số thứ ba trong `ioctl()` là không thể thực hiện được. Trên Linux, cũng như trong nhiều cài đặt UNIX khác, đây là các hàm thư viện (library functions) được xây dựng lớp phủ phía trên `ioctl()`.
 
 ## 62.3 Lệnh stty
@@ -200,17 +206,17 @@ Ký tự `Control-J` chính là ký tự xuống dòng thực sự (ASCII 10 th�
 
 Lệnh `stty` hoạt động trên terminal được tham chiếu bởi đầu vào chuẩn (standard input). Sử dụng tùy chọn `-F`, chúng ta có thể (tuân theo các kiểm tra quyền hạn - permission checks) theo dõi và thiết lập các thuộc tính của một terminal khác với terminal mà lệnh `stty` đang chạy trên đó:
 
-```
-$ su Need privilege to access another user's terminal
+```bash
+$ su # Cần quyền đặc trị để truy cập terminal của người dùng khác
 Password:
-## stty -a -F /dev/tty3 Fetch attributes for terminal /dev/tty3
-Output omitted for brevity
+## stty -a -F /dev/tty3 # Lấy thuộc tính của terminal /dev/tty3
+(Nội dung đầu ra được giản lược)
 ```
 
 Tùy chọn `-F` là một phần mở rộng đặc trưng của Linux đối với lệnh `stty`. Trên nhiều cài đặt UNIX khác, `stty` luôn thao tác trên terminal được trỏ bởi chuẩn đầu vào (standard input), và chúng ta phải sử dụng hình thức thay thế sau (cũng có thể sử dụng trên Linux):
 
-```
 ## stty -a < /dev/tty3
+
 ```
 
 ## 62.4 Các Ký tự Đặc biệt của Terminal (Terminal Special Characters)
@@ -254,8 +260,6 @@ Các đoạn văn bản sau đây cung cấp giải thích chi tiết hơn về 
 
 CR là ký tự về đầu dòng (carriage return). Ký tự này được truyền đến tiến trình đọc (`reading process`). Ở chế độ chuẩn (`canonical mode` - cờ `ICANON` được thiết lập) với cờ `ICRNL` (ánh xạ CR thành NL ở đầu vào) được thiết lập (mặc định), ký tự này trước tiên được chuyển đổi thành một ký tự xuống dòng (Newline) (ASCII 10 thập phân, ^J) trước khi được truyền đến tiến trình đọc. Nếu cờ `IGNCR` (bỏ qua CR) được thiết lập, thì ký tự này sẽ bị bỏ qua ở đầu vào (trong trường hợp đó, ký tự xuống dòng thực sự phải được sử dụng để kết thúc một dòng đầu vào). Một ký tự CR đầu ra khiến terminal di chuyển con trỏ về đầu dòng.
 
-```
-
 ### DISCARD
 
 DISCARD là ký tự đầu ra hủy bỏ (discard output character). Mặc dù ký tự này được định nghĩa trong mảng `c_cc`, nhưng nó không có tác dụng trên Linux. Trên một số triển khai UNIX khác, việc gõ ký tự này một lần sẽ khiến đầu ra của chương trình bị hủy bỏ. Ký tự này hoạt động như một công tắc chuyển đổi (toggle) — gõ lại lần nữa sẽ bật lại hiển thị đầu ra. Điều này hữu ích khi một chương trình tạo ra lượng lớn đầu ra và chúng ta muốn bỏ qua một phần trong số đó. (Tính năng này hữu ích hơn nhiều trên các thiết bị đầu cuối (terminal) truyền thống, nơi tốc độ dòng thấp hơn và các "cửa sổ terminal" khác không khả dụng). Ký tự này không được truyền đến tiến trình đọc (reading process).
@@ -276,7 +280,7 @@ Các ký tự này rất hiếm khi được sử dụng. Một ứng dụng có
 
 ### INTR
 
-INTR là ký tự ngắt (interrupt character). Nếu cờ ISIG (bật tín hiệu - enable signals) được thiết lập (mặc định), việc gõ ký tự này sẽ khiến tín hiệu ngắt (`SIGINT`) được gửi đến nhóm tiến trình chạy nền trước (foreground process group) của thiết bị đầu cuối (Mục 34.2). Bản thân ký tự INTR không được truyền đến tiến trình đọc (reading process).
+INTR là ký tự ngắt (interrupt character). Nếu cờ ISIG (bật tín hiệu - enable signals) được thiết lập (mặc định), việc gõ ký tự này sẽ khiến tín hiệu ngắt (`SIGINT`) được gửi đến nhóm tiến trình tiền cảnh (foreground process group) của terminal (Mục 34.2). Bản thân ký tự INTR không được truyền đến tiến trình đọc (reading process).
 
 ### KILL
 
@@ -310,7 +314,7 @@ Nếu cờ `IXANY` được thiết lập, thì bất kỳ ký tự nào, không
 
 Các ký tự START và STOP được sử dụng để điều khiển luồng phần mềm (software flow control) theo bất kỳ hướng nào giữa máy tính và thiết bị terminal. Một chức năng của các ký tự này là cho phép người dùng dừng và khởi động đầu ra của terminal. Đây là điều khiển luồng đầu ra (output flow control), được bật bởi `IXON`. Tuy nhiên, điều khiển luồng theo hướng ngược lại (tức là điều khiển luồng đầu vào từ thiết bị đến máy tính, được bật bởi `IXOFF`) cũng rất quan trọng khi, ví dụ, thiết bị đang xét là một modem hoặc một máy tính khác. Điều khiển luồng đầu vào đảm bảo rằng không có dữ liệu nào bị mất nếu ứng dụng xử lý đầu vào chậm và các bộ đệm kernel (kernel buffers) bị đầy.
 
-Với tốc độ đường truyền cao hơn vốn là tiêu chuẩn hiện nay, điều khiển luồng phần mềm đã được thay thế bằng điều khiển luồng phần cứng (RTS/CTS), theo đó luồng dữ liệu được bật và tắt bằng cách sử dụng các tín hiệu được gửi qua các dây riêng biệt trên cổng nối tiếp (serial port). (RTS viếtست tắt của Request To Send, và CTS viết tắt của Clear To Send.)
+Với tốc độ đường truyền cao hơn vốn là tiêu chuẩn hiện nay, điều khiển luồng phần mềm đã được thay thế bằng điều khiển luồng phần cứng (RTS/CTS), theo đó luồng dữ liệu được bật và tắt bằng cách sử dụng các tín hiệu được gửi qua các dây riêng biệt trên cổng nối tiếp (serial port). (RTS viết tắt của Request To Send, và CTS viết tắt của Clear To Send.)
 
 ### SUSP
 
@@ -722,6 +726,8 @@ Trong trình điều khiển terminal của Seventh Edition và BSD nguyên bả
 
 ## include "tty_functions.h" /* Declares functions defined here */
 
+```
+
 /* Place terminal referred to by 'fd' in cbreak mode (noncanonical mode
 with echoing turned off). This function assumes that the terminal is
 currently in cooked mode (i.e., we shouldn't call it if the terminal
@@ -814,21 +820,22 @@ Trình xử lý cho tín hiệu SIGTSTP e xử lý tín hiệu theo cách đư�
 
 ## include <ctype.h>
 
-## include "tty_functions.h" /* Declarations of ttySetCbreak()
-
-and ttySetRaw() */
+## include "tty_functions.h" /* Declarations of ttySetCbreak() and ttySetRaw() */
 
 ## include "tlpi_hdr.h"
 
-q static struct termios userTermios;
-/* Terminal settings as defined by user */
+static struct termios userTermios; /* Terminal settings as defined by user */
+
 static void /* General handler: restore tty settings and exit */
 handler(int sig)
 {
-w if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &userTermios) == -1)
+if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &userTermios) == -1)
 errExit("tcsetattr");
 _exit(EXIT_SUCCESS);
 }
+
+```
+
 static void /* Handler for SIGTSTP */
 e tstpHandler(int sig)
 {

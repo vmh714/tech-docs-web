@@ -1,6 +1,4 @@
-## Chapter 61
-
-## SOCKETS: CÁC CHỦ ĐỀ NÂNG CAO (ADVANCED TOPICS)
+# Chương 61: Socket: Các chủ đề nâng cao (Sockets: Advanced Topics)
 
 Chương này xem xét một loạt các chủ đề nâng cao hơn liên quan đến lập trình socket (sockets programming), bao gồm:
 
@@ -30,7 +28,7 @@ Trong tất cả các trường hợp trên, giả sử có đủ không gian đ
 
 Nếu xảy ra I/O một phần — ví dụ, nếu read() trả về ít hơn số byte được yêu cầu hoặc một lời gọi write() đang bị chặn bị gián đoạn bởi signal handler sau khi chỉ truyền được một phần dữ liệu được yêu cầu — thì đôi khi việc khởi động lại system call để hoàn tất quá trình truyền là rất hữu ích. Trong [Liệt kê 61-1](#page-106-0), chúng tôi cung cấp hai hàm thực hiện việc này: readn() và writen(). (Ý tưởng cho các hàm này được rút ra từ các hàm có cùng tên được trình bày trong [Stevens et al., 2004]).
 
-```
+```c
 ## include "rdwrn.h"
 ssize_t readn(int fd, void *buffer, size_t count);
                         Trả về số byte đã đọc, 0 khi gặp EOF, hoặc –1 khi lỗi
@@ -94,38 +92,43 @@ writen(int fd, const void *buffer, size_t n)
 
 Việc gọi `close()` trên một socket đóng cả hai nửa của kênh truyền thông song công (bidirectional communication channel). Đôi khi, việc đóng một nửa kết nối là rất hữu ích, để dữ liệu chỉ có thể được truyền theo một chiều qua socket. System call `shutdown()` cung cấp tính năng này.
 
-```
 ## include <sys/socket.h>
+
 int shutdown(int sockfd, int how);
-                                             Trả về 0 khi thành công, hoặc –1 khi có lỗi
+Trả về 0 khi thành công, hoặc –1 khi có lỗi
+
 ```
 
 System call `shutdown()` đóng một hoặc cả hai kênh của socket `sockfd`, tùy thuộc vào giá trị của `how`, được chỉ định là một trong các giá trị sau:
 
-SHUT\_RD
+SHUT_RD
 
-Đóng nửa đọc (reading half) của kết nối. Các thao tác đọc tiếp theo sẽ trả về dấu hiệu kết thúc tệp - end-of-file (0). Dữ liệu vẫn có thể được ghi vào socket. Sau khi thực hiện `SHUT\_RD` trên một UNIX domain stream socket, ứng dụng đối tác (peer application) sẽ nhận được tín hiệu `SIGPIPE` và lỗi `EPIPE` nếu nó tiếp tục cố gắng ghi vào socket đối tác. Như đã thảo luận trong Mục [61.6.6](#page-124-0), `SHUT\_RD` không thể được sử dụng một cách có ý nghĩa đối với các TCP socket.
+Đóng nửa đọc (reading half) của kết nối. Các thao tác đọc tiếp theo sẽ trả về dấu hiệu kết thúc tệp - end-of-file (0). Dữ liệu vẫn có thể được ghi vào socket. Sau khi thực hiện `SHUT_RD` trên một UNIX domain stream socket, ứng dụng đối tác (peer application) sẽ nhận được tín hiệu `SIGPIPE` và lỗi `EPIPE` nếu nó tiếp tục cố gắng ghi vào socket đối tác. Như đã thảo luận trong Mục [61.6.6](#page-124-0), `SHUT_RD` không thể được sử dụng một cách có ý nghĩa đối với các TCP socket.
 
-SHUT\_WR
+SHUT_WR
 
-Đóng nửa ghi (writing half) của kết nối. Khi ứng dụng đối tác đã đọc hết tất cả dữ liệu chưa được xử lý (outstanding data), nó sẽ thấy dấu hiệu kết thúc tệp (end-of-file). Các thao tác ghi tiếp theo vào socket cục bộ sẽ tạo ra tín hiệu `SIGPIPE` và lỗi `EPIPE`. Dữ liệu do đối tác ghi vẫn có thể được đọc từ socket. Nói cách khác, thao tác này cho phép chúng ta báo hiệu kết thúc tệp (end-of-file) cho đối tác trong khi vẫn có thể đọc dữ liệu mà đối tác gửi ngược lại cho chúng ta. Thao tác `SHUT\_WR` được sử dụng bởi các chương trình như `ssh` và `rsh` (tham khảo Mục 18.5 của [Stevens, 1994]). Thao tác `SHUT\_WR` là cách sử dụng phổ biến nhất của `shutdown()`, và đôi khi được gọi là đóng một nửa socket (socket half-close).
+Đóng nửa ghi (writing half) của kết nối. Khi ứng dụng đối tác đã đọc hết tất cả dữ liệu chưa được xử lý (outstanding data), nó sẽ thấy dấu hiệu kết thúc tệp (end-of-file). Các thao tác ghi tiếp theo vào socket cục bộ sẽ tạo ra tín hiệu `SIGPIPE` và lỗi `EPIPE`. Dữ liệu do đối tác ghi vẫn có thể được đọc từ socket. Nói cách khác, thao tác này cho phép chúng ta báo hiệu kết thúc tệp (end-of-file) cho đối tác trong khi vẫn có thể đọc dữ liệu mà đối tác gửi ngược lại cho chúng ta. Thao tác `SHUT_WR` được sử dụng bởi các chương trình như `ssh` và `rsh` (tham khảo Mục 18.5 của [Stevens, 1994]). Thao tác `SHUT_WR` là cách sử dụng phổ biến nhất của `shutdown()`, và đôi khi được gọi là đóng một nửa socket (socket half-close).
 
-SHUT\_RDWR
+SHUT_RDWR
 
-Đóng cả hai nửa đọc và ghi của kết nối. Thao tác này tương đương với việc thực hiện `SHUT\_RD` theo sau bởi `SHUT\_WR`.
+Đóng cả hai nửa đọc và ghi của kết nối. Thao tác này tương đương với việc thực hiện `SHUT_RD` theo sau bởi `SHUT_WR`.
 
 Ngoài ngữ nghĩa của tham số `how`, `shutdown()` khác với `close()` ở một điểm quan trọng khác: nó đóng (các) kênh socket bất kể có các file descriptor khác đang tham chiếu đến socket đó hay không. (Nói cách khác, `shutdown()` thực hiện một thao tác trên mô tả tệp mở - open file description, thay vì trên file descriptor. Xem Hình 5-1, trang 91.) Giả sử, ví dụ, `sockfd` tham chiếu đến một stream socket đã được kết nối. Nếu chúng ta thực hiện các lời gọi sau, thì kết nối vẫn mở và chúng ta vẫn có thể thực hiện I/O trên kết nối thông qua file descriptor `fd2`:
 
 ```
+
 fd2 = dup(sockfd);
 close(sockfd);
+
 ```
 
 Tuy nhiên, nếu chúng ta thực hiện chuỗi lời gọi sau, thì cả hai kênh của kết nối đều bị đóng và I/O không còn có thể được thực hiện thông qua `fd2`:
 
 ```
+
 fd2 = dup(sockfd);
 shutdown(sockfd, SHUT_RDWR);
+
 ```
 
 Một kịch bản tương tự cũng xảy ra nếu một file descriptor cho socket được nhân bản (duplicate) trong quá trình `fork()`. Nếu sau khi `fork()`, một tiến trình thực hiện `SHUT\_RDWR` trên bản sao file descriptor của nó, thì tiến trình kia cũng không còn có thể thực hiện I/O trên file descriptor của chính nó nữa.
@@ -151,6 +154,7 @@ Dưới đây là phần văn bản được dịch sang tiếng Việt theo đ�
 Phần sau đây cho thấy một ví dụ về những gì chúng ta thấy khi chạy chương trình này:
 
 ```
+
 $ cat > tell-tale-heart.txt Tạo một tệp để kiểm tra
 It is impossible to say how the idea entered my brain;
 but once conceived, it haunted me day and night.
@@ -158,57 +162,63 @@ Nhập Control-D
 $ ./is_echo_cl tekapo < tell-tale-heart.txt
 It is impossible to say how the idea entered my brain;
 but once conceived, it haunted me day and night.
+
 ```
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– sockets/is_echo_cl.c
+
 ## include "inet_sockets.h"
+
 ## include "tlpi_hdr.h"
+
 ## define BUF_SIZE 100
+
 int
 main(int argc, char *argv[])
 {
- int sfd;
- ssize_t numRead;
- char buf[BUF_SIZE];
- if (argc != 2 || strcmp(argv[1], "--help") == 0)
- usageErr("%s host\n", argv[0]);
- sfd = inetConnect(argv[1], "echo", SOCK_STREAM);
- if (sfd == -1)
- errExit("inetConnect");
- switch (fork()) {
- case -1:
- errExit("fork");
- case 0: /* Tiến trình con: đọc phản hồi của server, hiển thị trên stdout */
- for (;;) {
- numRead = read(sfd, buf, BUF_SIZE);
- if (numRead <= 0) /* Thoát khi gặp EOF hoặc lỗi */
- break;
- printf("%.*s", (int) numRead, buf);
- }
- exit(EXIT_SUCCESS);
- default: /* Tiến trình cha: ghi nội dung từ stdin vào socket */
- for (;;) {
- numRead = read(STDIN_FILENO, buf, BUF_SIZE);
- if (numRead <= 0) /* Thoát vòng lặp khi gặp EOF hoặc lỗi */
- break;
- if (write(sfd, buf, numRead) != numRead)
- fatal("write() failed");
- }
- /* Đóng kênh ghi, để server nhận biết được EOF */
- if (shutdown(sfd, SHUT_WR) == -1)
- errExit("shutdown");
- exit(EXIT_SUCCESS);
- }
+int sfd;
+ssize_t numRead;
+char buf[BUF_SIZE];
+if (argc != 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s host\n", argv[0]);
+sfd = inetConnect(argv[1], "echo", SOCK_STREAM);
+if (sfd == -1)
+errExit("inetConnect");
+switch (fork()) {
+case -1:
+errExit("fork");
+case 0: /* Tiến trình con: đọc phản hồi của server, hiển thị trên stdout */
+for (;;) {
+numRead = read(sfd, buf, BUF_SIZE);
+if (numRead <= 0) /* Thoát khi gặp EOF hoặc lỗi */
+break;
+printf("%.*s", (int) numRead, buf);
+}
+exit(EXIT_SUCCESS);
+default: /* Tiến trình cha: ghi nội dung từ stdin vào socket */
+for (;;) {
+numRead = read(STDIN_FILENO, buf, BUF_SIZE);
+if (numRead <= 0) /* Thoát vòng lặp khi gặp EOF hoặc lỗi */
+break;
+if (write(sfd, buf, numRead) != numRead)
+fatal("write() failed");
+}
+/* Đóng kênh ghi, để server nhận biết được EOF */
+if (shutdown(sfd, SHUT_WR) == -1)
+errExit("shutdown");
+exit(EXIT_SUCCESS);
+}
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– sockets/is_echo_cl.c
+
 ```
 
 ## 61.3 Các System Call I/O dành riêng cho Socket: recv() và send()
 
 Các system call `recv()` và `send()` thực hiện thao tác I/O trên các socket đã thiết lập kết nối (connected socket). Chúng cung cấp các tính năng đặc thù của socket mà các system call `read()` và `write()` truyền thống không có.
 
-```
 ## include <sys/socket.h>
 ssize_t recv(int sockfd, void *buffer, size_t length, int flags);
                     Trả về số byte nhận được, 0 khi gặp EOF, hoặc –1 khi lỗi
@@ -218,9 +228,9 @@ ssize_t send(int sockfd, const void *buffer, size_t length, int flags);
 
 Giá trị trả về và ba tham số đầu tiên của `recv()` và `send()` hoàn toàn giống với `read()` và `write()`. Tham số cuối cùng, `flags`, là một mặt nạ bit (bit mask) dùng để thay đổi hành vi của thao tác I/O. Đối với `recv()`, các bit có thể được kết hợp bằng phép toán OR trong `flags` bao gồm:
 
-### MSG\_DONTWAIT
+### MSG_DONTWAIT
 
-Thực hiện một thao tác `recv()` phi đồng bộ/không chặn (nonblocking). Nếu không có dữ liệu nào sẵn sàng, thay vì chuyển sang trạng thái chặn (blocking), hàm sẽ trả về ngay lập tức với mã lỗi `EAGAIN`. Chúng ta có thể đạt được hành vi tương tự bằng cách sử dụng `fcntl()` để thiết lập chế độ không chặn (`O_NONBLOCK`) cho socket, điểm khác biệt là `MSG_DONTWAIT` cho phép chúng ta kiểm soát hành vi không chặn này cho từng lời gọi riêng lẻ (per-call basis).
+Thực hiện một thao tác `recv()` ở chế độ không chặn (nonblocking). Nếu không có dữ liệu nào sẵn sàng, thay vì chuyển sang trạng thái chặn (blocking), hàm sẽ trả về ngay lập tức với mã lỗi `EAGAIN`. Chúng ta có thể đạt được hành vi tương tự bằng cách sử dụng `fcntl()` để thiết lập chế độ không chặn (`O_NONBLOCK`) cho socket, điểm khác biệt là `MSG_DONTWAIT` cho phép chúng ta kiểm soát hành vi không chặn này cho từng lời gọi riêng lẻ (per-call basis).
 
 ### MSG\_OOB
 
@@ -273,10 +283,11 @@ while ((n = read(diskfilefd, buf, BUZ_SIZE)) > 0)
 
 **Hình 61-1:** Truyền nội dung của một tập tin đến một socket
 
-```
 ## include <sys/sendfile.h>
+
 ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
-                            Trả về số lượng byte được truyền, hoặc –1 nếu có lỗi
+Trả về số lượng byte được truyền, hoặc –1 nếu có lỗi
+
 ```
 
 System call `sendfile()` truyền các byte từ tập tin được trỏ bởi File Descriptor `in_fd` sang tập tin được trỏ bởi File Descriptor `out_fd`. Descriptor `out_fd` bắt buộc phải trỏ tới một socket. Tham số `in_fd` phải trỏ tới một tập tin mà hàm `mmap()` có thể áp dụng được; trong thực tế, điều này thường có nghĩa là một tập tin thông thường (regular file). Điều này làm hạn chế phần nào việc sử dụng `sendfile()`. Chúng ta có thể dùng nó để truyền dữ liệu từ một tập tin sang một socket, nhưng không thể làm ngược lại. Và chúng ta không thể sử dụng `sendfile()` để truyền dữ liệu trực tiếp từ socket này sang socket khác.
@@ -302,17 +313,19 @@ Khi tùy chọn TCP_CORK được bật trên một TCP socket, toàn bộ dữ 
 Chúng ta bật và tắt tùy chọn TCP_CORK bằng cách sử dụng system call (lời gọi hệ thống) setsockopt() (Mục [61.9](#page-129-1)). Đoạn mã sau (bỏ qua phần kiểm tra lỗi) minh họa việc sử dụng TCP_CORK cho ví dụ máy chủ HTTP giả định của chúng tôi:
 
 ```
+
 int optval;
 /* Enable TCP_CORK option on 'sockfd' - subsequent TCP output is corked
- until this option is disabled. */
+until this option is disabled. */
 optval = 1;
 setsockopt(sockfd, IPPROTO_TCP, TCP_CORK, sizeof(optval));
 write(sockfd, ...); /* Write HTTP headers */
 sendfile(sockfd, ...); /* Send page data */
 /* Disable TCP_CORK option on 'sockfd' - corked output is now transmitted
- in a single TCP segment. */
+in a single TCP segment. */
 optval = 0
 setsockopt(sockfd, IPPROTO_TCP, TCP_CORK, sizeof(optval));
+
 ```
 
 Chúng ta có thể tránh khả năng hai segment được truyền đi bằng cách xây dựng một bộ đệm dữ liệu duy nhất bên trong ứng dụng của mình, và sau đó truyền bộ đệm đó bằng một lệnh write() duy nhất. (Ngoài ra, chúng ta có thể sử dụng writev() để kết hợp hai bộ đệm riêng biệt trong một thao tác xuất duy nhất). Tuy nhiên, nếu chúng ta muốn kết hợp hiệu quả zero-copy của sendfile() với khả năng bao gồm một header như một phần của segment đầu tiên chứa dữ liệu tệp được truyền, thì chúng ta cần sử dụng TCP_CORK.
@@ -325,7 +338,6 @@ FreeBSD cung cấp một tùy chọn tương tự như TCP_CORK dưới hình th
 
 Các system call getsockname() và getpeername() lần lượt trả về địa chỉ cục bộ (local address) mà một socket được ràng buộc (bind) và địa chỉ của socket đối tác (peer socket) mà socket cục bộ được kết nối tới.
 
-```
 ## include <sys/socket.h>
 int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 int getpeername(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
@@ -417,7 +429,7 @@ main(int argc, char *argv[])
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– sockets/socknames.c
 ```
 
-### Tìm hiểu kỹ hơn về TCP 61.6
+## 61.6 Tìm hiểu kỹ hơn về TCP
 
 Việc nắm được một số chi tiết về hoạt động của TCP giúp chúng ta gỡ lỗi (debug) các ứng dụng sử dụng TCP socket, và trong một số trường hợp, giúp các ứng dụng đó hoạt động hiệu quả hơn. Trong các mục tiếp theo, chúng ta sẽ tìm hiểu về:
 
@@ -485,7 +497,7 @@ Việc duy trì một kết nối TCP đòi hỏi sự phối hợp giữa các 
 - SYN\_SENT: TCP đã gửi một gói SYN thay mặt cho một ứng dụng thực hiện thao tác mở chủ động (active open) và đang đợi phản hồi từ đối tác để hoàn tất kết nối.
 - SYN\_RECV: TCP, trước đó ở trạng thái LISTEN, đã nhận được một gói SYN và đã phản hồi bằng một gói SYN/ACK (tức là một phân đoạn TCP được bật cả hai cờ SYN và ACK), và hiện đang đợi gói ACK từ TCP đối tác để hoàn tất kết nối.
 - ESTABLISHED: Quá trình thiết lập kết nối với TCP đối tác đã hoàn tất. Các phân đoạn dữ liệu giờ đây có thể được trao đổi theo cả hai hướng giữa hai TCP.
-- FIN\_WAIT1: Ứng dụng đã đóng kết nối. TCP đã gửi một gói FIN tới TCP đối tác nhằm chấm dứt phía kết nối của mình và đang chờ gói ACK từ đối tác. Trạng thái này và ba trạng thái tiếp theo gắn liền với một ứng dụng thực hiện việc đóng chủ động (active open) — nghĩa là ứng dụng đầu tiên đóng phía kết nối của mình.
+- FIN_WAIT1: Ứng dụng đã đóng kết nối. TCP đã gửi một gói FIN tới TCP đối tác nhằm chấm dứt phía kết nối của mình và đang chờ gói ACK từ đối tác. Trạng thái này và ba trạng thái tiếp theo gắn liền với một ứng dụng thực hiện việc đóng chủ động (active close) — nghĩa là ứng dụng đầu tiên đóng phía kết nối của mình.
 - FIN\_WAIT2: TCP, trước đó ở trạng thái FIN\_WAIT1, nay đã nhận được gói ACK từ TCP đối tác.
 - CLOSING: TCP, trước đó đang chờ gói ACK ở trạng thái FIN\_WAIT1, lại nhận được một gói FIN từ đối tác, cho thấy đối tác đồng thời cố gắng thực hiện việc đóng chủ động. (Nói cách khác, hai TCP đã gửi các phân đoạn FIN gần như cùng một thời điểm. Đây là một kịch bản hiếm gặp.)
 - TIME\_WAIT: Sau khi thực hiện việc đóng chủ động, TCP đã nhận được một gói FIN, cho thấy TCP đối tác đã thực hiện việc đóng thụ động (passive close). TCP này lúc này sẽ dành ra một khoảng thời gian cố định ở trạng thái TIME\_WAIT, nhằm đảm bảo việc chấm dứt kết nối TCP diễn ra đáng tin cậy và đảm bảo rằng bất kỳ phân đoạn trùng lặp cũ nào cũng sẽ hết hạn trong mạng trước khi một thể hiện mới (incarnation) của cùng kết nối đó được tạo ra. (Chúng tôi giải thích chi tiết hơn về trạng thái TIME\_WAIT ở Mục [61.6.7.](#page-125-0)) Khi khoảng thời gian cố định này kết thúc, kết nối được đóng lại và các tài nguyên kernel (kernel resources) liên quan sẽ được giải phóng.
@@ -495,12 +507,14 @@ LAST\_ACK: Ứng dụng đã thực hiện việc đóng thụ động, và TCP,
 
 Bên cạnh các trạng thái trên, RFC 793 bổ sung thêm một trạng thái giả định nữa là CLOSED, đại diện cho trạng thái khi không có kết nối nào tồn tại (tức là không có tài nguyên kernel nào được phân bổ để mô tả một kết nối TCP).
 
+> [!NOTE]
 > Trong danh sách trên, chúng tôi sử dụng các tên gọi trạng thái TCP được định nghĩa trong mã nguồn Linux (Linux source code). Các tên gọi này hơi khác biệt so với các tên gọi trong RFC 793.
 
 Hình 61-4 minh họa sơ đồ chuyển đổi trạng thái (state transition diagram) cho TCP. (Hình vẽ này dựa trên các sơ đồ trong RFC 793 và [Stevens et al., 2004].) Sơ đồ này cho thấy cách một điểm cuối TCP (TCP endpoint) chuyển từ trạng thái này sang trạng thái khác để đáp ứng các sự kiện khác nhau. Mỗi mũi tên biểu thị một sự chuyển đổi khả dĩ và được gán nhãn bằng sự kiện kích hoạt quá trình chuyển đổi đó. Nhãn này có thể là một hành động của ứng dụng (được in đậm) hoặc chuỗi `recv`, biểu thị việc nhận được một phân đoạn (segment) từ TCP ngang hàng (peer TCP). Khi một TCP chuyển từ trạng thái này sang trạng thái khác, nó có thể truyền một phân đoạn tới bên ngang hàng, và điều này được biểu thị bằng nhãn `send` trên đường chuyển đổi. Ví dụ, mũi tên biểu thị sự chuyển đổi từ trạng thái ESTABLISHED sang trạng thái FIN\_WAIT1 cho thấy sự kiện kích hoạt là lời gọi hàm `close()` từ ứng dụng cục bộ, và trong quá trình chuyển đổi đó, TCP sẽ gửi một phân đoạn FIN tới bên ngang hàng của nó.
 
 Trong Hình 61-4, đường đi chuyển đổi thông thường đối với TCP của phía client được thể hiện bằng các mũi tên liền nét đậm, và đường đi chuyển đổi thông thường đối với TCP của phía server được thể hiện bằng các mũi tên đứt nét đậm. (Các mũi tên khác biểu thị những đường ít phổ biến hơn). Quan sát các con số trong ngoặc đơn trên các mũi tên của những đường đi này, chúng ta có thể thấy rằng các phân đoạn được gửi và nhận bởi hai TCP là ảnh phản chiếu của nhau. (Sau trạng thái ESTABLISHED, các đường đi mà TCP server và TCP client trải qua có thể ngược lại với các đường được chỉ ra, nếu chính server là bên thực hiện chủ động đóng kết nối - active close).
 
+> [!NOTE]
 > Hình 61-4 không thể hiện tất cả các trạng thái chuyển đổi khả dĩ của máy trạng thái TCP (TCP state machine); nó chỉ minh họa những trạng thái có tầm quan trọng chính. Bạn đọc có thể tìm thấy một sơ đồ chuyển đổi trạng thái TCP chi tiết hơn tại http://www.cl.cam.ac.uk/~pes20/Netsem/poster.pdf.
 
 ### 61.6.4 Thiết lập kết nối TCP (TCP Connection Establishment)
@@ -556,7 +570,7 @@ Giống như cờ `SYN` và vì những lý do tương tự, cờ `FIN` chiếm 
 
 Phần thảo luận trước đó giả định một quá trình đóng song công toàn phần (full-duplex close); nghĩa là một ứng dụng đóng cả hai kênh gửi và nhận của TCP socket bằng cách sử dụng `close()`. Như đã lưu ý trong Phần [61.2](#page-107-1), chúng ta có thể sử dụng `shutdown()` để chỉ đóng một kênh của kết nối (đóng bán song công - half-duplex close). Phần này đề cập đến một số chi tiết cụ thể đối với hàm `shutdown()` trên một TCP socket.
 
-Việc chỉ định tham số `how` là `SHUT_WR` hoặc `SHUT_RDWR` sẽ khởi <u>động</u> chuỗi kết thúc kết nối TCP (tức là đóng chủ động) được mô tả trong Phần [61.6.5,](#page-123-1) bất kể có hay không các bộ mô tả file (file descriptor) khác đang tham chiếu đến socket đó. Khi chuỗi này được khởi tạo, TCP cục bộ sẽ chuyển sang trạng thái `FIN_WAIT1`, và sau đó chuyển sang trạng thái `FIN_WAIT2`, trong khi TCP ở phía đầu xa (peer) chuyển sang trạng thái `CLOSE_WAIT` [\(Hình 61-6\)](#page-124-1). Nếu `how` được chỉ định là `SHUT_WR`, thì do bộ mô tả file socket vẫn hợp lệ và nửa kết nối dùng để đọc vẫn được mở, phía đầu xa có thể tiếp tục gửi dữ liệu ngược lại cho chúng ta.
+Việc chỉ định tham số `how` là `SHUT_WR` hoặc `SHUT_RDWR` sẽ khởi động chuỗi kết thúc kết nối TCP (tức là đóng chủ động) được mô tả trong Phần [61.6.5,](#page-123-1) bất kể có hay không các bộ mô tả file (file descriptor) khác đang tham chiếu đến socket đó. Khi chuỗi này được khởi tạo, TCP cục bộ sẽ chuyển sang trạng thái `FIN_WAIT1`, và sau đó chuyển sang trạng thái `FIN_WAIT2`, trong khi TCP ở phía đầu xa (peer) chuyển sang trạng thái `CLOSE_WAIT` [\(Hình 61-6\)](#page-124-1). Nếu `how` được chỉ định là `SHUT_WR`, thì do bộ mô tả file socket vẫn hợp lệ và nửa kết nối dùng để đọc vẫn được mở, phía đầu xa có thể tiếp tục gửi dữ liệu ngược lại cho chúng ta.
 
 Thao tác `SHUT_RD` không thể được sử dụng một cách có ý nghĩa với các TCP socket. Lý do là vì hầu hết các cài đặt (implementation) TCP không cung cấp hành vi như mong đợi đối với `SHUT_RD`, và tác động của `SHUT_RD` thay đổi tùy theo từng cài đặt. Trên Linux và một số ít cài đặt khác, sau một lệnh `SHUT_RD` (và sau khi bất kỳ dữ liệu tồn đọng nào đã được đọc hết), hàm `read()` sẽ trả về dấu hiệu kết thúc file (end-of-file), đúng như chúng ta kỳ vọng từ mô tả về `SHUT_RD` trong Phần [61.2](#page-107-1). Tuy nhiên, nếu ứng dụng ở phía đầu xa sau đó ghi dữ liệu vào socket của nó, thì việc đọc dữ liệu đó trên socket cục bộ vẫn có thể thực hiện được.
 
@@ -573,12 +587,14 @@ Trạng thái `TIME_WAIT` của TCP là một nguồn gây nhầm lẫn thườn
 
 Trạng thái `TIME_WAIT` khác với các trạng thái khác ở chỗ sự kiện gây ra việc chuyển đổi thoát khỏi trạng thái này (để sang trạng thái `CLOSED`) là một bộ đếm thời gian (timeout). Bộ đếm thời gian này có thời lượng bằng hai lần giá trị MSL (2MSL), trong đó MSL (Maximum Segment Lifetime - thời gian sống tối đa của phân đoạn) là thời gian sống tối đa giả định của một phân đoạn TCP trên mạng.
 
+> [!NOTE]
 > Trường Thời gian sống (Time-to-Live - TTL) 8-bit trong IP header đảm bảo rằng tất cả các gói tin IP cuối cùng sẽ bị loại bỏ nếu chúng không đến được đích trong một số lượng chặng (hop - các bộ định tuyến đi qua) cố định khi di chuyển từ host nguồn đến host đích. MSL là một ước tính về thời gian tối đa mà một gói tin IP có thể mất để vượt quá giới hạn TTL. Do được biểu diễn bằng 8 bit, trường TTL cho phép tối đa 255 chặng. Thông thường, một gói tin IP đòi hỏi ít chặng hơn đáng kể so với mức này để hoàn thành hành trình của mình. Một gói tin có thể gặp phải giới hạn này do một số loại bất thường của bộ định tuyến (ví dụ: sự cố cấu hình bộ định tuyến) khiến gói tin bị kẹt trong một vòng lặp mạng (network loop) cho đến khi vượt quá giới hạn TTL.
 
 Việc cài đặt BSD socket (BSD sockets implementation) giả định giá trị MSL (Maximum Segment Lifetime) là 30 giây và Linux tuân theo tiêu chuẩn của BSD. Do đó, trạng thái `TIME_WAIT` có thời gian tồn tại là 60 giây trên Linux. Tuy nhiên, RFC 1122 khuyến nghị giá trị MSL là 2 phút, và trên các hệ thống tuân theo khuyến nghị này, trạng thái `TIME_WAIT` có thể kéo dài tới 4 phút.
 
 Chúng ta có thể hiểu mục đích đầu tiên của trạng thái `TIME_WAIT` — đảm bảo việc chấm dứt kết nối đáng tin cậy — bằng cách quan sát [Hình 61-6.](#page-124-1) Trong sơ đồ này, chúng ta có thể thấy rằng bốn segment thường được trao đổi trong quá trình chấm dứt một kết nối TCP. Segment cuối cùng trong số này là một ACK được gửi từ TCP thực hiện hành vi đóng chủ động (active close) đến TCP thực hiện hành vi đóng thụ động (passive close). Giả sử rằng gói ACK này bị thất lạc trong mạng. Nếu điều này xảy ra, TCP thực hiện đóng thụ động cuối cùng sẽ truyền lại (retransmit) gói FIN của nó. Việc duy trì TCP thực hiện đóng chủ động ở trạng thái `TIME_WAIT` trong một khoảng thời gian cố định sẽ đảm bảo rằng nó luôn sẵn sàng để gửi lại gói ACK cuối cùng trong trường hợp này. Nếu TCP thực hiện đóng chủ động không còn tồn tại, thì — do nó không giữ lại bất kỳ thông tin trạng thái nào cho kết nối — giao thức TCP sẽ phản hồi lại gói FIN được gửi lại bằng cách gửi một segment RST (reset) đến TCP thực hiện đóng thụ động, và gói RST này sẽ được hiểu là một lỗi. (Điều này giải thích tại sao thời gian của trạng thái `TIME_WAIT` bằng hai lần MSL: một MSL để gói ACK cuối cùng đến được TCP ngang hàng, cộng thêm một khoảng MSL nữa trong trường hợp một gói FIN tiếp theo phải được gửi đi.)
 
+> [!NOTE]
 > Một trạng thái tương đương với `TIME_WAIT` là không bắt buộc đối với TCP thực hiện đóng thụ động, bởi vì nó chính là bên khởi tạo trao đổi cuối cùng trong quá trình chấm dứt kết nối. Sau khi gửi gói FIN, TCP này sẽ đợi gói ACK từ phía ngang hàng của nó, và truyền lại gói FIN nếu bộ đếm thời gian (timer) của nó hết hạn trước khi nhận được gói ACK.
 
 Để hiểu mục đích thứ hai của trạng thái `TIME_WAIT` — đảm bảo sự hết hạn của các segment trùng lặp cũ trong mạng — chúng ta phải nhớ rằng thuật toán truyền lại (retransmission algorithm) được sử dụng bởi TCP đồng nghĩa với việc các segment trùng lặp có thể được tạo ra, và tùy thuộc vào các quyết định định tuyến (routing decisions), những bản trùng lặp này có thể đến sau khi kết nối đã bị đóng. Ví dụ, giả sử chúng ta có một kết nối TCP giữa hai địa chỉ socket, chẳng hạn, `204.152.189.116` cổng 21 (cổng FTP) và `200.0.0.1` cổng 50.000. Cũng giả sử rằng kết nối này bị đóng, và sau đó một kết nối mới được thiết lập bằng cách sử dụng chính xác các địa chỉ IP và cổng đó. Hiện tượng này được gọi là một hiện thân mới (new incarnation) của kết nối. Trong trường hợp này, TCP phải đảm bảo rằng không có segment trùng lặp cũ nào từ hiện thân trước đó bị chấp nhận là dữ liệu hợp lệ trong hiện thân mới. Điều này được thực hiện bằng cách ngăn chặn một hiện thân mới được thiết lập khi vẫn còn một kết nối TCP ở trạng thái `TIME_WAIT` trên một trong các điểm cuối (endpoint).
@@ -643,6 +659,7 @@ Nhiều tệp cụ thể của Linux nằm trong thư mục `/proc/net` cho phé
 
 Chương trình `tcpdump` là một công cụ gỡ lỗi (debugging tool) hữu ích cho phép người dùng siêu cao cấp (superuser) giám sát lưu lượng Internet trên một mạng đang hoạt động (live network), tạo ra kết quả dạng văn bản theo thời gian thực tương đương với các sơ đồ như trong [Hình 61-3.](#page-119-0) Mặc dù có tên là `tcpdump`, chương trình này có thể được sử dụng để hiển thị lưu lượng cho tất cả các loại gói tin TCP/IP (ví dụ: các phân đoạn TCP [TCP segment], gói dữ liệu UDP [UDP datagram] và gói tin ICMP). Đối với mỗi gói tin mạng (network packet), `tcpdump` hiển thị các thông tin như dấu thời gian (timestamp), địa chỉ IP nguồn và đích, cùng các chi tiết cụ thể khác của giao thức. Chúng ta có thể lựa chọn các gói tin cần giám sát theo loại giao thức, địa chỉ IP nguồn và đích, số hiệu cổng (port number), và một loạt các tiêu chí khác. Chi tiết đầy đủ được cung cấp trong trang hướng dẫn thủ công `tcpdump`.
 
+> [!NOTE]
 > Chương trình `wireshark` (trước đây là `ethereal`; http://www.wireshark.org/) thực hiện tác vụ tương tự như `tcpdump`, nhưng hiển thị thông tin lưu lượng thông qua giao diện đồ họa (graphical interface).
 
 Đối với mỗi phân đoạn TCP (TCP segment), `tcpdump` hiển thị một dòng có dạng sau:
@@ -711,13 +728,14 @@ Các tùy chọn socket (Socket options) ảnh hưởng đến các tính năng 
 
 Các system call `setsockopt()` và `getsockopt()` thiết lập và truy xuất các tùy chọn socket.
 
-```
 ## include <sys/socket.h>
+
 int getsockopt(int sockfd, int level, int optname, void *optval,
- socklen_t *optlen);
+socklen_t *optlen);
 int setsockopt(int sockfd, int level, int optname, const void *optval,
- socklen_t optlen);
-                                     Cả hai đều trả về 0 khi thành công, hoặc –1 khi lỗi
+socklen_t optlen);
+Cả hai đều trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Đối với cả `setsockopt()` và `getsockopt()`, `sockfd` là một file descriptor (mô tả tệp) tham chiếu đến một socket.
@@ -735,11 +753,13 @@ Các tùy chọn socket được liên kết với một mô tả tệp mở (op
 Một ví dụ đơn giản về tùy chọn socket là `SO_TYPE`, có thể được sử dụng để tìm loại của một socket, như sau:
 
 ```c
+
 int optval;
 socklen_t optlen;
 optlen = sizeof(optval);
 if (getsockopt(sfd, SOL_SOCKET, SO_TYPE, &optval, &optlen) == -1)
- errExit("getsockopt");
+errExit("getsockopt");
+
 ```
 
 Sau lời gọi này, `optval` chứa kiểu socket (socket type)—ví dụ, `SOCK_STREAM` hoặc `SOCK_DGRAM`. Việc sử dụng lời gọi này có thể hữu ích trong một chương trình kế thừa một File Descriptor của socket thông qua hàm `exec()`—ví dụ, một chương trình được thực thi (execed) bởi `inetd`—vì chương trình đó có thể không biết nó đã kế thừa loại socket nào.
@@ -762,7 +782,9 @@ Trong cả hai kịch bản này, TCP endpoint đang tồn tại không thể ch
 Nói cách khác, một kết nối TCP socket được nhận dạng bằng một bộ 4 phần tử (4-tuple) (tức là sự kết hợp của bốn giá trị) có dạng sau:
 
 ```
+
 { local-IP-address, local-port, foreign-IP-address, foreign-port }
+
 ```
 
 Đặc tả TCP yêu cầu mỗi bộ 4 phần tử như vậy phải là duy nhất; nghĩa là, chỉ có thể tồn tại một hiện thân kết nối tương ứng ("cuộc gọi điện thoại"). Vấn đề là hầu hết các cài đặt (bao gồm cả Linux) thực thi một ràng buộc nghiêm ngặt hơn: một cổng cục bộ không thể được tái sử dụng (tức là được chỉ định trong lời gọi hàm `bind()`) nếu bất kỳ hiện thân kết nối TCP nào có cổng cục bộ khớp tồn tại trên host. Quy tắc này được thực thi ngay cả khi TCP không thể chấp nhận các kết nối mới, giống như trong các kịch bản được mô tả ở đầu mục này.
@@ -772,18 +794,20 @@ Việc bật tùy chọn socket `SO_REUSEADDR` sẽ nới lỏng ràng buộc n�
 Việc thiết lập tùy chọn `SO_REUSEADDR` có nghĩa là chúng ta có thể bind một socket vào một cổng cục bộ ngay cả khi một TCP khác đang được bind vào cùng một cổng trong bất kỳ kịch bản nào được mô tả ở đầu mục này. Hầu hết các TCP server nên bật tùy chọn này. Chúng ta đã thấy một số ví dụ về việc sử dụng tùy chọn này trong [Liệt kê 59-6](#page-72-1) (trang [1221](#page-72-1)) và [Liệt kê 59-9](#page-79-1) (trang [1228](#page-79-1)).
 
 ```
- int sockfd, optval;
- sockfd = socket(AF_INET, SOCK_STREAM, 0);
- if (sockfd == -1)
- errExit("socket");
- optval = 1;
- if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval,
- sizeof(optval)) == -1)
- errExit("socket");
- if (bind(sockfd, &addr, addrlen) == -1)
- errExit("bind");
- if (listen(sockfd, backlog) == -1)
- errExit("listen");
+
+int sockfd, optval;
+sockfd = socket(AF_INET, SOCK_STREAM, 0);
+if (sockfd == -1)
+errExit("socket");
+optval = 1;
+if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval,
+sizeof(optval)) == -1)
+errExit("socket");
+if (bind(sockfd, &addr, addrlen) == -1)
+errExit("bind");
+if (listen(sockfd, backlog) == -1)
+errExit("listen");
+
 ```
 
 ## 61.11 Sự kế thừa cờ và tùy chọn qua hàm accept()
@@ -808,13 +832,17 @@ Vì TCP cung cấp cơ chế truyền dữ liệu đáng tin cậy (reliable del
 - Đối với các giao tiếp yêu cầu-phản hồi (request-response) đơn giản, UDP có thể nhanh hơn TCP vì nó không đòi hỏi quá trình thiết lập và kết thúc kết nối. Phụ lục A của [Stevens, 1996] lưu ý rằng trong trường hợp tối ưu nhất, thời gian sử dụng TCP là
 
 ```
+
 2 * RTT + SPT
+
 ```
 
 Trong công thức này, RTT là thời gian khứ hồi (round-trip time - thời gian cần thiết để gửi một yêu cầu và nhận về phản hồi), và SPT là thời gian server xử lý yêu cầu. (Trên mạng diện rộng - WAN, giá trị SPT có thể rất nhỏ so với RTT). Đối với UDP, trường hợp tối ưu nhất cho một giao tiếp yêu cầu-phản hồi đơn lẻ là
 
 ```
+
 RTT + SPT
+
 ```
 
 Thời gian này ít hơn TCP đúng một khoảng RTT. Vì RTT giữa các máy chủ cách nhau những khoảng cách lớn (ví dụ: xuyên lục địa) hoặc qua nhiều bộ định tuyến (router) trung gian thường kéo dài vài phần mười giây, sự khác biệt này làm cho UDP trở nên hấp dẫn đối với một số loại giao tiếp yêu cầu-phản hồi. DNS là một ví dụ điển hình về ứng dụng sử dụng UDP vì lý do này — việc sử dụng UDP cho phép thực hiện tra cứu tên miền (name lookup) bằng cách truyền một gói tin duy nhất theo mỗi hướng giữa các server.
@@ -898,7 +926,9 @@ SCTP có sẵn trên Linux kể từ kernel 2.6. Thêm thông tin về việc c�
 Trong suốt các chương trước mô tả về API socket, chúng ta đã đồng nhất Internet domain stream sockets với TCP. Tuy nhiên, SCTP cung cấp một giao thức thay thế để triển khai stream sockets, được tạo bằng cách sử dụng lời gọi sau:
 
 ```c
+
 socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+
 ```
 
 Bắt đầu từ kernel 2.6.14, Linux hỗ trợ một giao thức datagram mới, Datagram Congestion Control Protocol (DCCP). Giống như TCP, DCCP cung cấp cơ chế kiểm soát tắc nghẽn (congestion control) — loại bỏ sự cần thiết phải triển khai kiểm soát tắc nghẽn ở cấp độ ứng dụng — nhằm ngăn chặn một bên truyền quá nhanh làm quá tải mạng. (Chúng ta đã giải thích về kiểm soát tắc nghẽn khi mô tả TCP tại Mục [58.6.3](#page-41-1).) Tuy nhiên, khác với TCP (nhưng giống như UDP), DCCP không cung cấp sự đảm bảo về việc phân phối đáng tin cậy hoặc đúng thứ tự, và do đó cho phép các ứng dụng không cần các tính năng này tránh được độ trễ mà chúng có thể gây ra. Thông tin về DCCP có thể được tìm thấy tại http://www.read.cs.ucla.edu/dccp/ và các RFC 4336 và 4340.

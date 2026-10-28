@@ -1,4 +1,4 @@
-# Chương 12: Trình điều khiển PCI
+# Chương 12: Driver PCI (PCI Drivers)
 
 Mặc dù Chương 9 đã giới thiệu các mức điều khiển phần cứng thấp nhất, chương này cung cấp tổng quan về các kiến trúc bus cấp cao hơn. Một bus được cấu thành từ cả giao diện điện (electrical interface) và giao diện lập trình (programming interface). Trong chương này, chúng ta sẽ xử lý giao diện lập trình.
 
@@ -566,11 +566,10 @@ static unsigned char skel_get_revision(struct pci_dev *dev)
 
 Một thiết bị PCI (PCI device) triển khai tối đa sáu vùng địa chỉ I/O (I/O address regions). Mỗi vùng bao gồm các vị trí bộ nhớ (memory) hoặc I/O. Hầu hết các thiết bị triển khai các thanh ghi I/O (I/O registers) của chúng trong các vùng bộ nhớ, bởi vì đây là cách tiếp cận hợp lý hơn (như đã giải thích trong phần "Cổng I/O và Bộ nhớ I/O" - "I/O Ports and I/O Memory" tại Chương 9). Tuy nhiên, không giống như bộ nhớ thông thường (normal memory), các thanh ghi I/O không được phép lưu đệm (cached) bởi CPU vì mỗi lần truy cập có thể mang lại các hiệu ứng phụ (side effects). Thiết bị PCI triển khai các thanh ghi I/O dưới dạng một vùng bộ nhớ sẽ đánh dấu sự khác biệt bằng cách thiết lập một bit "bộ nhớ có thể nạp trước" (memory-is-prefetchable) trong thanh ghi cấu hình của nó.\* Nếu vùng bộ nhớ được đánh dấu là có thể nạp trước (prefetchable), CPU có thể lưu đệm nội dung của nó và thực hiện mọi hình thức tối ưu hóa; mặt khác, việc truy cập bộ nhớ không thể nạp trước (nonprefetchable memory access) không thể bị tối ưu hóa vì mỗi lần truy cập đều có thể có hiệu ứng phụ, giống như các cổng I/O (I/O ports). Các thiết bị ngoại vi (peripherals) ánh xạ các thanh ghi điều khiển của chúng vào một dải địa chỉ bộ nhớ sẽ khai báo dải đó là không thể nạp trước, trong khi các thành phần như bộ nhớ video (video memory) trên các bo mạch PCI thì có thể nạp trước. Trong phần này, chúng ta sử dụng từ *vùng* (*region*) để chỉ một không gian địa chỉ I/O chung được ánh xạ bộ nhớ (memory-mapped) hoặc ánh xạ cổng (port-mapped).
 
-Một bo mạch giao diện (interface board) báo cáo kích thước và vị trí hiện tại của các vùng của nó bằng cách sử dụng các thanh ghi cấu hình—sáu thanh ghi 32-bit được thể hiện trong Hình 12-2, với các tên ký hiệu từ `PCI_BASE_ADDRESS_0` đến `PCI_BASE_ADDRESS_5`. Vì không gian I/O được định nghĩa bởi PCI là một không gian địa chỉ 32-bit, nên việc sử dụng cùng một giao diện cấu hình là điều hợp lý.
+Một bo mạch giao diện (interface board) báo cáo kích thước và vị trí hiện tại của các vùng của nó bằng cách sử dụng các thanh ghi cấu hình—sáu thanh ghi 32-bit được thể hiện trong Hình 12-2, với các tên ký hiệu từ `PCI_BASE_ADDRESS_0` đến `PCI_BASE_ADDRESS_5`. Vì không gian I/O được định nghĩa bởi PCI là một không gian địa chỉ 32-bit, nên việc sử dụng cùng một giao diện cấu hình là điều hợp lý đối với bộ nhớ và I/O. Nếu thiết bị sử dụng bus địa chỉ 64-bit (64-bit address bus), nó có thể khai báo các vùng trong không gian bộ nhớ 64-bit bằng cách sử dụng hai thanh ghi `PCI_BASE_ADDRESS` liên tiếp cho mỗi vùng, với các bit thấp đặt trước. Một thiết bị hoàn toàn có thể cung cấp cả vùng 32-bit và vùng 64-bit.
 
-Thông tin này nằm trong một trong các bit thấp của các thanh ghi PCI địa chỉ cơ sở (base address). Các bit này được định nghĩa trong *<linux/pci.h>*.
-
-đối với bộ nhớ và I/O. Nếu thiết bị sử dụng bus địa chỉ 64-bit (64-bit address bus), nó có thể khai báo các vùng trong không gian bộ nhớ 64-bit bằng cách sử dụng hai thanh ghi `PCI_BASE_ADDRESS` liên tiếp cho mỗi vùng, với các bit thấp đặt trước. Một thiết bị hoàn toàn có thể cung cấp cả vùng 32-bit và vùng 64-bit.
+---
+*\* Thông tin này nằm trong một trong các bit thấp của các thanh ghi PCI địa chỉ cơ sở (base address). Các bit này được định nghĩa trong <linux/pci.h>.*
 
 Trong kernel, các vùng I/O của thiết bị PCI đã được tích hợp vào hệ thống quản lý tài nguyên chung (generic resource management). Vì lý do này, bạn không cần phải truy cập các biến cấu hình để biết thiết bị của mình được ánh xạ ở đâu trong không gian bộ nhớ hoặc I/O. Giao diện ưu tiên để lấy thông tin vùng bao gồm các hàm sau:
 
@@ -692,11 +691,10 @@ Một số bo mạch thiết bị ISA mới tuân theo các quy trình thiết k
 
 Tóm lại, mục tiêu của PnP là đạt được tính linh hoạt tương tự như các thiết bị PCI mà không cần thay đổi giao diện điện bên dưới (bus ISA). Để đạt được mục đích này, các đặc tả định nghĩa một tập hợp các thanh ghi cấu hình độc lập với thiết bị (device-independent configuration registers) và một cách thức để định địa chỉ theo vị trí (geographical addressing) các bo mạch giao diện, mặc dù bus vật lý không mang đường dây tín hiệu theo từng bo mạch—mọi đường tín hiệu ISA đều kết nối tới mọi khe cắm khả dụng.
 
-Việc định địa chỉ theo vị trí hoạt động bằng cách gán một số nguyên nhỏ, được gọi là *số chọn thẻ* (card select number - CSN), cho từng thiết bị ngoại vi PnP trong máy tính. Mỗi thiết bị PnP có một định danh nối tiếp duy nhất (unique serial identifier), rộng 64 bit, được hàn cứng (hardwired) vào bo mạch ngoại vi. Việc gán CSN sử dụng số sê-ri duy nhất này để nhận diện các thiết bị PnP. Nhưng các CSN chỉ có thể được gán một cách an toàn tại thời điểm khởi động (boot time), điều này đòi hỏi BIOS phải hỗ trợ PnP.
+Việc định địa chỉ theo vị trí hoạt động bằng cách gán một số nguyên nhỏ, được gọi là *số chọn thẻ* (card select number - CSN), cho từng thiết bị ngoại vi PnP trong máy tính. Mỗi thiết bị PnP có một định danh nối tiếp duy nhất (unique serial identifier), rộng 64 bit, được hàn cứng (hardwired) vào bo mạch ngoại vi. Việc gán CSN sử dụng số sê-ri duy nhất này để nhận diện các thiết bị PnP. Nhưng các CSN chỉ có thể được gán một cách an toàn tại thời điểm khởi động (boot time), điều này đòi hỏi BIOS phải có khả năng nhận biết PnP (PnP aware).\* Vì lý do này, các máy tính đời cũ yêu cầu người dùng phải lấy và chèn một đĩa mềm cấu hình cụ thể (configuration diskette), ngay cả khi thiết bị đó có khả năng PnP.
 
-Vấn đề với việc chia sẻ ngắt (interrupt sharing) là một vấn đề về kỹ thuật điện: nếu một thiết bị điều khiển đường tín hiệu về trạng thái không hoạt động (inactive)—bằng cách áp dụng mức điện áp trở kháng thấp—thức ngắt đó không thể được chia sẻ. Ngược lại, nếu thiết bị sử dụng một điện trở kéo lên (pull-up resistor) về mức logic không hoạt động, việc chia sẻ là khả thi. Đây là tiêu chuẩn phổ biến hiện nay. Tuy nhiên, vẫn có rủi ro tiềm ẩn về việc mất các sự kiện ngắt (interrupt event) vì ngắt ISA được kích hoạt theo sườn (edge triggered) thay vì kích hoạt theo mức (level triggered). Các ngắt kích hoạt theo sườn dễ thực hiện hơn về mặt phần cứng nhưng không phù hợp cho việc chia sẻ an toàn.
-
-nhận biết. Vì lý do này, các máy tính đời cũ yêu cầu người dùng phải lấy và chèn một đĩa mềm cấu hình cụ thể (configuration diskette), ngay cả khi thiết bị đó có khả năng PnP.
+---
+*\* Vấn đề với việc chia sẻ ngắt (interrupt sharing) thuộc về mặt kỹ thuật điện: nếu một thiết bị điều khiển đường tín hiệu về trạng thái không hoạt động bằng mức điện áp trở kháng thấp, ngắt đó không thể được chia sẻ. Ngược lại, nếu thiết bị sử dụng điện trở kéo lên (pull-up resistor) về mức logic không hoạt động, việc chia sẻ là khả thi. Đây là tiêu chuẩn phổ biến hiện nay. Tuy nhiên, vẫn có rủi ro tiềm ẩn về việc mất các sự kiện ngắt vì ngắt ISA được kích hoạt theo sườn (edge-triggered) thay vì kích hoạt theo mức (level-triggered).*
 
 Các bo mạch giao diện tuân theo đặc tả PnP rất phức tạp ở cấp độ phần cứng. Chúng phức tạp hơn nhiều so với các bo mạch PCI và đòi hỏi phần mềm phức tạp. Việc gặp khó khăn khi cài đặt các thiết bị này không phải là điều hiếm gặp, và ngay cả khi việc cài đặt diễn ra suôn sẻ, bạn vẫn phải đối mặt với các giới hạn về hiệu năng và không gian I/O hạn hẹp của bus ISA. Tốt hơn nhiều là nên cài đặt các thiết bị PCI bất cứ khi nào có thể và tận hưởng công nghệ mới thay vào đó.
 
@@ -722,7 +720,7 @@ Một trình điều khiển thiết bị (device driver) có thể đọc giá 
 
 ### EISA
 
-Bus ISA mở rộng (Extended ISA - EISA) là một phần mở rộng 32-bit của ISA, với đầu cắm giao tiếp tương thích; các bo mạch thiết bị ISA có thể cắm vào đầu cắm EISA. Các đường dây bổ sung được định路线 bên dưới các tiếp điểm ISA.
+Bus ISA mở rộng (Extended ISA - EISA) là một phần mở rộng 32-bit của ISA, với đầu cắm giao tiếp tương thích; các bo mạch thiết bị ISA có thể cắm vào đầu cắm EISA. Các đường dây bổ sung được đi ngầm bên dưới các tiếp điểm ISA.
 
 Giống như PCI và MCA, bus EISA được thiết kế để chứa các thiết bị không cần jumper (jumperless devices), và nó có các tính năng tương tự như MCA: các đường dữ liệu và địa chỉ 32-bit, multimaster DMA, và các đường ngắt chia sẻ. Các thiết bị EISA được cấu hình bằng phần mềm, nhưng chúng không cần bất kỳ sự hỗ trợ đặc biệt nào từ hệ điều hành (operating system). Các trình điều khiển EISA đã tồn tại trong Linux Kernel cho các thiết bị Ethernet và bộ điều khiển SCSI.
 
@@ -754,21 +752,23 @@ Một bus giao tiếp (interface bus) thú vị khác nhưng gần như đã b�
 
 Toàn bộ bus này được ánh xạ bộ nhớ (memory-mapped) (giống như mọi thứ với M68k), và các thiết bị chỉ được định địa chỉ theo vị trí địa lý (geographically addressed). Điều này tốt và rất điển hình của Apple, vì dòng máy Apple II cũ hơn nhiều đã có bố trí bus tương tự. Điều tồi tệ là hầu như không thể tìm thấy tài liệu về NuBus, do chính sách "đóng cửa mọi thứ" mà Apple luôn áp dụng với các máy tính Mac của họ (và không giống như Apple II trước đó, vốn có mã nguồn và sơ đồ mạch có sẵn với chi phí rất thấp).
 
-Tệp *drivers/nubus/nubus.c* bao gồm hầu như mọi thứ chúng ta biết về loại bus này, và đó là một tài liệu đọc rất thú vị; nó cho thấy các nhà phát triển đã phải thực hiện côngλικỹ nghệ đảo ngược (reverse engineering) khó khăn đến mức nào.
+Tệp *drivers/nubus/nubus.c* bao gồm hầu như mọi thứ chúng ta biết về loại bus này, và đó là một tài liệu đọc rất thú vị; nó cho thấy các nhà phát triển đã phải thực hiện công việc kỹ nghệ đảo ngược (reverse engineering) khó khăn đến mức nào.
 
 ## Bus Ngoại Vi (External Buses)
 
 Một trong những bổ sung gần đây nhất trong lĩnh vực bus giao tiếp là toàn bộ nhóm bus ngoại vi (external bus). Điều này bao gồm USB, FireWire và IEEE1284 (bus ngoại vi dựa trên cổng song song - parallel port). Các giao diện này có phần tương tự với công nghệ cũ hơn và không quá ngoại vi, chẳng hạn như PCMCIA/CardBus và thậm chí cả SCSI.
 
-Về mặt khái niệm, các bus này không phải là bus giao tiếp đầy đủ tính năng (giống như PCI) cũng không phải là các kênh truyền thông thô sơ (dumb communication channels) (giống như cổng nối tiếp - serial port). Thật khó để phân loại phần mềm cần thiết để khai thác các tính năng của chúng, vì nó thường được chia thành hai cấp độ: trình điều khiển (driver) cho bộ điều khiển phần cứng (hardware controller) (giống như các driver cho bộ điềuปรับ SCSI PCI hoặc bộ điều khiển PCI được giới thiệu trong phần "Giao diện PCI" - The PCI Interface) và driver cho thiết bị "client" cụ thể (giống như *sd.c* xử lý các đĩa SCSI chung và cái gọi là driver PCI xử lý các thẻ được cắm vào bus).
+Về mặt khái niệm, các bus này không phải là bus giao tiếp đầy đủ tính năng (giống như PCI) cũng không phải là các kênh truyền thông thô sơ (dumb communication channels) (giống như cổng nối tiếp - serial port). Thật khó để phân loại phần mềm cần thiết để khai thác các tính năng của chúng, vì nó thường được chia thành hai cấp độ: trình điều khiển (driver) cho bộ điều khiển phần cứng (hardware controller) (giống như các driver cho bộ thích nghi (adapter) SCSI PCI hoặc bộ điều khiển PCI được giới thiệu trong phần "Giao diện PCI") và driver cho thiết bị "client" cụ thể (giống như *sd.c* xử lý các đĩa SCSI chung và cái gọi là driver PCI xử lý các thẻ được cắm vào bus).
 
 ## Tóm Lược (Quick Reference)
 
 Phần này tóm tắt các ký hiệu được giới thiệu trong chương:
 
+```c
 ## include <linux/pci.h>
+```
 
-Tệp tiêu đề (header) bao gồm các tên ký hiệu cho các thanh ghi PCI (PCI register) và một số giá trị ID của nhà vendor và device.
+Tệp tiêu đề (header) bao gồm các tên ký hiệu cho các thanh ghi PCI (PCI register) và một số giá trị ID của nhà sản xuất (vendor) và thiết bị (device).
 
 struct pci\_dev;
 

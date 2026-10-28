@@ -1,4 +1,4 @@
-# Chương 21. Gỡ lỗi Trình điều khiển Thiết bị (Debugging Device Drivers)
+# Chương 21: Gỡ lỗi trình điều khiển thiết bị (Debugging Device Drivers)
 
 | Trong chương này               |     |  |  |
 |-------------------------------|-----|--|--|
@@ -18,7 +18,7 @@ Giờ đây, khi chúng ta đã học cách triển khai các lớp trình đi�
 
 ## Độ tin cậy, Tính sẵn sàng và Khả năng bảo trì (Reliability, Availability, Serviceability)
 
-Nhiều hệ thống, đặc biệt là các hệ thống trọng yếu (mission-critical), có nhu cầu cao về độ tin cậy, tính sẵn sàng và khả năng bảo trì (Reliability, Availability, and Serviceability - RAS). Nỗ lực cải thiện RAS của Linux đã dẫn đến sự phát triển của một số công cụ mạnh mẽ. Các chương trình kiểm tra độ bền như Dự án Kiểm thử Linux (Linux Test Project - LTP) giúp đo lường độ tin cậy và tính ổn định của quá trình chuyển cảng (port) nhân hệ điều hành của bạn. Tính năng cắm nóng CPU (CPU hotplugging) và dự án Tính sẵn sàng cao Linux (Linux High Availability - HA) thể hiện cho khía cạnh tính sẵn sàng. Các trình gỡ lỗi nhân (kernel debugger), Kprobes, Kdump, EDAC và Bộ công cụ Truy vết Linux (Linux Trace Toolkit - LTT) nằm trong phạm vi của khả năng bảo trì. Ranh giới phân chia các phân loại này đôi khi rất mỏng manh; bạn có thể sử dụng bất kỳ hoặc kết hợp các phương pháp này để đáp ứng nhu cầu gỡ lỗi của mình. Ví dụ, đầu ra từ một công cụ đo hiệu năng nhân (kernel profiler) như *OProfile* có thể được sử dụng để tìm kiếm các điểm nghẽn mã nguồn tiềm ẩn (độ tin cậy) hoặc để gỡ lỗi một sự cố thực tế ngoài hiện trường (khả năng bảo trì).
+Nhiều hệ thống, đặc biệt là các hệ thống trọng yếu (mission-critical), có nhu cầu cao về độ tin cậy, tính sẵn sàng và khả năng bảo trì (Reliability, Availability, and Serviceability - RAS). Nỗ lực cải thiện RAS của Linux đã dẫn đến sự phát triển của một số công cụ mạnh mẽ. Các chương trình kiểm tra độ bền như Dự án Kiểm thử Linux (Linux Test Project - LTP) giúp đo lường độ tin cậy và tính ổn định của bản chuyển hệ (kernel port) của bạn. Tính năng cắm nóng CPU (CPU hotplugging) và dự án Tính sẵn sàng cao Linux (Linux High Availability - HA) thể hiện cho khía cạnh tính sẵn sàng. Các trình gỡ lỗi nhân (kernel debugger), Kprobes, Kdump, EDAC và Bộ công cụ Truy vết Linux (Linux Trace Toolkit - LTT) nằm trong phạm vi của khả năng bảo trì. Ranh giới phân chia các phân loại này đôi khi rất mỏng manh; bạn có thể sử dụng bất kỳ hoặc kết hợp các phương pháp này để đáp ứng nhu cầu gỡ lỗi của mình. Ví dụ, đầu ra từ một công cụ đo hiệu năng nhân (kernel profiler) như *OProfile* có thể được sử dụng để tìm kiếm các điểm nghẽn mã nguồn tiềm ẩn (độ tin cậy) hoặc để gỡ lỗi một sự cố thực tế ngoài hiện trường (khả năng bảo trì).
 
 ## Trình gỡ lỗi Nhân (Kernel Debuggers)
 
@@ -40,7 +40,7 @@ Bạn có thể sử dụng hardware breakpoint (breakpoint phần cứng) thay 
 
 Bạn cũng có thể yêu cầu trình gỡ lỗi thiết lập một *watchpoint* (điểm quan sát) trên một biến. Trình gỡ lỗi sẽ dừng quá trình thực thi bất cứ khi nào một câu lệnh thực hiện thay đổi dữ liệu tại địa chỉ của watchpoint.
 
-Một phương pháp phổ biến khác để truy cập trình gỡ lỗi là nhấn phím ngắt (attention key), nhưng sẽ có những trường hợp cách này không hoạt động. Nếu mã nguồn của bạn bị kẹt trong một vòng lặp vô hạn khít (tight loop) sau khi vô hiệu hóa ngắt (disabling interrupts), kernel sẽ không có cơ hội xử lý phím ngắt để bước vào trình gỡ lỗi. Ví dụ, bạn không thể truy cập trình gỡ lỗi thông qua phím ngắt nếu mã nguồn của bạn thực hiện một đoạn mã như sau:
+Một phương pháp phổ biến khác để truy cập trình gỡ lỗi là nhấn phím ngắt (attention key), nhưng sẽ có những trường hợp cách này không hoạt động. Nếu mã nguồn của bạn bị kẹt trong một vòng lặp bó chặt (tight loop) sau khi vô hiệu hóa ngắt (disabling interrupts), kernel sẽ không có cơ hội xử lý phím ngắt để bước vào trình gỡ lỗi. Ví dụ, bạn không thể truy cập trình gỡ lỗi thông qua phím ngắt nếu mã nguồn của bạn thực hiện một đoạn mã như sau:
 
 ```
 unsigned long flags;
@@ -139,7 +139,7 @@ struct async_struct {
 };
 ```
 
-Nếu bạn đối chiếu kết xuất bộ nhớ với định nghĩa, `0x5301` là số phép thuật (magic number) và `0xABC` là cổng I/O (I/O port). Chà, điều này thật thú vị! `0xABC` trông không giống một cổng hợp lệ. Nếu bạn đã có đủ kinh nghiệm gỡ lỗi cổng nối tiếp (serial port), bạn sẽ biết rằng các địa chỉ cơ sở cổng I/O và ngắt IRQ được cấu hình trong *include/asm-x86/serial.h* đối với phần cứng dựa trên kiến trúc x86. Hãy thay đổi định nghĩa cổng thành giá trị chính xác, biên dịch lại kernel và tiếp tục quá trình kiểm thử của bạn!
+Nếu bạn đối chiếu kết xuất bộ nhớ với định nghĩa, `0x5301` là giá trị nhận dạng magic (magic number) và `0xABC` là cổng I/O (I/O port). Chà, điều này thật thú vị! `0xABC` trông không giống một cổng hợp lệ. Nếu bạn đã có đủ kinh nghiệm gỡ lỗi cổng nối tiếp (serial port), bạn sẽ biết rằng các địa chỉ cơ sở cổng I/O và ngắt IRQ được cấu hình trong *include/asm-x86/serial.h* đối với phần cứng dựa trên kiến trúc x86. Hãy thay đổi định nghĩa cổng thành giá trị chính xác, biên dịch lại kernel và tiếp tục quá trình kiểm thử của bạn!
 
 ## Kernel GNU Debugger (kgdb)
 
@@ -178,7 +178,7 @@ Bây giờ, hãy cấu hình tốc độ baud tương tự ở phía máy chủ:
 
 Nếu máy tính chủ của bạn là một máy tính xách tay (laptop) không có cổng serial, bạn có thể sử dụng bộ chuyển đổi USB sang serial (USB-to-serial converter) cho phiên gỡ lỗi. Trong trường hợp đó, thay vì */dev/ttySX*, hãy sử dụng node */dev/ttyUSBX* được tạo bởi driver usbserial. Hình 6.4 trong Chương 6, "Serial Drivers," minh họa kịch bản này.
 
-Hãy tìm hiểu các nguyên ắc cơ bản của kgdb bằng cách sử dụng ví dụ về một kernel module có lỗi (buggy). Các module dễ gỡ lỗi hơn vì toàn bộ kernel không cần phải biên dịch lại sau khi thực hiện các thay đổi mã, nhưng hãy nhớ biên dịch module của bạn với tùy chọn `-g` để tạo thông tin ký hiệu (symbolic information). Vì các module được tải một cách động (dynamically loaded), trình gỡ lỗi cần được thông báo về thông tin ký hiệu mà module đó chứa. Liệt kê (Listing) 21.1 chứa một hàm `trojan_function()` bị lỗi. Giả sử nó được định nghĩa trong *drivers/char/my_module.c*.
+Hãy tìm hiểu các nguyên tắc cơ bản của kgdb bằng cách sử dụng ví dụ về một kernel module có lỗi (buggy). Các module dễ gỡ lỗi hơn vì toàn bộ kernel không cần phải biên dịch lại sau khi thực hiện các thay đổi mã, nhưng hãy nhớ biên dịch module của bạn với tùy chọn `-g` để tạo thông tin ký hiệu (symbolic information). Vì các module được tải một cách động (dynamically loaded), trình gỡ lỗi cần được thông báo về thông tin ký hiệu mà module đó chứa. Liệt kê (Listing) 21.1 chứa một hàm `trojan_function()` bị lỗi. Giả sử nó được định nghĩa trong *drivers/char/my_module.c*.
 
 ### Listing 21.1. Hàm chứa lỗi (Buggy Function)
 

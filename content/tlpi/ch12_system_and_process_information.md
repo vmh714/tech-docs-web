@@ -1,4 +1,4 @@
-# Chương 12: THÔNG TIN HỆ THỐNG VÀ TIẾN TRÌNH
+# Chương 12: Thông tin hệ thống và Tiến trình (System and Process Information)
 
 Trong chương này, chúng ta sẽ tìm hiểu các phương pháp để truy xuất nhiều loại thông tin khác nhau về hệ thống và tiến trình (process). Trọng tâm chính của chương là thảo luận về hệ thống tập tin /proc. Chúng ta cũng sẽ mô tả System Call `uname()`, được sử dụng để lấy các định danh khác nhau của hệ thống.
 
@@ -128,10 +128,12 @@ Nhiều tệp được hiển thị trong [Hình 12-1](#page-74-0) được mô 
 
 Các tệp bên dưới `/proc` thường được truy cập bằng cách sử dụng các script shell (hầu hết các tệp `/proc` chứa nhiều giá trị có thể dễ dàng phân tích cú pháp bằng ngôn ngữ kịch bản như Python hoặc Perl). Ví dụ, chúng ta có thể sửa đổi và xem nội dung của một tệp `/proc` bằng các lệnh shell như sau:
 
-```
 ## echo 100000 > /proc/sys/kernel/pid_max
+
 ## cat /proc/sys/kernel/pid_max
+
 100000
+
 ```
 
 Các tệp `/proc` cũng có thể được truy cập từ một chương trình bằng cách sử dụng các System Call I/O tệp thông thường. Một số hạn chế được áp dụng khi truy cập các tệp này:
@@ -142,46 +144,48 @@ Các tệp `/proc` cũng có thể được truy cập từ một chương trìn
 Ngoài các tệp trong thư mục con `/proc/PID`, hầu hết các tệp bên dưới `/proc` đều thuộc sở hữu của root, và các tệp có thể sửa đổi chỉ có thể được chỉnh sửa bởi root.
 
 ```mermaid
+
 flowchart LR
-    proc["proc"]
-    proc_files(["filesystems, kallsyms, loadavg, locks, meminfo,<br>partitions, stat, swaps, uptime, version, vmstat"])
-    proc --> proc_files
+proc["proc"]
+proc_files(["filesystems, kallsyms, loadavg, locks, meminfo,<br>partitions, stat, swaps, uptime, version, vmstat"])
+proc --> proc_files
 
-    net["net"]
-    net_files(["sockstat, sockstat6,<br>tcp, tcp6, udp, udp6"])
-    proc --> net --> net_files
+net["net"]
+net_files(["sockstat, sockstat6,<br>tcp, tcp6, udp, udp6"])
+proc --> net --> net_files
 
-    sys["sys"]
-    proc --> sys
+sys["sys"]
+proc --> sys
 
-    fs["fs"]
-    sys --> fs
-    fs --> filemax["file-max"]
-    fs --> inotify["inotify"]
-    fs --> mqueue["mqueue"]
+fs["fs"]
+sys --> fs
+fs --> filemax["file-max"]
+fs --> inotify["inotify"]
+fs --> mqueue["mqueue"]
 
-    kernel["kernel"]
-    kernel_files(["acct, core_pattern, hostname,<br>msgmax, msgmnb, msgmni, pid_max,<br>sem, shmall, shmmax, shmmni"])
-    sys --> kernel --> kernel_files
+kernel["kernel"]
+kernel_files(["acct, core_pattern, hostname,<br>msgmax, msgmnb, msgmni, pid_max,<br>sem, shmall, shmmax, shmmni"])
+sys --> kernel --> kernel_files
 
-    sysnet["net"]
-    sys --> sysnet
-    core["core"]
-    sysnet --> core
-    core --> somaxconn(["somaxconn"])
-    ipv4["ipv4"]
-    sysnet --> ipv4
-    ipv4 --> ip_local_port_range(["ip_local_port_range"])
-    sysnet --> ipv6["ipv6"]
-    sysnet --> unix["unix"]
+sysnet["net"]
+sys --> sysnet
+core["core"]
+sysnet --> core
+core --> somaxconn(["somaxconn"])
+ipv4["ipv4"]
+sysnet --> ipv4
+ipv4 --> ip_local_port_range(["ip_local_port_range"])
+sysnet --> ipv6["ipv6"]
+sysnet --> unix["unix"]
 
-    vm["vm"]
-    vm_files(["overcommit_memory,<br>overcommit_ratio"])
-    sys --> vm --> vm_files
+vm["vm"]
+vm_files(["overcommit_memory,<br>overcommit_ratio"])
+sys --> vm --> vm_files
 
-    sysvipc["sysvipc"]
-    sysvipc_files(["msg, sem, shm"])
-    proc --> sysvipc --> sysvipc_files
+sysvipc["sysvipc"]
+sysvipc_files(["msg, sem, shm"])
+proc --> sysvipc --> sysvipc_files
+
 ```
 
 **Hình 12-1:** Các tệp và thư mục con được chọn bên dưới `/proc`
@@ -195,18 +199,25 @@ Các thư mục `/proc/PID` có tính tạm thời (volatile). Mỗi thư mục 
 [Listing 12-1](#page-75-0) minh họa cách đọc và sửa đổi một tệp `/proc`. Chương trình này đọc và hiển thị nội dung của `/proc/sys/kernel/pid_max`. Nếu một tham số dòng lệnh (command-line argument) được cung cấp, chương trình sẽ cập nhật tệp bằng giá trị đó. Tệp này (mới có từ Linux 2.6) quy định giới hạn trên cho các ID tiến trình (process ID) (Mục 6.2). Dưới đây là một ví dụ về cách sử dụng chương trình này:
 
 ```
+
 $ su                            # Yêu cầu quyền đặc quyền để cập nhật file pid_max
 Password:
+
 ## ./procfs_pidmax 10000
+
 Old value: 32768
 /proc/sys/kernel/pid_max now contains 10000
+
 ```
 
 **Listing 12-1:** Truy cập `/proc/sys/kernel/pid_max`
 
 ```c
+
 /* sysinfo/procfs_pidmax.c */
+
 ## include <fcntl.h>
+
 ## include "tlpi_hdr.h"
 
 ## define MAX_LINE 100
@@ -214,38 +225,38 @@ Old value: 32768
 int
 main(int argc, char *argv[])
 {
-    int fd;
-    char line[MAX_LINE];
-    ssize_t n;
+int fd;
+char line[MAX_LINE];
+ssize_t n;
 
-    fd = open("/proc/sys/kernel/pid_max", (argc > 1) ? O_RDWR : O_RDONLY);
-    if (fd == -1)
-        errExit("open");
+fd = open("/proc/sys/kernel/pid_max", (argc > 1) ? O_RDWR : O_RDONLY);
+if (fd == -1)
+errExit("open");
 
-    n = read(fd, line, MAX_LINE);
-    if (n == -1)
-        errExit("read");
+n = read(fd, line, MAX_LINE);
+if (n == -1)
+errExit("read");
 
-    if (argc > 1)
-        printf("Old value: ");
-    printf("%.*s", (int) n, line);
+if (argc > 1)
+printf("Old value: ");
+printf("%.*s", (int) n, line);
 
-    if (argc > 1) {
-        if (write(fd, argv[1], strlen(argv[1])) != strlen(argv[1]))
-            fatal("write() failed");
-        system("echo /proc/sys/kernel/pid_max now contains "
-               "`cat /proc/sys/kernel/pid_max`");
-    }
-
-    exit(EXIT_SUCCESS);
+if (argc > 1) {
+if (write(fd, argv[1], strlen(argv[1])) != strlen(argv[1]))
+fatal("write() failed");
+system("echo /proc/sys/kernel/pid_max now contains "
+"`cat /proc/sys/kernel/pid_max`");
 }
+
+exit(EXIT_SUCCESS);
+}
+
 ```
 
 ## 12.2 Định danh Hệ thống: uname()
 
 System call `uname()` trả về một loạt thông tin định danh về hệ thống máy chủ (host system) nơi ứng dụng đang chạy, được lưu trong cấu trúc (structure) trỏ bởi `utsbuf`.
 
-```
 ## include <sys/utsname.h>
 int uname(struct utsname *utsbuf);
                                              Trả về 0 khi thành công, hoặc –1 khi lỗi
@@ -271,6 +282,7 @@ SUSv3 quy định `uname()`, nhưng để trống độ dài của các trườn
 
 Các trường `sysname`, `release`, `version`, và `machine` của cấu trúc `utsname` được thiết lập tự động bởi kernel.
 
+> [!NOTE]
 > Trên Linux, ba tệp trong thư mục `/proc/sys/kernel` cung cấp quyền truy cập vào cùng thông tin được trả về trong các trường `sysname`, `release`, và `version` của cấu trúc `utsname`. Các tệp chỉ đọc này lần lượt là `ostype`, `osrelease`, và `version`. Một tệp khác, `/proc/version`, bao gồm cùng thông tin như trong các tệp này, đồng thời bao gồm cả thông tin về bước biên dịch kernel (tức là tên của người dùng đã thực hiện biên dịch, tên của máy chủ nơi quá trình biên dịch được thực hiện, và phiên bản `gcc` được sử dụng).
 
 Trường `nodename` trả về giá trị đã được thiết lập bằng system call `sethostname()` (xem trang tài liệu hướng dẫn - manual page để biết chi tiết về system call này). Thường thì tên này giống như tiền tố tên máy chủ (hostname prefix) từ tên miền DNS của hệ thống.

@@ -1,4 +1,4 @@
-# Chương 27: THỰC THI CHƯƠNG TRÌNH (PROGRAM EXECUTION)
+# Chương 27: Thực thi chương trình (Program Execution)
 
 Chương này tiếp nối phần thảo luận của chúng ta về việc tạo và kết thúc tiến trình (process creation and termination) trong các chương trước. Bây giờ chúng ta sẽ xem xét cách một tiến trình có thể sử dụng system call `execve()` để thay thế chương trình mà nó đang chạy bằng một chương trình hoàn toàn mới. Sau đó, chúng ta sẽ chỉ cách triển khai hàm `system()`, cho phép tiến trình gọi thực thi một lệnh shell tùy ý.
 
@@ -24,6 +24,7 @@ Không bao giờ trả về khi thành công; trả về –1 khi có lỗi
 
 Đối số cuối cùng, `envp`, chỉ định danh sách môi trường (environment list) cho chương trình mới. Đối số `envp` tương ứng với mảng `environ` của chương trình mới; nó là một danh sách các con trỏ trỏ đến các chuỗi ký tự có dạng `name=value` được kết thúc bằng `NULL` (Mục 6.7).
 
+> [!NOTE]
 > Tệp `/proc/PID/exe` đặc trưng của Linux là một liên kết tượng trưng (symbolic link) chứa tên đường dẫn tuyệt đối của tệp thực thi đang được chạy bởi tiến trình tương ứng.
 
 Sau một lời gọi `execve()`, ID tiến trình (process ID) của tiến trình vẫn giữ nguyên, bởi vì cùng một tiến trình tiếp tục tồn tại. Một số thuộc tính khác của tiến trình cũng không thay đổi, như được mô tả trong Mục [28.4.](#page-99-0)
@@ -56,6 +57,7 @@ Tổng dung lượng bộ nhớ được yêu cầu bởi danh sách đối số
 
 Các lỗi được liệt kê ở trên cũng có thể được sinh ra nếu bất kỳ điều kiện nào trong số này áp dụng cho tệp thông dịch được định nghĩa để chạy một tập lệnh (tham khảo Mục [27.3](#page-59-0)) hoặc cho bộ thông dịch ELF đang được sử dụng để thực thi chương trình.
 
+> [!NOTE]
 > Định dạng Executable and Linking Format (ELF) là một đặc tả được áp dụng rộng rãi, mô tả bố cục của các tệp thực thi. Thông thường, trong quá trình `exec`, một image tiến trình (process image) được xây dựng bằng cách sử dụng các đoạn (segment) của tệp thực thi (Mục 6.3). Tuy nhiên, đặc tả ELF cũng cho phép một tệp thực thi định nghĩa một trình thông dịch (interpreter) (phần tử header chương trình ELF `PT_INTERP`) để sử dụng cho việc thực thi chương trình. Nếu một trình thông dịch được định nghĩa, kernel sẽ xây dựng image tiến trình từ các đoạn của tệp thực thi trình thông dịch được chỉ định. Trình thông dịch sau đó sẽ chịu trách nhiệm tải và thực thi chương trình. Chúng ta sẽ thảo luận thêm một chút về trình thông dịch ELF trong Chương 41 và cung cấp một số tài liệu tham khảo cho thông tin chi tiết hơn trong chương đó.
 
 ### Chương trình ví dụ

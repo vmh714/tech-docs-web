@@ -1,8 +1,8 @@
-# Chương 31: THREADS: THREAD SAFETY VÀ LƯU TRỮ TRÊN MỖI THREAD (PER-THREAD STORAGE)
+# Chương 31: Luồng: An toàn luồng và Bộ nhớ riêng từng luồng (Threads: Thread Safety and Per-Thread Storage)
 
 Chương này mở rộng phần thảo luận về API POSIX threads, cung cấp mô tả về các hàm an toàn luồng (thread-safe functions) và khởi tạo một lần (one-time initialization). Chúng ta cũng sẽ thảo luận cách sử dụng dữ liệu đặc thù của luồng (thread-specific data) hoặc lưu trữ cục bộ của luồng (thread-local storage) để làm cho một hàm có sẵn trở nên an toàn luồng mà không cần thay đổi giao diện (interface) của hàm đó.
 
-## 31.1 Thread Safety (Và Xem Xét Lại Tính Khả Reentrancy)
+## 31.1 Tính an toàn luồng (Và xem xét lại tính khả nhập)
 
 Một hàm được gọi là an toàn luồng (thread-safe) nếu nó có thể được gọi một cách an toàn bởi nhiều luồng (multiple threads) cùng một lúc; ngược lại, nếu một hàm không an toàn luồng, thì chúng ta không thể gọi nó từ một luồng này trong khi nó đang được thực thi ở một luồng khác. Ví dụ, hàm sau đây (tương tự như đoạn mã mà chúng ta đã xem xét trong Mục [30.1](#page-14-1)) là không an toàn luồng:
 
@@ -79,6 +79,7 @@ Mặc dù việc sử dụng các vùng găng (critical section) để thực th
 
 Đối với một số hàm có giao diện không khả nhập, SUSv3 quy định các hàm tương đương khả nhập có tên kết thúc bằng hậu tố `_r`. Các hàm này yêu cầu bên gọi cấp phát một bộ đệm mà địa chỉ của nó sau đó được truyền cho hàm và được dùng để trả về kết quả. Điều này cho phép luồng gọi (calling thread) sử dụng một biến cục bộ (trên stack) cho bộ đệm kết quả của hàm. Vì mục đích này, SUSv3 quy định `asctime_r()`, `ctime_r()`, `getgrgid_r()`, `getgrnam_r()`, `getlogin_r()`, `getpwnam_r()`, `getpwuid_r()`, `gmtime_r()`, `localtime_r()`, `rand_r()`, `readdir_r()`, `strerror_r()`, `strtok_r()` và `ttyname_r()`.
 
+> [!NOTE]
 > Một số bản cài đặt (implementation) cũng cung cấp các hàm tương đương khả nhập bổ sung cho các hàm không khả nhập truyền thống khác. Ví dụ, glibc cung cấp `crypt_r()`, `gethostbyname_r()`, `getservbyname_r()`, `getutent_r()`, `getutid_r()`, `getutline_r()` và `ptsname_r()`. Tuy nhiên, một ứng dụng có tính di động (portable application) không thể dựa dẫm vào việc các hàm này có mặt trên các bản cài đặt khác. Trong một số trường hợp, SUSv3 không quy định các hàm tương đương khả nhập này bởi vì đã tồn tại các lựa chọn thay thế cho các hàm truyền thống vừa ưu việt hơn vừa khả nhập. Ví dụ, `getaddrinfo()` là lựa chọn thay thế hiện đại, khả nhập cho `gethostbyname()` và `getservbyname()`.
 
 ## 31.2 Khởi tạo một lần (One-Time Initialization)
@@ -87,10 +88,11 @@ Mặc dù việc sử dụng các vùng găng (critical section) để thực th
 
 Một hàm thư viện có thể thực hiện khởi tạo một lần bằng cách sử dụng hàm `pthread_once()`.
 
-```
 ## include <pthread.h>
+
 int pthread_once(pthread_once_t *once_control, void (*init)(void));
-                      Trả về 0 nếu thành công, hoặc một số lỗi dương nếu thất bại
+Trả về 0 nếu thành công, hoặc một số lỗi dương nếu thất bại
+
 ```
 
 Hàm `pthread_once()` sử dụng trạng thái của tham số `once_control` để đảm bảo rằng hàm do người gọi định nghĩa được trỏ tới bởi `init` chỉ được gọi đúng một lần, bất kể hàm `pthread_once()` được gọi bao nhiêu lần hoặc từ bao nhiêu luồng khác nhau.
@@ -98,17 +100,21 @@ Hàm `pthread_once()` sử dụng trạng thái của tham số `once_control` �
 Hàm `init` được gọi mà không có bất kỳ tham số nào, do đó có dạng sau:
 
 ```
+
 void
 init(void)
 {
- /* Thân hàm */
+/* Thân hàm */
 }
+
 ```
 
 Tham số `once_control` là một con trỏ trỏ đến một biến phải được khởi tạo tĩnh (statically initialized) với giá trị `PTHREAD_ONCE_INIT`:
 
 ```
+
 pthread_once_t once_var = PTHREAD_ONCE_INIT;
+
 ```
 
 Lần gọi đầu tiên tới `pthread_once()` chỉ định con trỏ đến một biến `pthread_once_t` cụ thể sẽ sửa đổi giá trị của biến được trỏ tới bởi `once_control` sao cho các lần gọi tiếp theo tới `pthread_once()` không gọi lại `init`.
@@ -119,30 +125,32 @@ Một cách sử dụng phổ biến của `pthread_once()` là kết hợp vớ
 
 ## 31.3 Dữ liệu riêng của luồng (Thread-Specific Data)
 
-Cách hiệu quả nhất để làm cho một hàm an toàn với luồng (thread-safe) là biến nó thành tái nhập (reentrant). Tất cả các hàm thư viện mới nên được triển khai theo cách này. Tuy nhiên, đối với một hàm thư viện không tái nhập (nonreentrant) đã có sẵn (có thể được thiết kế trước khi việc sử dụng luồng trở nên phổ biến), phương pháp này thường yêu cầu thay đổi giao diện (interface) của hàm, có nghĩa là phải sửa đổi tất cả các chương trình sử dụng hàm đó.
+Cách hiệu quả nhất để làm cho một hàm an toàn luồng (thread-safe) là làm cho nó có tính khả nhập (reentrant). Tất cả các hàm thư viện mới nên được triển khai theo cách này. Tuy nhiên, đối với một hàm thư viện không khả nhập (nonreentrant) đã có sẵn (có thể được thiết kế trước khi việc sử dụng luồng trở nên phổ biến), phương pháp này thường yêu cầu thay đổi giao diện (interface) của hàm, đồng nghĩa với việc phải sửa đổi tất cả các chương trình đang sử dụng hàm đó.
 
-Dữ liệu riêng của luồng (Thread-specific data) là một kỹ thuật làm cho một hàm hiện có trở an toàn với luồng mà không cần thay đổi giao diện của nó. Một hàm sử dụng dữ liệu riêng của luồng có thể kém hiệu quả hơn một chút so với hàm tái nhập, nhưng cho phép chúng ta giữ nguyên các chương trình gọi hàm đó mà không cần thay đổi.
+Dữ liệu đặc thù của luồng (Thread-specific data - TSD) là một kỹ thuật giúp một hàm hiện có trở nên an toàn luồng mà không cần thay đổi giao diện của nó. Một hàm sử dụng dữ liệu đặc thù của luồng có thể kém hiệu quả hơn một chút so với hàm khả nhập, nhưng cho phép chúng ta giữ nguyên mã nguồn của các chương trình gọi hàm đó.
 
 Dữ liệu riêng của luồng cho phép một hàm duy trì một bản sao riêng của biến cho mỗi luồng gọi hàm đó, như được minh họa trong [Hình 31-1](#page-42-1). Dữ liệu riêng của luồng có tính bền vững (persistent); biến của mỗi luồng tiếp tục tồn tại giữa các lần luồng gọi hàm đó. Điều này cho phép hàm duy trì thông tin trên mỗi luồng (per-thread information) giữa các lần gọi hàm, và cho phép hàm truyền các vùng đệm kết quả khác biệt (nếu cần) tới từng luồng gọi.
 
 ```text
- ┌──────────┐        ┌─────────────────┐
- │ Thread A │───────>│   TSD buffer    │
- └──────────┘        │  for myfunc()   │
-                     │   in thread A   │
-                     └─────────────────┘
 
- ┌──────────┐        ┌─────────────────┐
- │ Thread B │───────>│   TSD buffer    │
- └──────────┘        │  for myfunc()   │
-                     │   in thread B   │
-                     └─────────────────┘
+┌──────────┐        ┌─────────────────┐
+│ Thread A │───────>│   TSD buffer    │
+└──────────┘        │  for myfunc()   │
+│   in thread A   │
+└─────────────────┘
 
- ┌──────────┐        ┌─────────────────┐
- │ Thread C │───────>│   TSD buffer    │
- └──────────┘        │  for myfunc()   │
-                     │   in thread C   │
-                     └─────────────────┘
+┌──────────┐        ┌─────────────────┐
+│ Thread B │───────>│   TSD buffer    │
+└──────────┘        │  for myfunc()   │
+│   in thread B   │
+└─────────────────┘
+
+┌──────────┐        ┌─────────────────┐
+│ Thread C │───────>│   TSD buffer    │
+└──────────┘        │  for myfunc()   │
+│   in thread C   │
+└─────────────────┘
+
 ```
 
 **Hình 31-1:** Dữ liệu riêng của luồng (Thread-specific data - TSD) cung cấp vùng lưu trữ cho mỗi luồng (per-thread storage) đối với một hàm
@@ -167,16 +175,19 @@ Các bước tổng quát mà một hàm thư viện thực hiện để sử d�
 
 "hãy lưu con trỏ này, ghi nhận thực tế rằng nó được liên kết với một khóa cụ thể (khóa dành cho hàm này) và một luồng cụ thể (luồng gọi hàm)." Việc gọi `pthread_getspecific()` thực hiện tác vụ ngược lại, trả về con trỏ đã được liên kết trước đó với một khóa cho trước đối với luồng gọi hàm. Nếu không có con trỏ nào được liên kết trước đó với một khóa và luồng cụ thể, thì `pthread_getspecific()` sẽ trả về `NULL`. Đây là cách một hàm có thể xác định rằng nó đang được gọi lần đầu tiên bởi luồng này, và do đó phải tiến hành cấp phát khối bộ nhớ cho luồng đó.
 
-### 31.3.3 Chi tiết về API Dữ liệu Riêng tư của Thread
+### 31.3.3 Chi tiết về API Dữ liệu Đặc thù của Luồng
 
-Trong phần này, chúng ta sẽ đi sâu vào chi tiết của từng hàm đã được nhắc đến ở phần trước, đồng thời làm rõ cách thức hoạt động của dữ liệu riêng tư của thread (thread-specific data) thông qua việc mô tả cách nó thường được hiện thực hóa (implement). Phần tiếp theo sẽ trình bày cách sử dụng dữ liệu riêng tư của thread để viết một phiên bản an toàn cho thread (thread-safe) của hàm thư viện chuẩn C `strerror()`.
+Trong phần này, chúng ta sẽ đi sâu vào chi tiết của từng hàm đã được nhắc đến ở phần trước, đồng thời làm rõ cách thức hoạt động của dữ liệu đặc thù của luồng (thread-specific data) thông qua việc mô tả cách thức triển khai điển hình của nó. Phần tiếp theo sẽ trình bày cách sử dụng dữ liệu đặc thù của luồng để viết một phiên bản an toàn luồng (thread-safe) của hàm thư viện C chuẩn `strerror()`.
 
-Gọi hàm `pthread_key_create()` sẽ tạo ra một khóa dữ liệu riêng tư của thread (thread-specific data key) mới và trả về cho tiến trình gọi thông qua vùng đệm mà `key` trỏ tới.
+Gọi hàm `pthread_key_create()` sẽ tạo ra một khóa dữ liệu đặc thù của luồng (thread-specific data key) mới và trả về cho bên gọi thông qua vùng đệm mà `key` trỏ tới.
 
-```
+```c
+
 ## include <pthread.h>
+
 int pthread_key_create(pthread_key_t *key, void (*destructor)(void *));
-                      Trả về 0 nếu thành công, hoặc một số dương báo lỗi nếu thất bại
+Trả về 0 nếu thành công, hoặc một số dương báo lỗi nếu thất bại
+
 ```
 
 Vì khóa được trả về này được sử dụng bởi tất cả các thread trong tiến trình (process), nên `key` phải trỏ đến một biến toàn cục (global variable).
@@ -184,11 +195,13 @@ Vì khóa được trả về này được sử dụng bởi tất cả các th
 Đối số `destructor` trỏ tới một hàm do lập trình viên định nghĩa có dạng như sau:
 
 ```
+
 void
 dest(void *value)
 {
- /* Giải phóng bộ nhớ do 'value' trỏ tới */
+/* Giải phóng bộ nhớ do 'value' trỏ tới */
 }
+
 ```
 
 Khi một thread kết thúc mà có một giá trị khác NULL (non-NULL) liên kết với `key`, hàm hủy (destructor) sẽ được tự động gọi bởi Pthreads API và truyền giá trị đó làm đối số. Giá trị được truyền này thông thường là một con trỏ trỏ đến khối dữ liệu riêng tư của thread này dành cho khóa đó. Nếu không cần hàm hủy, thì `destructor` có thể được chỉ định là `NULL`.
@@ -204,33 +217,38 @@ một tập hợp các mảng cho mỗi thread (per-thread array), mỗi mảng 
 Trong cách hiện thực này, giá trị `pthread_key_t` được trả về bởi `pthread_key_create()` đơn giản là một chỉ số (index) trỏ vào mảng toàn cục, mà chúng ta gọi là `pthread_keys`, với cấu trúc được thể hiện ở [Hình 31-2](#page-45-0). Mỗi phần tử của mảng này là một cấu trúc (structure) chứa hai trường (field). Trường đầu tiên cho biết phần tử mảng này có đang được sử dụng hay không (tức là đã được cấp phát bởi một lời gọi `pthread_key_create()` trước đó hay chưa). Trường thứ hai được sử dụng để lưu trữ con trỏ trỏ đến hàm hủy cho các khối dữ liệu riêng tư của thread tương ứng với khóa này (tức là một bản sao của đối số `destructor` trong hàm `pthread_key_create()`).
 
 ```text
+
 pthread_keys[0]  ┌──────────────────┐
-                 │   Cờ "in use"    │
-                 ├──────────────────┤
-                 │ Con trỏ destructor│
-                 ├──────────────────┤
+│   Cờ "in use"    │
+├──────────────────┤
+│ Con trỏ destructor│
+├──────────────────┤
 pthread_keys[1]  │   Cờ "in use"    │
-                 ├──────────────────┤
-                 │ Con trỏ destructor│
-                 ├──────────────────┤
+├──────────────────┤
+│ Con trỏ destructor│
+├──────────────────┤
 pthread_keys[2]  │   Cờ "in use"    │
-                 ├──────────────────┤
-                 │ Con trỏ destructor│
-                 ├──────────────────┤
-                 │       ...        │
-                 └──────────────────┘
+├──────────────────┤
+│ Con trỏ destructor│
+├──────────────────┤
+│       ...        │
+└──────────────────┘
+
 ```
 
 **Hình 31-2:** Cách hiện thực các khóa dữ liệu riêng tư của thread
 
 Hàm `pthread_setspecific()` yêu cầu Pthreads API lưu một bản sao của `value` vào một cấu trúc dữ liệu nhằm liên kết nó với thread gọi và với `key` — một khóa được trả về từ lời gọi `pthread_key_create()` trước đó. Hàm `pthread_getspecific()` thực hiện thao tác ngược lại, trả về giá trị đã được liên kết trước đó với khóa cho trước đối với thread này.
 
-```
+```c
+
 ## include <pthread.h>
+
 int pthread_setspecific(pthread_key_t key, const void *value);
-                       Trả về 0 nếu thành công, hoặc một số dương báo lỗi nếu thất bại
+Trả về 0 nếu thành công, hoặc một số dương báo lỗi nếu thất bại
 void *pthread_getspecific(pthread_key_t key);
-          Trả về con trỏ, hoặc NULL nếu không có dữ liệu riêng tư của thread nào liên kết với key
+Trả về con trỏ, hoặc NULL nếu không có dữ liệu đặc thù của luồng nào liên kết với key
+
 ```
 
 Đối số `value` được truyền cho `pthread_setspecific()` thông thường là một con trỏ trỏ đến một khối bộ nhớ đã được người gọi cấp phát trước đó. Con trỏ này sẽ được truyền làm đối số cho hàm hủy của khóa này khi thread kết thúc.
@@ -240,49 +258,50 @@ void *pthread_getspecific(pthread_key_t key);
 [Hình 31-3](#page-46-0) minh họa một cách hiện thực tiêu biểu của cấu trúc dữ liệu dùng để lưu trữ `value`. Trong sơ đồ này, chúng ta giả sử rằng `pthread_keys[1]` đã được cấp phát cho một hàm có tên là `myfunc()`. Đối với mỗi thread, Pthreads API duy trì một mảng các con trỏ trỏ tới các khối dữ liệu riêng tư của thread. Các phần tử của mỗi mảng riêng cho từng thread này có mối quan hệ tương ứng một-một với các phần tử của mảng toàn cục `pthread_keys` được hiển thị ở [Hình 31-2](#page-45-0). Hàm `pthread_setspecific()` thiết lập phần tử tương ứng với `key` trong mảng dành cho thread gọi.
 
 ```mermaid
+
 graph TD
-    KEY["Tất cả đều ứng với<br/>pthread_keys[1]"]
-    
-    subgraph TA["Thread A"]
-        TA_TSD0["tsd[0] | con trỏ (pointer)"]
-        TA_TSD1["tsd[1] | con trỏ (pointer)"]
-        TA_TSD2["tsd[2] | con trỏ (pointer)"]
-        TA_DOTS["..."]
-    end
-    
-    TA_BUF["Vùng đệm TSD<br/>cho myfunc()<br/>trong thread A"]
-    
-    subgraph TB["Thread B"]
-        TB_TSD0["tsd[0] | con trỏ (pointer)"]
-        TB_TSD1["tsd[1] | con trỏ (pointer)"]
-        TB_TSD2["tsd[2] | con trỏ (pointer)"]
-        TB_DOTS["..."]
-    end
-    
-    TB_BUF["Vùng đệm TSD<br/>cho myfunc()<br/>trong thread B"]
-    
-    subgraph TC["Thread C"]
-        TC_TSD0["tsd[0] | con trỏ (pointer)"]
-        TC_TSD1["tsd[1] | con trỏ (pointer)"]
-        TC_TSD2["tsd[2] | con trỏ (pointer)"]
-        TC_DOTS["..."]
-    end
-    
-    TC_BUF["Vùng đệm TSD<br/>cho myfunc()<br/>trong thread C"]
-    
-    KEY -.->|"giá trị của key 1<br/>cho thread A"| TA_TSD1
-    KEY -.->|"giá trị của key 1<br/>cho thread B"| TB_TSD1
-    KEY -.->|"giá trị của key 1<br/>cho thread C"| TC_TSD1
-    
-    TA_TSD1 --> TA_BUF
-    TB_TSD1 --> TB_BUF
-    TC_TSD1 --> TC_BUF
-    
+KEY["Tất cả đều ứng với<br/>pthread_keys[1]"]
+
+subgraph TA["Thread A"]
+TA_TSD0["tsd[0] | con trỏ (pointer)"]
+TA_TSD1["tsd[1] | con trỏ (pointer)"]
+TA_TSD2["tsd[2] | con trỏ (pointer)"]
+TA_DOTS["..."]
+end
+
+TA_BUF["Vùng đệm TSD<br/>cho myfunc()<br/>trong thread A"]
+
+subgraph TB["Thread B"]
+TB_TSD0["tsd[0] | con trỏ (pointer)"]
+TB_TSD1["tsd[1] | con trỏ (pointer)"]
+TB_TSD2["tsd[2] | con trỏ (pointer)"]
+TB_DOTS["..."]
+end
+
+TB_BUF["Vùng đệm TSD<br/>cho myfunc()<br/>trong thread B"]
+
+subgraph TC["Thread C"]
+TC_TSD0["tsd[0] | con trỏ (pointer)"]
+TC_TSD1["tsd[1] | con trỏ (pointer)"]
+TC_TSD2["tsd[2] | con trỏ (pointer)"]
+TC_DOTS["..."]
+end
+
+TC_BUF["Vùng đệm TSD<br/>cho myfunc()<br/>trong thread C"]
+
+KEY -.->|"giá trị của key 1<br/>cho thread A"| TA_TSD1
+KEY -.->|"giá trị của key 1<br/>cho thread B"| TB_TSD1
+KEY -.->|"giá trị của key 1<br/>cho thread C"| TC_TSD1
+
+TA_TSD1 --> TA_BUF
+TB_TSD1 --> TB_BUF
+TC_TSD1 --> TC_BUF
+
 ```
 
-**Hình 31-3:** Cấu trúc dữ liệu được sử dụng để hiện thực hóa các con trỏ dữ liệu riêng biệt của tiến trình nhẹ (thread-specific data - TSD pointers)
+**Hình 31-3:** Cấu trúc dữ liệu được sử dụng để triển khai các con trỏ dữ liệu đặc thù của luồng (TSD pointers)
 
-Khi một thread (tiến trình nhẹ) mới được tạo, tất cả các con trỏ dữ liệu riêng biệt của nó (thread-specific data pointers) đều được khởi tạo là `NULL`. Điều này có nghĩa là khi hàm thư viện của chúng ta được gọi bởi một thread lần đầu tiên, nó phải bắt đầu bằng cách sử dụng `pthread_getspecific()` để kiểm tra xem thread đó đã có một giá trị liên kết nào cho key (khóa) hay chưa. Nếu chưa, hàm sẽ cấp phát một khối bộ nhớ và lưu một con trỏ trỏ đến khối đó bằng cách sử dụng `pthread_setspecific()`. Chúng tôi trình bày một ví dụ về điều này trong phần hiện thực strerror() an toàn đơn nhiệm/đa luồng (thread-safe) được trình bày ở phần tiếp theo.
+Khi một luồng mới được tạo ra, tất cả các con trỏ dữ liệu đặc thù của nó đều được khởi tạo thành `NULL`. Điều này có nghĩa là khi hàm thư viện của chúng ta được gọi bởi một luồng lần đầu tiên, nó phải bắt đầu bằng việc dùng `pthread_getspecific()` để kiểm tra xem luồng đó đã có giá trị liên kết với khóa `key` hay chưa. Nếu chưa, hàm sẽ cấp phát một khối bộ nhớ và lưu con trỏ trỏ tới khối đó bằng cách gọi `pthread_setspecific()`. Chúng ta sẽ thấy ví dụ về kỹ thuật này trong bản triển khai `strerror()` an toàn luồng được trình bày ở phần tiếp theo.
 
 ### 31.3.4 Sử dụng API Dữ liệu Riêng biệt của Thread (Thread-Specific Data API)
 
@@ -294,79 +313,98 @@ Trên nhiều hiện thực UNIX, bao gồm cả Linux, hàm `strerror()` đư�
 
 **Liệt kê 31-1:** Một hiện thực của `strerror()` không an toàn đa luồng (not thread-safe)
 
-```
+```c
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror.c
+
 ## define _GNU_SOURCE /* Lấy khai báo '_sys_nerr' và '_sys_errlist'
- từ <stdio.h> */
+
+từ <stdio.h> */
+
 ## include <stdio.h>
+
 ## include <string.h> /* Lấy khai báo của strerror() */
+
 ## define MAX_ERROR_LEN 256 /* Chiều dài tối đa của chuỗi
- do strerror() trả về */
+
+do strerror() trả về */
 static char buf[MAX_ERROR_LEN]; /* Vùng đệm trả về được cấp phát tĩnh */
 char *
 strerror(int err)
 {
- if (err < 0 || err >= _sys_nerr || _sys_errlist[err] == NULL) {
- snprintf(buf, MAX_ERROR_LEN, "Unknown error %d", err);
- } else {
- strncpy(buf, _sys_errlist[err], MAX_ERROR_LEN - 1);
- buf[MAX_ERROR_LEN - 1] = '\0'; /* Đảm bảo có ký tự kết thúc chuỗi null */
- }
- return buf;
+if (err < 0 || err >= _sys_nerr || _sys_errlist[err] == NULL) {
+snprintf(buf, MAX_ERROR_LEN, "Unknown error %d", err);
+} else {
+strncpy(buf, _sys_errlist[err], MAX_ERROR_LEN - 1);
+buf[MAX_ERROR_LEN - 1] = '\0'; /* Đảm bảo có ký tự kết thúc chuỗi null */
+}
+return buf;
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror.c
+
 ```
 
 Chúng ta có thể sử dụng chương trình trong [Liệt kê 31-2](#page-48-0) để minh họa hậu quả của việc hiện thực `strerror()` trong [Liệt kê 31-1](#page-47-0) không an toàn đa luồng. Chương trình này gọi `strerror()` từ hai thread khác nhau, nhưng chỉ hiển thị giá trị trả về sau khi cả hai thread đã gọi `strerror()`. Mặc dù mỗi thread chỉ định một giá trị khác nhau (`EINVAL` và `EPERM`) làm đối số cho `strerror()`, đây là kết quả chúng ta thấy khi biên dịch và liên kết (link) chương trình này với phiên bản `strerror()` được hiển thị trong [Liệt kê 31-1](#page-47-0):
 
 ```
+
 $ ./strerror_test
+
 ```
 
 ```
+
 Main thread has called strerror()
 Other thread about to call strerror()
 Other thread: str (0x804a7c0) = Operation not permitted
 Main thread: str (0x804a7c0) = Operation not permitted
+
 ```
 
 Cả hai thread đều hiển thị chuỗi `errno` tương ứng với `EPERM`, bởi vì lệnh gọi `strerror()` bởi thread thứ hai (trong `threadFunc`) đã ghi đè lên vùng đệm vốn đã được ghi bởi lệnh gọi `strerror()` trong thread chính (main thread). Kiểm tra kết quả đầu ra cho thấy biến cục bộ `str` trong hai thread trỏ đến cùng một địa chỉ bộ nhớ.
 
 **Liệt kê 31-2:** Gọi strerror() từ hai Thread khác nhau
 
-```
+```c
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror_test.c
+
 ## include <stdio.h>
+
 ## include <string.h> /* Lấy khai báo của strerror() */
+
 ## include <pthread.h>
+
 ## include "tlpi_hdr.h"
+
 static void *
 threadFunc(void *arg)
 {
- char *str;
- printf("Thread khác chuẩn bị gọi strerror()\n");
- str = strerror(EPERM);
- printf("Thread khác: str (%p) = %s\n", str, str);
- return NULL;
+char *str;
+printf("Other thread about to call strerror()\n");
+str = strerror(EPERM);
+printf("Other thread: str (%p) = %s\n", str, str);
+return NULL;
 }
 int
 main(int argc, char *argv[])
 {
- pthread_t t;
- int s;
- char *str;
- str = strerror(EINVAL);
- printf("Thread chính đã gọi strerror()\n");
- s = pthread_create(&t, NULL, threadFunc, NULL);
- if (s != 0)
- errExitEN(s, "pthread_create");
- s = pthread_join(t, NULL);
- if (s != 0)
- errExitEN(s, "pthread_join");
- printf("Thread chính: str (%p) = %s\n", str, str);
- exit(EXIT_SUCCESS);
+pthread_t t;
+int s;
+char *str;
+str = strerror(EINVAL);
+printf("Main thread has called strerror()\n");
+s = pthread_create(&t, NULL, threadFunc, NULL);
+if (s != 0)
+errExitEN(s, "pthread_create");
+s = pthread_join(t, NULL);
+if (s != 0)
+errExitEN(s, "pthread_join");
+printf("Main thread: str (%p) = %s\n", str, str);
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror_test.c
+
 ```
 
 [Liệt kê 31-3](#page-49-0) minh họa cách cài đặt lại hàm strerror() sử dụng dữ liệu riêng biệt của thread (Thread-Specific Data - TSD) nhằm đảm bảo tính an toàn đơn luồng/đa luồng (thread safety).
@@ -379,77 +417,90 @@ Phần còn lại của việc cài đặt strerror() này tương tự như phi
 
 **Liệt kê 31-3:** Cài đặt an toàn đa luồng cho strerror() sử dụng dữ liệu riêng biệt của thread
 
-```
-–––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror_tsd.c
-## define _GNU_SOURCE /* Lấy các khai báo '_sys_nerr' và '_sys_errlist'
-   từ <stdio.h> */
-## include <stdio.h>
-## include <string.h> /* Lấy khai báo của strerror() */
-## include <pthread.h>
-## include "tlpi_hdr.h"
-  static pthread_once_t once = PTHREAD_ONCE_INIT;
-  static pthread_key_t strerrorKey;
-## define MAX_ERROR_LEN 256 /* Độ dài tối đa của chuỗi trong bộ đệm
-   theo từng thread được trả về bởi strerror() */
-  static void /* Giải phóng bộ đệm dữ liệu riêng biệt của thread */
-q destructor(void *buf)
-  {
-   free(buf);
-  }
-  static void /* Hàm tạo khóa một lần duy nhất */
-w createKey(void)
-  {
-   int s;
-   /* Cấp phát một khóa dữ liệu riêng biệt của thread độc nhất và lưu địa chỉ
-   của hàm hủy cho các bộ đệm dữ liệu riêng biệt của thread */
-e s = pthread_key_create(&strerrorKey, destructor);
-   if (s != 0)
-   errExitEN(s, "pthread_key_create");
-  }
-```
+```c
 
-```
+–––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror_tsd.c
+
+## define _GNU_SOURCE /* Lấy các khai báo '_sys_nerr' và '_sys_errlist'
+
+từ <stdio.h> */
+
+## include <stdio.h>
+
+## include <string.h> /* Lấy khai báo của strerror() */
+
+## include <pthread.h>
+
+## include "tlpi_hdr.h"
+
+static pthread_once_t once = PTHREAD_ONCE_INIT;
+static pthread_key_t strerrorKey;
+
+## define MAX_ERROR_LEN 256 /* Độ dài tối đa của chuỗi trong bộ đệm
+
+trên mỗi luồng được trả về bởi strerror() */
+static void /* Giải phóng bộ đệm dữ liệu đặc thù của luồng */
+destructor(void *buf)
+{
+free(buf);
+}
+static void /* Hàm tạo khóa một lần */
+createKey(void)
+{
+int s;
+/* Cấp phát một khóa dữ liệu đặc thù của luồng duy nhất và lưu địa chỉ
+của hàm hủy cho các bộ đệm dữ liệu đặc thù của luồng */
+s = pthread_key_create(&strerrorKey, destructor);
+if (s != 0)
+errExitEN(s, "pthread_key_create");
+}
+
 char *
-  strerror(int err)
-  {
-   int s;
-   char *buf;
-   /* Buộc người gọi đầu tiên cấp phát khóa cho dữ liệu riêng biệt của thread */
-r s = pthread_once(&once, createKey);
-   if (s != 0)
-   errExitEN(s, "pthread_once");
-t buf = pthread_getspecific(strerrorKey);
-   if (buf == NULL) { /* Nếu đây là lần gọi đầu tiên từ thread này, hãy cấp phát
-   bộ đệm cho thread và lưu vị trí của nó lại */
-y buf = malloc(MAX_ERROR_LEN);
-   if (buf == NULL)
-   errExit("malloc");
-u s = pthread_setspecific(strerrorKey, buf);
-   if (s != 0)
-   errExitEN(s, "pthread_setspecific");
-   }
-   if (err < 0 || err >= _sys_nerr || _sys_errlist[err] == NULL) {
-   snprintf(buf, MAX_ERROR_LEN, "Lỗi không xác định %d", err);
-   } else {
-   strncpy(buf, _sys_errlist[err], MAX_ERROR_LEN - 1);
-   buf[MAX_ERROR_LEN - 1] = '\0'; /* Đảm bảo kết thúc bằng ký tự null */
-   }
-   return buf;
-  }
-  –––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror_tsd.c
+strerror(int err)
+{
+int s;
+char *buf;
+/* Bắt luồng gọi đầu tiên cấp phát khóa cho dữ liệu đặc thù của luồng */
+s = pthread_once(&once, createKey);
+if (s != 0)
+errExitEN(s, "pthread_once");
+buf = pthread_getspecific(strerrorKey);
+if (buf == NULL) { /* Nếu là lần gọi đầu tiên từ luồng này, cấp phát
+bộ đệm cho luồng và lưu vị trí của nó */
+buf = malloc(MAX_ERROR_LEN);
+if (buf == NULL)
+errExit("malloc");
+s = pthread_setspecific(strerrorKey, buf);
+if (s != 0)
+errExitEN(s, "pthread_setspecific");
+}
+if (err < 0 || err >= _sys_nerr || _sys_errlist[err] == NULL) {
+snprintf(buf, MAX_ERROR_LEN, "Unknown error %d", err);
+} else {
+strncpy(buf, _sys_errlist[err], MAX_ERROR_LEN - 1);
+buf[MAX_ERROR_LEN - 1] = '\0'; /* Đảm bảo kết thúc bằng ký tự null */
+}
+return buf;
+}
+–––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror_tsd.c
+
 ```
 
 Nếu chúng ta biên dịch và liên kết chương trình kiểm thử của mình ([Liệt kê 31-2](#page-48-0)) với phiên bản strerror() mới ([Liệt kê 31-3](#page-49-0)) để tạo ra một tệp thực thi `strerror_test_tsd`, chúng ta sẽ thu được kết quả sau khi chạy chương trình:
 
 ```
+
 $ ./strerror_test_tsd
 Main thread has called strerror()
+
 ```
 
 ```
+
 Other thread about to call strerror()
 Other thread: str (0x804b158) = Operation not permitted
 Main thread: str (0x804b008) = Invalid argument
+
 ```
 
 Từ kết quả đầu ra này, chúng ta thấy rằng phiên bản strerror() mới đã an toàn đa luồng (thread-safe). Chúng ta cũng nhận thấy rằng địa chỉ mà biến cục bộ `str` trỏ tới ở hai thread là khác nhau.
@@ -467,7 +518,9 @@ Giống như dữ liệu riêng biệt của luồng (thread-specific data), lư
 Ưu điểm chính của lưu trữ cục bộ luồng là nó đơn giản hơn rất nhiều khi sử dụng so với dữ liệu riêng biệt của luồng. Để tạo một biến cục bộ luồng, chúng ta chỉ cần thêm bộ xác định (specifier) `__thread` vào phần khai báo của một biến toàn cục (global) hoặc tĩnh (static):
 
 ```
+
 static __thread buf[MAX_ERROR_LEN];
+
 ```
 
 Mỗi luồng có bản sao riêng của các biến được khai báo với bộ xác định này. Các biến trong bộ lưu trữ cục bộ luồng tồn tại cho đến khi luồng kết thúc, tại thời điểm đó bộ nhớ sẽ tự động được giải phóng (deallocated).
@@ -483,41 +536,54 @@ Lưu trữ cục bộ luồng yêu cầu hỗ trợ từ kernel (được cung c
 [Liệt kê 31-4](#page-52-0) cho thấy một cách triển khai an toàn luồng (thread-safe) của hàm strerror() sử dụng lưu trữ cục bộ luồng. Nếu chúng ta biên dịch và liên kết chương trình kiểm tra của mình [\(Liệt kê 31-2](#page-48-0)) với phiên bản strerror() này để tạo ra một tệp thực thi, strerror\_test\_tls, thì chúng ta sẽ thấy kết quả sau khi chạy chương trình:
 
 ```
+
 $ ./strerror_test_tls
+
 ```
 
 ```
+
 Main thread has called strerror()
 Other thread about to call strerror()
 Other thread: str (0x40376ab0) = Operation not permitted
 Main thread: str (0x40175080) = Invalid argument
+
 ```
 
 **Liệt kê 31-4:** Một bản triển khai an toàn luồng của strerror() sử dụng lưu trữ cục bộ luồng
 
-```
+```c
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror_tls.c
+
 ## define _GNU_SOURCE /* Lấy khai báo '_sys_nerr' và '_sys_errlist'
- từ <stdio.h> */
+
+từ <stdio.h> */
+
 ## include <stdio.h>
+
 ## include <string.h> /* Lấy khai báo của strerror() */
+
 ## include <pthread.h>
+
 ## define MAX_ERROR_LEN 256 /* Độ dài tối đa của chuỗi trong bộ đệm
- theo từng luồng được trả về bởi strerror() */
+
+trên mỗi luồng được trả về bởi strerror() */
 static __thread char buf[MAX_ERROR_LEN];
- /* Bộ đệm trả về cục bộ theo luồng */
+/* Bộ đệm trả về cục bộ của luồng */
 char *
 strerror(int err)
 {
- if (err < 0 || err >= _sys_nerr || _sys_errlist[err] == NULL) {
- snprintf(buf, MAX_ERROR_LEN, "Unknown error %d", err);
- } else {
- strncpy(buf, _sys_errlist[err], MAX_ERROR_LEN - 1);
- buf[MAX_ERROR_LEN - 1] = '\0'; /* Đảm bảo kết thúc bằng ký tự null */
- }
- return buf;
+if (err < 0 || err >= _sys_nerr || _sys_errlist[err] == NULL) {
+snprintf(buf, MAX_ERROR_LEN, "Unknown error %d", err);
+} else {
+strncpy(buf, _sys_errlist[err], MAX_ERROR_LEN - 1);
+buf[MAX_ERROR_LEN - 1] = '\0'; /* Đảm bảo kết thúc bằng ký tự null */
+}
+return buf;
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––– threads/strerror_tls.c
+
 ```
 
 ## 31.5 Tóm tắt

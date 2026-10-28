@@ -1,6 +1,4 @@
-## Chapter 7
-
-## CẤP PHÁT BỘ NHỚ
+# Chương 7: Cấp phát bộ nhớ (Memory Allocation)
 
 Nhiều chương trình hệ thống cần có khả năng cấp phát thêm bộ nhớ cho các cấu trúc dữ liệu động (ví dụ: danh sách liên kết và cây nhị phân), có kích thước phụ thuộc vào thông tin chỉ có sẵn tại thời điểm chạy (run time). Chương này mô tả các hàm được sử dụng để cấp phát bộ nhớ trên heap hoặc stack.
 
@@ -34,6 +32,7 @@ Một lời gọi đến `sbrk()` sẽ điều chỉnh điểm ngắt chương t
 
 Lời gọi `sbrk(0)` trả về thiết lập hiện tại của điểm ngắt chương trình mà không làm thay đổi nó. Điều này có thể hữu ích nếu chúng ta muốn theo dõi kích thước của heap, có lẽ để giám sát hành vi của một gói cấp phát bộ nhớ.
 
+> [!NOTE]
 > SUSv2 đã chỉ định `brk()` và `sbrk()` (đánh dấu chúng là DI SẢN - LEGACY). SUSv3 đã loại bỏ các thông số kỹ thuật của chúng.
 
 ### 7.1.2 Cấp phát Bộ nhớ trên Heap: malloc() và free()
@@ -56,6 +55,7 @@ void *malloc(size_t size);
 
 Vì `malloc()` trả về kiểu `void *`, chúng ta có thể gán nó cho bất kỳ kiểu con trỏ C nào. Khối bộ nhớ do `malloc()` trả về luôn được căn chỉnh (aligned) trên ranh giới byte phù hợp cho bất kỳ loại cấu trúc dữ liệu C nào. Trong thực tế, điều này có nghĩa là nó được cấp phát trên ranh giới 8 byte hoặc 16 byte trên hầu hết các kiến trúc.
 
+> [!NOTE]
 > SUSv3 quy định rằng lời gọi `malloc(0)` có thể trả về `NULL` hoặc một con trỏ trỏ đến một vùng nhớ nhỏ mà có thể (và nên) được giải phóng bằng hàm `free()`. Trên Linux, `malloc(0)` tuân theo hành vi thứ hai.
 
 Nếu bộ nhớ không thể được cấp phát (có thể vì chúng ta đã chạm tới giới hạn mà tại đó `program break` có thể được nâng lên), thì `malloc()` trả về `NULL` và thiết lập `errno` để chỉ ra lỗi. Mặc dù khả năng thất bại trong việc cấp phát bộ nhớ là rất nhỏ, tất cả các lời gọi đến `malloc()`, và các hàm liên quan mà chúng ta mô tả sau đây, đều nên kiểm tra giá trị trả về lỗi này.
@@ -165,6 +165,7 @@ After free(), program break is: 0x852b000
 
 Trong trường hợp này, hàm `free()` của glibc có khả năng nhận biết rằng toàn bộ vùng nhớ ở đầu trên của heap là trống, bởi vì khi giải phóng các khối, nó gộp (coalesce) các khối trống lân cận thành một khối lớn duy nhất. (Việc gộp như vậy được thực hiện để tránh việc có quá nhiều mảnh nhỏ trên danh sách trống (free list), mà tất cả chúng đều có thể quá nhỏ để đáp ứng các yêu cầu `malloc()` tiếp theo).
 
+> [!NOTE]
 > Hàm `free()` của glibc chỉ gọi `sbrk()` để hạ thấp ranh giới chương trình (program break) khi khối trống ở đầu trên "đủ" lớn, trong đó từ "đủ" được quyết định bởi các tham số điều khiển hoạt động của gói `malloc` (128 kB là một giá trị điển hình). Điều này làm giảm số lượng lệnh gọi `sbrk()` (tức là số lượng System Call `brk()`) phải thực hiện.
 
 ### Nên gọi free() hay không?
@@ -264,6 +265,7 @@ Trong số các công cụ gỡ lỗi malloc do glibc cung cấp có các công 
 
 Thông tin thêm về tất cả các tính năng trên có thể được tìm thấy trong tài liệu hướng dẫn của glibc (glibc manual). Một thư viện gỡ lỗi malloc cung cấp cùng một API như gói malloc tiêu chuẩn, nhưng thực hiện thêm các công việc phụ để bắt lỗi cấp phát bộ nhớ. Để sử dụng một thư viện như vậy, chúng ta liên kết ứng dụng của mình với thư viện đó thay vì gói malloc trong thư viện chuẩn C. Do các thư viện này thường hoạt động với cái giá là thời gian chạy chậm hơn, mức tiêu thụ bộ nhớ tăng lên, hoặc cả hai, chúng ta chỉ nên sử dụng chúng cho mục đích gỡ lỗi (debugging), sau đó quay lại liên kết với gói malloc tiêu chuẩn cho phiên bản phát hành thương mại (production version) của ứng dụng. Trong số các thư viện đó có Electric Fence (http://www.perens.com/FreeSoftware/), dmalloc (http://dmalloc.com/), Valgrind (http://valgrind.org/), và Insure++ (http://www.parasoft.com/).
 
+> [!NOTE]
 > Cả Valgrind và Insure++ đều có khả năng phát hiện nhiều loại lỗi khác ngoài các lỗi liên quan đến việc cấp phát vùng nhớ heap. Hãy xem các trang web tương ứng của chúng để biết chi tiết.
 
 ### Điều khiển và giám sát gói malloc
@@ -377,6 +379,7 @@ if (s != 0)
 
 Các khối bộ nhớ được cấp phát bằng cách sử dụng memalign() hoặc posix\_memalign() nên được giải phóng bằng `free()`.
 
+> [!NOTE]
 > Trên một số hệ triển khai UNIX, việc gọi `free()` trên một khối bộ nhớ được cấp phát thông qua memalign() là không khả thi, bởi vì việc triển khai memalign() sử dụng `malloc()` để cấp phát một khối bộ nhớ, sau đó trả về một con trỏ tới địa chỉ có độ căn chỉnh phù hợp trong khối đó. Việc triển khai memalign() của glibc không gặp phải hạn chế này.
 
 ## 7.2 Cấp phát bộ nhớ trên Stack: alloca()

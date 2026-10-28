@@ -1,11 +1,11 @@
-## Chapter 17
-
-## DANH SÁCH KIỂM SOÁT TRUY CẬP (ACCESS CONTROL LISTS)
+# Chương 17: Danh sách kiểm soát truy cập (Access Control Lists - ACL)
 
 Mục 15.4 đã mô tả sơ đồ phân quyền tệp UNIX (và Linux) truyền thống. Đối với nhiều ứng dụng, sơ đồ này là đủ. Tuy nhiên, một số ứng dụng cần kiểm soát chi tiết hơn đối với các quyền được cấp cho các người dùng (User) và nhóm (Group) cụ thể. Để đáp ứng nhu cầu này, nhiều hệ thống UNIX đã triển khai một phần mở rộng cho mô hình phân quyền tệp UNIX truyền thống được gọi là danh sách kiểm soát truy cập (Access Control Lists - ACL). ACL cho phép chỉ định quyền tệp cho từng người dùng hoặc nhóm riêng lẻ, cho một số lượng tùy ý người dùng và nhóm. Linux cung cấp ACL từ phiên bản kernel 2.6 trở đi.
 
+> [!NOTE]
 > Hỗ trợ ACL là tùy chọn đối với từng hệ thống tệp (File System) và được điều khiển bởi các tùy chọn cấu hình kernel trong menu File systems. Hỗ trợ ACL cho Reiserfs đã có từ kernel 2.6.7.
 
+> [!NOTE]
 > Để có thể tạo ACL trên hệ thống tệp ext2, ext3, ext4 hoặc Reiserfs, hệ thống tệp phải được mount với tùy chọn `mount –o acl`.
 
 ACL chưa bao giờ được chuẩn hóa chính thức cho các hệ thống UNIX. Một nỗ lực đã được thực hiện dưới hình thức các bản thảo tiêu chuẩn POSIX.1e và POSIX.2c, nhằm mục đích chỉ định lần lượt giao diện lập trình ứng dụng (Application Programming Interface - API) và các lệnh shell cho ACL (cũng như các tính năng khác, chẳng hạn như capabilities). Cuối cùng, nỗ lực chuẩn hóa này đã thất bại và các bản thảo tiêu chuẩn này đã bị rút lại. Tuy nhiên, nhiều bản cài đặt UNIX (bao gồm cả Linux) dựa trên việc triển khai ACL của chúng vào các bản thảo tiêu chuẩn này (thường là phiên bản cuối cùng, Dự thảo 17 - Draft 17). Mặc dù vậy, vì có nhiều biến thể khác nhau giữa các cách triển khai ACL (một phần bắt nguồn từ sự thiếu hoàn chỉnh của các bản thảo tiêu chuẩn), việc viết các chương trình có tính di động (portable) sử dụng ACL gặp phải một số khó khăn.
@@ -372,6 +372,7 @@ Bản thảo tiêu chuẩn POSIX.1e đã định nghĩa một tập hợp lớn 
 
 Các chương trình sử dụng ACL API nên bao gồm tệp tiêu đề `<sys/acl.h>`. Cũng có thể cần bao gồm `<acl/libacl.h>` nếu chương trình tận dụng các phần mở rộng Linux khác nhau đối với bản thảo tiêu chuẩn POSIX.1e. (Danh sách các phần mở rộng của Linux được cung cấp trong trang sổ tay (manual page) `acl(5)`). Các chương trình sử dụng API này phải được biên dịch với tùy chọn `-lacl` để liên kết (link) với thư viện `libacl`.
 
+> [!NOTE]
 > Như đã lưu ý trước đó, trên Linux, ACL được hiện thực (implemented) bằng cách sử dụng các thuộc tính mở rộng (extended attributes), và ACL API được hiện thực như một tập hợp các hàm thư viện để thao tác với các cấu trúc dữ liệu không gian người dùng (`user-space`), và khi cần thiết, thực hiện các lời gọi hệ thống (system call) tới `getxattr()` và `setxattr()` để truy xuất và sửa đổi thuộc tính mở rộng hệ thống nằm trên đĩa (on-disk) lưu trữ biểu diễn ACL. Ứng dụng cũng có thể (mặc dù không được khuyến khích) sử dụng `getxattr()` và `setxattr()` để thao tác trực tiếp với ACL.
 
 ### Tổng quan
@@ -414,6 +415,7 @@ Từ Hình 17-2, chúng ta có thể thấy rằng ACL API coi một ACL là m�
 
 Bây giờ chúng ta sẽ xem xét ngắn gọn các hàm ACL khác nhau. Trong hầu hết các trường hợp, chúng tôi không mô tả các mã lỗi trả về từ mỗi hàm. Các hàm trả về một số nguyên (trạng thái) thường trả về 0 khi thành công và –1 khi có lỗi. Các hàm trả về một định danh/con trỏ (handle) sẽ trả về `NULL` khi có lỗi. Các lỗi có thể được chuẩn đoán bằng cách sử dụng `errno` theo cách thông thường.
 
+> [!NOTE]
 > Một handle (định danh/con trỏ trừu tượng) là một thuật ngữ trừu tượng chỉ một kỹ thuật nào đó được sử dụng để tham chiếu đến một đối tượng hoặc cấu trúc dữ liệu. Việc biểu diễn một handle là nội bộ (private) đối với việc hiện thực API. Ví dụ, nó có thể là một con trỏ, một chỉ số mảng (array index) hoặc một khóa băm (hash key).
 
 ### Tải một ACL của tập tin vào bộ nhớ

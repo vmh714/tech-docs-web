@@ -1,6 +1,4 @@
-## Chapter 60
-
-## SOCKETS: THIẾT KẾ MÁY CHỦ (SERVER DESIGN)
+# Chương 60: Socket: Thiết kế máy chủ (Sockets: Server Design)
 
 Chương này thảo luận về các nguyên lý cơ bản trong thiết kế máy chủ tuần tự (iterative server) và máy chủ đồng thời (concurrent server), đồng thời mô tả `inetd`, một tiến trình nền (daemon) đặc biệt được thiết kế để tạo thuận lợi cho việc xây dựng các Internet server.
 
@@ -139,7 +137,7 @@ Vì client có thể gửi một lượng dữ liệu không xác định đến
 
 - Server trở thành một tiến trình nền (daemon) bằng cách gọi hàm `becomeDaemon()` được trình bày trong Mục 37.2.
 - Để rút ngắn chương trình này, chúng tôi sử dụng thư viện Internet domain socket được hiển thị trong [Listing 59-9](#page-79-1) (trang [1228\)](#page-79-1).
-- Vì server tạo ra một tiến trình con (child process) cho mỗi kết nối của client, chúng ta phải đảm bảo rằng các tiến trình thây ma (zombie) được thu hoạch (reap). Chúng ta thực hiện việc này bên trong một trình xử lý tín hiệu `SIGCHLD` (SIGCHLD handler).
+- Vì server tạo ra một tiến trình con (child process) cho mỗi kết nối của client, chúng ta phải đảm bảo rằng các tiến trình thây ma (zombie) được thu gom/dọn dẹp (reap). Chúng ta thực hiện việc này bên trong một trình xử lý tín hiệu `SIGCHLD` (SIGCHLD handler).
 - Phần thân chính của server bao gồm một vòng lặp `for` để chấp nhận kết nối từ client và sau đó sử dụng hàm `fork()` để tạo ra một tiến trình con thực thi hàm `handleRequest()` nhằm xử lý client đó. Trong khi đó, tiến trình cha (parent process) tiếp tục vòng lặp `for` để chấp nhận kết nối tiếp theo của client.
 
 Trong một ứng dụng thực tế (real-world application), chúng ta có thể sẽ đưa vào server một số đoạn mã để đặt giới hạn trên (upper limit) cho số lượng tiến trình con mà server có thể tạo ra, nhằm ngăn chặn kẻ tấn công thực hiện một cuộc tấn công từ chối dịch vụ dạng fork bomb từ xa bằng cách sử dụng dịch vụ để tạo ra quá nhiều tiến trình trên hệ thống khiến nó trở nên không thể sử dụng được. Chúng ta có thể áp đặt giới hạn này bằng cách thêm mã nguồn phụ vào server để đếm số lượng tiến trình con đang thực thi (số đếm này sẽ được tăng lên sau một lệnh `fork()` thành công và giảm đi khi mỗi tiến trình con được thu hoạch trong trình xử lý `SIGCHLD`). Nếu đạt đến giới hạn số lượng tiến trình con, chúng ta có thể tạm thời ngừng chấp nhận kết nối (hoặc cách khác, vẫn chấp nhận kết nối và sau đó đóng chúng ngay lập tức).
@@ -241,13 +239,14 @@ Mô hình server đồng thời (concurrent server) truyền thống được m�
 
 Các server dạng preforked và prethreaded được mô tả chi tiết trong Chương 30 của [Stevens et al., 2004]. Các ý tưởng cốt lõi bao gồm:
 
-- Thay vì tạo một tiến trình con (hoặc luồng) mới cho mỗi client, server tạo sẵn một số lượng cố định các tiến trình con (hoặc luồng) ngay khi khởi động (nghĩa là trước khi bất kỳ yêu cầu nào từ client được nhận). Các tiến trình con này cấu thành nên cái gọi là bể tiến trình server (server pool).
+- Thay vì tạo một tiến trình con (hoặc luồng) mới cho mỗi client, server tạo sẵn một số lượng cố định các tiến trình con (hoặc luồng) ngay khi khởi động (nghĩa là trước khi bất kỳ yêu cầu nào từ client được nhận). Các tiến trình con này cấu thành nên cái gọi là nhóm tiến trình máy chủ (server pool).
 - Mỗi tiến trình con trong server pool xử lý một client tại một thời điểm, nhưng thay vì kết thúc sau khi xử lý xong client đó, tiến trình con sẽ tiếp tục nhận client tiếp theo cần phục vụ và xử lý nó, cứ như vậy tiếp diễn.
 
 Việc áp dụng kỹ thuật trên đòi hỏi một số quản lý cẩn thận bên trong ứng dụng server. Server pool phải đủ lớn để đảm bảo phản hồi thỏa đáng cho các yêu cầu của client. Điều này có nghĩa là tiến trình cha (parent process) của server phải giám sát số lượng các tiến trình con đang rảnh rỗi, và vào thời điểm tải cao điểm, tăng kích thước của pool lên sao cho luôn có đủ tiến trình con sẵn sàng phục vụ ngay lập tức các client mới. Nếu tải giảm xuống, kích thước của server pool nên được thu nhỏ lại, bởi vì việc có quá nhiều tiến trình dư thừa trên hệ thống có thể làm giảm hiệu năng tổng thể của hệ thống.
 
 Ngoài ra, các tiến trình con trong server pool phải tuân theo một số giao thức nào đó để cho phép chúng chọn độc lập từng kết nối của client. Trên hầu hết các phiên bản UNIX (bao gồm cả Linux), chỉ cần để mỗi tiến trình con trong pool bị chặn (block) trong lệnh gọi `accept()` trên descriptor đang lắng nghe (listening descriptor). Nói cách khác, tiến trình cha của server tạo socket lắng nghe trước khi tạo bất kỳ tiến trình con nào, và mỗi tiến trình con sẽ kế thừa một File Descriptor cho socket đó trong quá trình `fork()`. Khi một kết nối client mới đến, chỉ có một trong số các tiến trình con hoàn thành lệnh gọi `accept()`. Tuy nhiên, vì `accept()` không phải là một System Call nguyên tử (atomic) trên một số phiên bản cũ, lệnh gọi này có thể cần phải được bọc lại bằng một kỹ thuật loại trừ lẫn nhau (mutual-exclusion) nào đó (ví dụ: khóa tập tin - file lock) để đảm bảo rằng chỉ có một tiến trình con thực hiện lệnh gọi này tại một thời điểm ([Stevens et al., 2004]).
 
+> [!NOTE]
 > Có những phương án thay thế cho việc để tất cả các tiến trình con trong server pool (nhóm máy chủ) đều thực hiện các lời gọi `accept()`. Nếu server pool bao gồm các tiến trình (process) riêng biệt, tiến trình cha của server có thể thực hiện lời gọi `accept()`, sau đó truyền file descriptor (mô tả tệp) chứa kết nối mới cho một trong các tiến trình đang rảnh rỗi trong pool, sử dụng một kỹ thuật mà chúng tôi mô tả ngắn gọn trong [Mục 61.13.3.](#page-135-1) Nếu server pool bao gồm các luồng (thread), luồng chính (main thread) có thể thực hiện lời gọi `accept()`, và sau đó thông báo cho một trong các luồng server đang rảnh rằng có một client mới sẵn sàng trên descriptor đã được kết nối.
 
 ### Xử lý nhiều client từ một tiến trình đơn
@@ -277,6 +276,7 @@ Tiến trình nền (daemon) `inetd` được thiết kế để loại bỏ s�
 
 Vì nó giám sát một loạt các dịch vụ, gọi các máy chủ khác khi cần, `inetd` đôi khi được gọi là siêu máy chủ Internet (Internet superserver).
 
+> [!NOTE]
 > Một phiên bản mở rộng của `inetd` là `xinetd`, được cung cấp trong một số bản phân phối Linux. Ngoài ra, `xinetd` bổ sung thêm một số cải tiến về bảo mật. Thông tin về `xinetd` có thể được tìm thấy tại http://www.xinetd.org/.
 
 ## Hoạt động của tiến trình nền inetd
@@ -299,12 +299,14 @@ Hoạt động của tiến trình nền (daemon) `inetd` được điều khi�
 
 **Liệt kê 60-5:** Các dòng ví dụ từ `/etc/inetd.conf`
 
-```
 ## echo stream tcp nowait root internal
+
 ## echo dgram udp wait root internal
+
 ftp stream tcp nowait root /usr/sbin/tcpd in.ftpd
 telnet stream tcp nowait root /usr/sbin/tcpd in.telnetd
 login stream tcp nowait root /usr/sbin/tcpd in.rlogind
+
 ```
 
 Hai dòng đầu tiên của [Liệt kê 60-5](#page-100-0) đã được vô hiệu hóa bằng ký tự `#` ở đầu; chúng tôi hiển thị chúng ở đây vì chúng ta sẽ đề cập đến dịch vụ `echo` ngay sau đây.
@@ -345,7 +347,7 @@ Chúng ta đã lưu ý trước đó rằng `inetd` đơn giản hóa việc l�
 
 (Trong mô tả về các bước trên, chúng ta giả định các trường hợp thông thường là trường cờ (flags field) của mục dịch vụ trong `/etc/inetd.conf` được chỉ định là `nowait` đối với dịch vụ TCP và `wait` đối với dịch vụ UDP).
 
-Là một ví dụ về việc `inetd` đơn giản hóa việc lập trình dịch vụ TCP như thế nào, tại [List](#page-102-0)[ing 60-6,](#page-102-0) chúng tôi trình bày phiên bản tương đương được gọi bởi `inetd` của TCP echo server từ [Listing 60-4.](#page-95-0) Vì `inetd` thực hiện tất cả các bước trên, tất cả những gì còn lại của server chỉ là mã nguồn được thực thi bởi tiến trình con để xử lý yêu cầu của client, vốn có thể được đọc từ file descriptor 0 (`STDIN_FILENO`).
+Là một ví dụ về việc `inetd` đơn giản hóa việc lập trình dịch vụ TCP như thế nào, tại [Liệt kê 60-6](#page-102-0), chúng tôi trình bày phiên bản tương đương được gọi bởi `inetd` của TCP echo server từ [Liệt kê 60-4.](#page-95-0) Vì `inetd` thực hiện tất cả các bước trên, tất cả những gì còn lại của server chỉ là mã nguồn được thực thi bởi tiến trình con để xử lý yêu cầu của client, vốn có thể được đọc từ file descriptor 0 (`STDIN_FILENO`).
 
 Nếu server nằm trong thư mục `/bin` (chẳng hạn), thì chúng ta sẽ cần tạo mục nhập sau trong `/etc/inetd.conf` để `inetd` có thể gọi server đó:
 
@@ -354,28 +356,34 @@ echo stream tcp nowait root /bin/is\_echo\_inetd\_sv is\_echo\_inetd\_sv
 **Listing 60-6:** TCP echo server được thiết kế để gọi thông qua `inetd`
 
 ```c
+
 –––––––––––––––––––––––––––––––––––––––––––––––– sockets/is_echo_inetd_sv.c
+
 ## include <syslog.h>
+
 ## include "tlpi_hdr.h"
+
 ## define BUF_SIZE 4096
+
 int
 main(int argc, char *argv[])
 {
- char buf[BUF_SIZE];
- ssize_t numRead;
- while ((numRead = read(STDIN_FILENO, buf, BUF_SIZE)) > 0) {
- if (write(STDOUT_FILENO, buf, numRead) != numRead) {
- syslog(LOG_ERR, "write() failed: %s", strerror(errno));
- exit(EXIT_FAILURE);
- }
- }
- if (numRead == -1) {
- syslog(LOG_ERR, "Error from read(): %s", strerror(errno));
- exit(EXIT_FAILURE);
- }
- exit(EXIT_SUCCESS);
+char buf[BUF_SIZE];
+ssize_t numRead;
+while ((numRead = read(STDIN_FILENO, buf, BUF_SIZE)) > 0) {
+if (write(STDOUT_FILENO, buf, numRead) != numRead) {
+syslog(LOG_ERR, "write() failed: %s", strerror(errno));
+exit(EXIT_FAILURE);
+}
+}
+if (numRead == -1) {
+syslog(LOG_ERR, "Error from read(): %s", strerror(errno));
+exit(EXIT_FAILURE);
+}
+exit(EXIT_SUCCESS);
 }
 –––––––––––––––––––––––––––––––––––––––––––––––– sockets/is_echo_inetd_sv.c
+
 ```
 
 ## 60.6 Tổng kết

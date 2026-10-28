@@ -1,4 +1,4 @@
-# Chương 10: THỜI GIAN
+# Chương 10: Thời gian (Time)
 
 Bên trong một chương trình, chúng ta thường quan tâm đến hai loại thời gian:
 
@@ -11,6 +11,7 @@ Hầu hết các kiến trúc máy tính đều có một đồng hồ phần c�
 
 Bất kể vị trí địa lý, các hệ thống UNIX biểu diễn thời gian bên trong dưới dạng số giây tính từ Thời điểm gốc (Epoch); nghĩa là tính từ nửa đêm của buổi sáng ngày 1 tháng 1 năm 1970 theo giờ Phối hợp Quốc tế (UTC - Coordinated Universal Time, trước đây gọi là giờ trung bình Greenwich, hay GMT). Đây xấp xỉ là thời điểm hệ thống UNIX ra đời. Thời gian lịch được lưu trữ trong các biến kiểu `time_t`, một kiểu số nguyên (integer type) được quy định bởi SUSv3.
 
+> [!NOTE]
 > Trên các hệ thống Linux 32-bit, `time_t` là một số nguyên có dấu (signed integer), có thể biểu diễn các khoảng thời gian từ ngày 13 tháng 12 năm 1901 20:45:52 đến ngày 19 tháng 1 năm 2038 03:14:07. (SUSv3 không quy định rõ ý nghĩa của các giá trị `time_t` âm). Do đó, nhiều hệ thống UNIX 32-bit hiện tại phải đối mặt với vấn đề lý thuyết về Năm 2038 (Year 2038 problem), mà chúng có thể gặp phải trước năm 2038 nếu thực hiện các phép tính dựa trên các mốc thời gian trong tương lai. Vấn đề này sẽ được giảm thiểu đáng kể bởi thực tế là đến năm 2038, có lẽ tất cả các hệ thống UNIX đều đã chuyển đổi hoàn toàn sang kiến trúc 64-bit trở lên. Tuy nhiên, các hệ thống nhúng (embedded systems) 32-bit vốn thường có vòng đời dài hơn nhiều so với phần cứng máy tính để bàn (desktop hardware), vẫn có thể gặp phải vấn đề này. Hơn nữa, vấn đề này vẫn sẽ tồn tại đối với bất kỳ dữ liệu và ứng dụng kế thừa (legacy) nào duy trì thời gian ở định dạng `time_t` 32-bit.
 
 System call `gettimeofday()` trả về thời gian lịch trong bộ đệm được trỏ tới bởi `tv`.
@@ -124,6 +125,7 @@ struct tm *localtime(const time_t *timep);
 
 Hàm `gmtime()` chuyển đổi thời gian lịch (calendar time) thành thời gian đã phân tách tương ứng với giờ UTC. (Các chữ cái `gm` bắt nguồn từ Giờ trung bình Greenwich - Greenwich Mean Time). Ngược lại, `localtime()` tính đến các thiết lập múi giờ và DST để trả về thời gian đã phân tách tương ứng với giờ địa phương của hệ thống.
 
+> [!NOTE]
 > Các phiên bản tái nhập của các hàm này được cung cấp dưới dạng `gmtime_r()` và `localtime_r()`.
 
 Cấu trúc `tm` được trả về bởi các hàm này chứa các trường ngày và giờ được chia thành các phần riêng lẻ. Cấu trúc này có dạng sau:
@@ -221,58 +223,62 @@ mktime() of localtime() value: 1293548517 secs 3600 secs ahead of UTC
 ## include "tlpi_hdr.h"
 ```
 
-```
 ## define SECONDS_IN_TROPICAL_YEAR (365.24219 * 24 * 60 * 60)
+
 int
 main(int argc, char *argv[])
 {
- time_t t;
- struct tm *gmp, *locp;
- struct tm gm, loc;
- struct timeval tv;
- t = time(NULL);
- printf("Seconds since the Epoch (1 Jan 1970): %ld", (long) t);
- printf(" (about %6.3f years)\n", t / SECONDS_IN_TROPICAL_YEAR);
- if (gettimeofday(&tv, NULL) == -1)
- errExit("gettimeofday");
- printf(" gettimeofday() returned %ld secs, %ld microsecs\n",
- (long) tv.tv_sec, (long) tv.tv_usec);
- gmp = gmtime(&t);
- if (gmp == NULL)
- errExit("gmtime");
- gm = *gmp; /* Lưu bản sao cục bộ, vì *gmp có thể bị sửa đổi
- bởi asctime() hoặc gmtime() */
- printf("Broken down by gmtime():\n");
- printf(" year=%d mon=%d mday=%d hour=%d min=%d sec=%d ", gm.tm_year,
- gm.tm_mon, gm.tm_mday, gm.tm_hour, gm.tm_min, gm.tm_sec);
- printf("wday=%d yday=%d isdst=%d\n", gm.tm_wday, gm.tm_yday, gm.tm_isdst);
- locp = localtime(&t);
- if (locp == NULL)
- errExit("localtime");
- loc = *locp; /* Lưu bản sao cục bộ */
- printf("Broken down by localtime():\n");
- printf(" year=%d mon=%d mday=%d hour=%d min=%d sec=%d ",
- loc.tm_year, loc.tm_mon, loc.tm_mday,
- loc.tm_hour, loc.tm_min, loc.tm_sec);
- printf("wday=%d yday=%d isdst=%d\n\n",
- loc.tm_wday, loc.tm_yday, loc.tm_isdst);
- printf("asctime() formats the gmtime() value as: %s", asctime(&gm));
- printf("ctime() formats the time() value as: %s", ctime(&t));
- printf("mktime() of gmtime() value: %ld secs\n", (long) mktime(&gm));
- printf("mktime() of localtime() value: %ld secs\n", (long) mktime(&loc));
- exit(EXIT_SUCCESS);
+time_t t;
+struct tm *gmp, *locp;
+struct tm gm, loc;
+struct timeval tv;
+t = time(NULL);
+printf("Seconds since the Epoch (1 Jan 1970): %ld", (long) t);
+printf(" (about %6.3f years)\n", t / SECONDS_IN_TROPICAL_YEAR);
+if (gettimeofday(&tv, NULL) == -1)
+errExit("gettimeofday");
+printf(" gettimeofday() returned %ld secs, %ld microsecs\n",
+(long) tv.tv_sec, (long) tv.tv_usec);
+gmp = gmtime(&t);
+if (gmp == NULL)
+errExit("gmtime");
+gm = *gmp; /* Lưu bản sao cục bộ, vì *gmp có thể bị sửa đổi
+bởi asctime() hoặc gmtime() */
+printf("Broken down by gmtime():\n");
+printf(" year=%d mon=%d mday=%d hour=%d min=%d sec=%d ", gm.tm_year,
+gm.tm_mon, gm.tm_mday, gm.tm_hour, gm.tm_min, gm.tm_sec);
+printf("wday=%d yday=%d isdst=%d\n", gm.tm_wday, gm.tm_yday, gm.tm_isdst);
+locp = localtime(&t);
+if (locp == NULL)
+errExit("localtime");
+loc = *locp; /* Lưu bản sao cục bộ */
+printf("Broken down by localtime():\n");
+printf(" year=%d mon=%d mday=%d hour=%d min=%d sec=%d ",
+loc.tm_year, loc.tm_mon, loc.tm_mday,
+loc.tm_hour, loc.tm_min, loc.tm_sec);
+printf("wday=%d yday=%d isdst=%d\n\n",
+loc.tm_wday, loc.tm_yday, loc.tm_isdst);
+printf("asctime() formats the gmtime() value as: %s", asctime(&gm));
+printf("ctime() formats the time() value as: %s", ctime(&t));
+printf("mktime() of gmtime() value: %ld secs\n", (long) mktime(&gm));
+printf("mktime() of localtime() value: %ld secs\n", (long) mktime(&loc));
+exit(EXIT_SUCCESS);
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– time/calendar_time.c
+
 ```
 
 Hàm `strftime()` cung cấp cho chúng ta khả năng kiểm soát chính xác hơn khi chuyển đổi thời gian chi tiết sang dạng hiển thị. Nhận một con trỏ thời gian chi tiết do `timeptr` trỏ tới, `strftime()` đặt một chuỗi ngày-kèm-giờ tương ứng, kết thúc bằng ký tự null vào vùng đệm (buffer) do `outstr` trỏ tới.
 
 ```c
+
 ## include <time.h>
+
 size_t strftime(char *outstr, size_t maxsize, const char *format,
- const struct tm *timeptr);
-                           Trả về số byte được đặt vào outstr (không bao gồm
-                               ký tự null kết thúc) khi thành công, hoặc 0 khi lỗi
+const struct tm *timeptr);
+Trả về số byte được đặt vào outstr (không bao gồm
+ký tự null kết thúc) khi thành công, hoặc 0 khi lỗi
+
 ```
 
 Chuỗi được trả về trong `outstr` được định dạng theo đặc tả trong `format`. Đối số `maxsize` chỉ định dung lượng tối đa khả dụng trong `outstr`. Không giống như `ctime()` và `asctime()`, `strftime()` không bao gồm ký tự newline ở cuối chuỗi (trừ khi nó được bao gồm trong `format`).
@@ -286,9 +292,12 @@ Cả hai ký tự đặc tả `%U` và `%W` đều tạo ra số tuần trong n�
 Thông thường, chúng ta muốn hiển thị thời gian hiện tại trong các chương trình minh họa khác nhau trong cuốn sách này. Vì mục đích này, chúng tôi cung cấp hàm `currTime()`, trả về một chuỗi chứa thời gian hiện tại được định dạng bởi `strftime()` khi được truyền đối số `format`.
 
 ```c
+
 ## include "curr_time.h"
+
 char *currTime(const char *format);
-                    Trả về con trỏ tới chuỗi được cấp phát tĩnh, hoặc NULL khi có lỗi
+Trả về con trỏ tới chuỗi được cấp phát tĩnh, hoặc NULL khi có lỗi
+
 ```
 
 Việc cài đặt hàm `currTime()` được thể hiện trong Liệt kê [10-2.](#page-41-0)
@@ -330,34 +339,42 @@ Việc cài đặt hàm `currTime()` được thể hiện trong Liệt kê [10-
 **Liệt kê 10-2:** Một hàm trả về chuỗi chứa thời gian hiện tại
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––– time/curr_time.c
+
 ## include <time.h>
+
 ## include "curr_time.h" /* Khai báo hàm được định nghĩa ở đây */
+
 ## define BUF_SIZE 1000
+
 /* Trả về một chuỗi chứa thời gian hiện tại được định dạng theo
- thông số kỹ thuật trong 'format' (xem strftime(3) để biết các ký tự đặc tả).
- Nếu 'format' là NULL, chúng ta sử dụng "%c" làm ký tự đặc tả (cung cấp
- ngày và giờ giống như ctime(3), nhưng không có ký tự xuống dòng ở cuối).
+thông số kỹ thuật trong 'format' (xem strftime(3) để biết các ký tự đặc tả).
+Nếu 'format' là NULL, chúng ta sử dụng "%c" làm ký tự đặc tả (cung cấp
+ngày và giờ giống như ctime(3), nhưng không có ký tự xuống dòng ở cuối).
+
 ```
 
 Trả về NULL khi có lỗi. \*/
 
 ```
+
 char *
 currTime(const char *format)
 {
- static char buf[BUF_SIZE]; /* Không khả reentrant */
- time_t t;
- size_t s;
- struct tm *tm;
- t = time(NULL);
- tm = localtime(&t);
- if (tm == NULL)
- return NULL;
- s = strftime(buf, BUF_SIZE, (format != NULL) ? format : "%c", tm);
- return (s == 0) ? NULL : buf;
+static char buf[BUF_SIZE]; /* Không khả reentrant */
+time_t t;
+size_t s;
+struct tm *tm;
+t = time(NULL);
+tm = localtime(&t);
+if (tm == NULL)
+return NULL;
+s = strftime(buf, BUF_SIZE, (format != NULL) ? format : "%c", tm);
+return (s == 0) ? NULL : buf;
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––– time/curr_time.c
+
 ```
 
 ### Chuyển đổi từ dạng chuỗi in được sang cấu trúc thời gian chi tiết (broken-down time)
@@ -365,11 +382,15 @@ currTime(const char *format)
 Hàm `strptime()` là hàm ngược lại của `strftime()`. Nó chuyển đổi một chuỗi ngày-và-giờ thành một cấu trúc thời gian chi tiết (`struct tm` - broken-down time).
 
 ```c
+
 ## define _XOPEN_SOURCE
+
 ## include <time.h>
+
 char *strptime(const char *str, const char *format, struct tm *timeptr);
-                               Trả về con trỏ tới ký tự chưa xử lý tiếp theo trong 
-                                              str khi thành công, hoặc NULL khi lỗi
+Trả về con trỏ tới ký tự chưa xử lý tiếp theo trong
+str khi thành công, hoặc NULL khi lỗi
+
 ```
 
 Hàm `strptime()` sử dụng đặc tả được cung cấp trong `format` để phân tích chuỗi ngày-và-giờ được truyền vào qua `str`, và đặt kết quả thời gian chi tiết đã chuyển đổi vào cấu trúc do `timeptr` trỏ tới.
@@ -391,49 +412,61 @@ Việc triển khai `strptime()` trong glibc không sửa đổi các trường 
 Đoạn mã [10-3](#page-44-1) minh họa việc sử dụng `strptime()` và `strftime()`. Chương trình này nhận một tham số dòng lệnh chứa ngày và giờ, chuyển đổi nó thành thời gian chi tiết bằng cách sử dụng `strptime()`, sau đó hiển thị kết quả của việc thực hiện phép chuyển đổi ngược lại bằng `strftime()`. Chương trình nhận tối đa ba tham số, trong đó hai tham số đầu tiên là bắt buộc. Tham số đầu tiên là chuỗi chứa ngày và giờ. Tham số thứ hai là đặc tả định dạng sẽ được `strptime()` sử dụng để phân tích tham số đầu tiên. Tham số thứ ba tùy chọn là chuỗi định dạng sẽ được `strftime()` sử dụng cho phép chuyển đổi ngược lại. Nếu bỏ qua tham số này, một chuỗi định dạng mặc định sẽ được sử dụng. (Chúng ta mô tả hàm `setlocale()` được sử dụng trong chương trình này tại Mục [10.4.](#page-47-0)) Nhật ký phiên dòng lệnh sau đây cho thấy một số ví dụ về việc sử dụng chương trình này:
 
 ```
+
 $ ./strtime "9:39:46pm 1 Feb 2011" "%I:%M:%S%p %d %b %Y"
 calendar time (seconds since Epoch): 1296592786
 strftime() yields: 21:39:46 Tuesday, 01 February 2011 CET
+
 ```
 
 Cách sử dụng sau đây tương tự, nhưng lần này chúng ta chỉ định rõ ràng một định dạng cho hàm `strftime()`:
 
 ```
+
 $ ./strtime "9:39:46pm 1 Feb 2011" "%I:%M:%S%p %d %b %Y" "%F %T"
 calendar time (seconds since Epoch): 1296592786
 strftime() yields: 2011-02-01 21:39:46
+
 ```
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– time/strtime.c
+
 ## define _XOPEN_SOURCE
+
 ## include <time.h>
+
 ## include <locale.h>
+
 ## include "tlpi_hdr.h"
+
 ## define SBUF_SIZE 1000
+
 int
 main(int argc, char *argv[])
 {
- struct tm tm;
- char sbuf[SBUF_SIZE];
- char *ofmt;
- if (argc < 3 || strcmp(argv[1], "--help") == 0)
- usageErr("%s input-date-time in-format [out-format]\n", argv[0]);
- if (setlocale(LC_ALL, "") == NULL)
- errExit("setlocale"); /* Use locale settings in conversions */
- memset(&tm, 0, sizeof(struct tm)); /* Initialize 'tm' */
- if (strptime(argv[1], argv[2], &tm) == NULL)
- fatal("strptime");
- tm.tm_isdst = -1; /* Not set by strptime(); tells mktime()
- to determine if DST is in effect */
- printf("calendar time (seconds since Epoch): %ld\n", (long) mktime(&tm));
- ofmt = (argc > 3) ? argv[3] : "%H:%M:%S %A, %d %B %Y %Z";
- if (strftime(sbuf, SBUF_SIZE, ofmt, &tm) == 0)
- fatal("strftime returned 0");
- printf("strftime() yields: %s\n", sbuf);
- exit(EXIT_SUCCESS);
+struct tm tm;
+char sbuf[SBUF_SIZE];
+char *ofmt;
+if (argc < 3 || strcmp(argv[1], "--help") == 0)
+usageErr("%s input-date-time in-format [out-format]\n", argv[0]);
+if (setlocale(LC_ALL, "") == NULL)
+errExit("setlocale"); /* Use locale settings in conversions */
+memset(&tm, 0, sizeof(struct tm)); /* Initialize 'tm' */
+if (strptime(argv[1], argv[2], &tm) == NULL)
+fatal("strptime");
+tm.tm_isdst = -1; /* Not set by strptime(); tells mktime()
+to determine if DST is in effect */
+printf("calendar time (seconds since Epoch): %ld\n", (long) mktime(&tm));
+ofmt = (argc > 3) ? argv[3] : "%H:%M:%S %A, %d %B %Y %Z";
+if (strftime(sbuf, SBUF_SIZE, ofmt, &tm) == 0)
+fatal("strftime returned 0");
+printf("strftime() yields: %s\n", sbuf);
+exit(EXIT_SUCCESS);
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– time/strtime.c
+
 ```
 
 ## 10.3 Múi giờ (Timezone)
@@ -457,10 +490,12 @@ Thời gian cục bộ (local time) cho hệ thống được xác định bằn
 Để lấy thiết lập múi giờ hiện tại, mỗi hàm này sử dụng `tzset(3)`, hàm này khởi tạo ba biến toàn cục (global variables):
 
 ```
+
 char *tzname[2]; /* Name of timezone and alternate (DST) timezone */
 int daylight; /* Nonzero if there is an alternate (DST) timezone */
 long timezone; /* Seconds difference between UTC and local
- standard time */
+standard time */
+
 ```
 
 Hàm `tzset()` trước tiên kiểm tra biến môi trường `TZ`. Nếu biến này chưa được thiết lập, múi giờ sẽ được khởi tạo theo giá trị mặc định được định nghĩa trong tệp múi giờ `/etc/localtime`. Nếu biến môi trường `TZ` được định nghĩa với một giá trị không khớp với tệp múi giờ nào, hoặc là một chuỗi rỗng, thì `UTC` sẽ được sử dụng. Biến môi trường `TZDIR` (một phần mở rộng GNU phi tiêu chuẩn - nonstandard GNU-extension) có thể được thiết lập thành tên của một thư mục nơi thông tin múi giờ nên được tìm kiếm thay vì thư mục mặc định `/usr/share/zoneinfo`.
@@ -468,6 +503,7 @@ Hàm `tzset()` trước tiên kiểm tra biến môi trường `TZ`. Nếu biế
 Chúng ta có thể thấy hiệu ứng của biến `TZ` bằng cách chạy chương trình trong Liệt kê [10-4.](#page-46-0) Trong lần chạy đầu tiên, chúng ta thấy đầu ra tương ứng với múi giờ mặc định của hệ thống (Giờ Trung Âu, CET). Trong lần chạy thứ hai, chúng ta chỉ định múi giờ cho New Zealand, nơi vào thời điểm này trong năm đang áp dụng giờ mùa hè (DST), đi trước CET 12 tiếng.
 
 ```
+
 $ ./show_time
 ctime() of time() value is: Tue Feb 1 10:25:56 2011
 asctime() of local time is: Tue Feb 1 10:25:56 2011
@@ -476,34 +512,42 @@ $ TZ=":Pacific/Auckland" ./show_time
 ctime() of time() value is: Tue Feb 1 22:26:19 2011
 asctime() of local time is: Tue Feb 1 22:26:19 2011
 strftime() of local time is: Tuesday, 01 February 2011, 22:26:19 NZDT
+
 ```
 
 ```c
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––– time/show_time.c
+
 ## include <time.h>
+
 ## include <locale.h>
+
 ## include "tlpi_hdr.h"
+
 ## define BUF_SIZE 200
+
 int
 main(int argc, char *argv[])
 {
- time_t t;
- struct tm *loc;
- char buf[BUF_SIZE];
- if (setlocale(LC_ALL, "") == NULL)
- errExit("setlocale"); /* Sử dụng cài đặt locale trong các phép chuyển đổi */
- t = time(NULL);
- printf("ctime() of time() value is: %s", ctime(&t));
- loc = localtime(&t);
- if (loc == NULL)
- errExit("localtime");
- printf("asctime() of local time is: %s", asctime(loc));
- if (strftime(buf, BUF_SIZE, "%A, %d %B %Y, %H:%M:%S %Z", loc) == 0)
- fatal("strftime returned 0");
- printf("strftime() of local time is: %s\n", buf);
- exit(EXIT_SUCCESS);
+time_t t;
+struct tm *loc;
+char buf[BUF_SIZE];
+if (setlocale(LC_ALL, "") == NULL)
+errExit("setlocale"); /* Sử dụng cài đặt locale trong các phép chuyển đổi */
+t = time(NULL);
+printf("ctime() of time() value is: %s", ctime(&t));
+loc = localtime(&t);
+if (loc == NULL)
+errExit("localtime");
+printf("asctime() of local time is: %s", asctime(loc));
+if (strftime(buf, BUF_SIZE, "%A, %d %B %Y, %H:%M:%S %Z", loc) == 0)
+fatal("strftime returned 0");
+printf("strftime() of local time is: %s\n", buf);
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––––– time/show_time.c
+
 ```
 
 SUSv3 định nghĩa hai cách tổng quát để thiết lập biến môi trường `TZ`. Như vừa mô tả, `TZ` có thể được thiết lập thành một chuỗi ký tự bao gồm một dấu hai chấm cộng với một chuỗi xác định múi giờ (timezone) theo một cách thức phụ thuộc vào cài đặt (implementation-specific), thường là đường dẫn (pathname) đến một tệp mô tả múi giờ. (Linux và một số cài đặt UNIX khác cho phép bỏ qua dấu hai chấm khi sử dụng dạng này, nhưng SUSv3 không quy định điều này; để đảm bảo tính khả chuyển (portability), chúng ta nên luôn bao gồm dấu hai chấm.)
@@ -511,7 +555,9 @@ SUSv3 định nghĩa hai cách tổng quát để thiết lập biến môi trư
 Phương pháp thiết lập `TZ` còn lại được quy định đầy đủ trong SUSv3. Trong phương pháp này, chúng ta gán một chuỗi có dạng sau cho `TZ`:
 
 ```
+
 std offset [ dst [ offset ][ , start-date [ /time ] , end-date [ /time ]]]
+
 ```
 
 Các khoảng trắng được đưa vào dòng trên để dễ đọc, nhưng không được xuất hiện bất kỳ khoảng trắng nào trong giá trị `TZ`. Các dấu ngoặc vuông (`[]`) được dùng để chỉ ra các thành phần tùy chọn.
@@ -523,7 +569,9 @@ Các ngày có thể được chỉ định dưới nhiều hình thức khác n
 Dưới đây là cách chúng ta có thể định nghĩa `TZ` cho Trung Âu, nơi giờ chuẩn đi trước UTC một giờ, và DST—kéo dài từ Chủ Nhật cuối cùng của tháng 3 đến Chủ Nhật cuối cùng của tháng 10—đi trước UTC 2 giờ:
 
 ```
+
 TZ="CET-1:00:00CEST-2:00:00,M3.5.0,M10.5.0
+
 ```
 
 Chúng ta đã bỏ qua việc chỉ định thời gian chuyển đổi DST, vì nó diễn ra ở mốc mặc định là `02:00:00`. Tất nhiên, dạng thức trên ít dễ đọc hơn so với dạng tương đương gần đúng đặc thù của Linux:
@@ -592,10 +640,13 @@ Các locale thực tế được định nghĩa trên một hệ thống có th�
 Hàm `setlocale()` được sử dụng để vừa thiết lập vừa truy vấn locale hiện tại của một chương trình.
 
 ```c
+
 ## include <locale.h>
+
 char *setlocale(int category, const char *locale);
-              Trả về con trỏ tới một chuỗi (thường được cấp phát tĩnh) xác định
-                            locale mới hoặc hiện tại khi thành công, hoặc NULL khi lỗi
+Trả về con trỏ tới một chuỗi (thường được cấp phát tĩnh) xác định
+locale mới hoặc hiện tại khi thành công, hoặc NULL khi lỗi
+
 ```
 
 Tham số `category` chọn phần nào của locale cần thiết lập hoặc truy vấn, và được chỉ định là một trong tập hợp các hằng số có tên giống với các danh mục locale được liệt kê trong Bảng [10-2](#page-49-0). Do đó, ví dụ, có thể thiết lập locale cho việc hiển thị thời gian là Đức, trong khi thiết lập locale cho việc hiển thị tiền tệ là đô la Mỹ. Ngoài ra, và phổ biến hơn, chúng ta có thể sử dụng giá trị `LC_ALL` để chỉ định rằng chúng ta muốn thiết lập tất cả các khía cạnh của locale.
@@ -603,7 +654,9 @@ Tham số `category` chọn phần nào của locale cần thiết lập hoặc 
 Có hai phương pháp khác nhau để thiết lập locale bằng cách sử dụng `setlocale()`. Tham số `locale` có thể là một chuỗi chỉ định một trong các locale được định nghĩa trên hệ thống (tức là tên của một trong các thư mục con dưới `/usr/lib/locale`), chẳng hạn như `de_DE` hoặc `en_US`. Hoặc cách khác, `locale` có thể được chỉ định là một chuỗi rỗng, có nghĩa là các thiết lập locale phải được lấy từ các biến môi trường (environment variables):
 
 ```c
+
 setlocale(LC_ALL, "");
+
 ```
 
 Chúng ta bắt buộc phải gọi hàm này để chương trình có thể nhận biết được các biến môi trường cấu hình ngôn ngữ/vùng (locale environment variables). Nếu bỏ qua lệnh gọi này, các biến môi trường này sẽ không có tác dụng đối với chương trình.
@@ -615,28 +668,34 @@ Là kết quả trả về, `setlocale()` trả về một con trỏ trỏ đế
 Các thiết lập locale kiểm soát hoạt động của một loạt các tiện ích GNU/Linux, cũng như nhiều hàm trong glibc. Trong số đó có các hàm `strftime()` và `strptime()` (Mục [10.2.3](#page-38-1)), như được minh họa qua kết quả từ `strftime()` khi chúng ta chạy chương trình trong Liệt kê [10-4](#page-46-0) dưới một số locale khác nhau:
 
 ```
+
 $ LANG=de_DE ./show_time German locale
 ctime() of time() value is: Tue Feb 1 12:23:39 2011
 asctime() of local time is: Tue Feb 1 12:23:39 2011
 strftime() of local time is: Dienstag, 01 Februar 2011, 12:23:39 CET
+
 ```
 
 Lần chạy tiếp theo minh họa rằng `LC_TIME` có độ ưu tiên cao hơn `LANG`:
 
 ```
+
 $ LANG=de_DE LC_TIME=it_IT ./show_time German and Italian locales
 ctime() of time() value is: Tue Feb 1 12:24:03 2011
 asctime() of local time is: Tue Feb 1 12:24:03 2011
 strftime() of local time is: martedì, 01 febbraio 2011, 12:24:03 CET
+
 ```
 
 Và lần chạy này minh họa rằng `LC_ALL` có độ ưu tiên cao hơn `LC_TIME`:
 
 ```
+
 $ LC_ALL=fr_FR LC_TIME=en_US ./show_time French and US locales
 ctime() of time() value is: Tue Feb 1 12:25:38 2011
 asctime() of local time is: Tue Feb 1 12:25:38 2011
 strftime() of local time is: mardi, 01 février 2011, 12:25:38 CET
+
 ```
 
 ## 10.5 Cập nhật Đồng hồ Hệ thống
@@ -646,10 +705,14 @@ Bây giờ chúng ta sẽ xem xét hai giao diện dùng để cập nhật đ�
 System Call `settimeofday()` thực hiện chức năng ngược lại với `gettimeofday()` (đã được mô tả ở Mục [10.1](#page-33-0)): nó thiết lập thời gian lịch (calendar time) của hệ thống thành số giây và micro giây được chỉ định trong cấu trúc `timeval` mà con trỏ `tv` trỏ tới.
 
 ```c
+
 ## define _BSD_SOURCE
+
 ## include <sys/time.h>
+
 int settimeofday(const struct timeval *tv, const struct timezone *tz);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Giống như `gettimeofday()`, việc sử dụng tham số `tz` đã lỗi thời và tham số này phải luôn được chỉ định là `NULL`.
@@ -663,10 +726,14 @@ Mặc dù `settimeofday()` không được quy định trong SUSv3, nhưng nó �
 Những thay đổi đột ngột về thời gian hệ thống kiểu như do các lời gọi `settimeofday()` gây ra có thể có tác động tiêu cực đến các ứng dụng (ví dụ: `make(1)`, hệ thống cơ sở dữ liệu sử dụng dấu thời gian (timestamp), hoặc các tệp nhật ký (log file) có gắn dấu thời gian) phụ thuộc vào một đồng hồ hệ thống tăng đơn điệu (monotonically increasing clock). Vì lý do này, khi thực hiện các thay đổi nhỏ về thời gian (cỡ vài giây), thường ưu tiên sử dụng hàm thư viện `adjtime()`, hàm này khiến đồng hồ hệ thống dần dần điều chỉnh đến giá trị mong muốn.
 
 ```c
+
 ## define _BSD_SOURCE
+
 ## include <sys/time.h>
+
 int adjtime(struct timeval *delta, struct timeval *olddelta);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Tham số `delta` trỏ đến một cấu trúc `timeval` chỉ định số giây và micro giây dùng để thay đổi thời gian. Nếu giá trị này dương, một khoảng thời gian nhỏ bổ sung sẽ được cộng vào đồng hồ hệ thống trong mỗi giây, cho đến khi đủ lượng thời gian mong muốn. Nếu giá trị `delta` âm, đồng hồ sẽ được làm chậm lại theo cách tương tự.
@@ -679,6 +746,7 @@ Có thể một quá trình điều chỉnh đồng hồ chưa hoàn tất đang
 
 Mặc dù không được quy định trong tiêu chuẩn SUSv3, `adjtime()` vẫn có sẵn trên hầu hết các bản cài đặt UNIX.
 
+> [!NOTE]
 > Trên Linux, `adjtime()` được hiện thực dựa trên một system call (System Call) tổng quát hơn (và phức tạp hơn) đặc trưng cho Linux là `adjtimex()`. System call này được sử dụng bởi tiến trình nền (daemon) Network Time Protocol (NTP). Để biết thêm thông tin, hãy tham khảo mã nguồn Linux, trang hướng dẫn (manual page) `adjtimex(2)` trên Linux, và đặc tả NTP ([Mills, 1992]).
 
 ## 10.6 Đồng hồ phần mềm (Software Clock - Jiffies)
@@ -695,8 +763,8 @@ Các cuộc tranh luận giữa các nhà phát triển kernel (kernel developer
 
 Thời gian tiến trình (Process Time) là lượng thời gian CPU mà một tiến trình sử dụng kể từ khi nó được tạo ra. Để ghi nhận, kernel chia thời gian CPU thành hai thành phần sau:
 
--  Thời gian CPU người dùng (User CPU time) là lượng thời gian dành để thực thi trong chế độ người dùng (user mode). Đôi khi được gọi là thời gian ảo (virtual time), đây là khoảng thời gian mà chương trình có vẻ như có quyền truy cập vào CPU.
--  Thời gian CPU hệ thống (System CPU time) là lượng thời gian dành để thực thi trong chế độ kernel (kernel mode). Đây là thời gian kernel dành ra để thực thi các System Call hoặc thực hiện các tác vụ khác thay mặt cho chương trình (ví dụ: xử lý lỗi trang nhớ - page fault).
+- Thời gian CPU người dùng (User CPU time) là lượng thời gian dành để thực thi trong chế độ người dùng (user mode). Đôi khi được gọi là thời gian ảo (virtual time), đây là khoảng thời gian mà chương trình có vẻ như có quyền truy cập vào CPU.
+- Thời gian CPU hệ thống (System CPU time) là lượng thời gian dành để thực thi trong chế độ kernel (kernel mode). Đây là thời gian kernel dành ra để thực thi các System Call hoặc thực hiện các tác vụ khác thay mặt cho chương trình (ví dụ: xử lý lỗi trang nhớ - page fault).
 
 Đôi khi, chúng ta gọi thời gian tiến trình là tổng thời gian CPU mà tiến trình đó tiêu thụ. Khi chạy một chương trình từ shell, chúng ta có thể sử dụng lệnh `time(1)` để lấy cả hai giá trị thời gian tiến trình, cũng như thời gian thực (real time) cần thiết để chạy chương trình đó:
 
@@ -738,6 +806,7 @@ Hai trường đầu tiên của cấu trúc `tms` trả về các thành phần
 
 Kiểu dữ liệu `clock_t` dùng cho bốn trường của cấu trúc `tms` là một kiểu số nguyên đo thời gian theo các đơn vị gọi là xung nhịp (clock tick). Chúng ta có thể gọi `sysconf(_SC_CLK_TCK)` để lấy số lượng clock tick trên mỗi giây, sau đó chia giá trị `clock_t` cho số này để chuyển đổi sang đơn vị giây. (Chúng tôi mô tả `sysconf()` trong Mục [11.2.](#page-62-0))
 
+> [!NOTE]
 > Trên hầu hết các kiến trúc phần cứng Linux, `sysconf(_SC_CLK_TCK)` trả về số 100. Giá trị này tương ứng với hằng số kernel `USER_HZ`. Tuy nhiên, `USER_HZ` có thể được định nghĩa với một giá trị khác 100 trên một số ít kiến trúc, chẳng hạn như Alpha và IA-64.
 
 Khi thành công, `times()` trả về thời gian đã trôi qua (thời gian thực - real time) tính bằng clock tick kể từ một thời điểm tùy ý nào đó trong quá khứ. SUSv3 cố ý không quy định thời điểm này là gì, mà chỉ nêu rằng nó sẽ không đổi trong vòng đời của tiến trình gọi. Do đó, cách sử dụng duy nhất có thể di chuyển (portable) của giá trị trả về này là đo thời gian trôi qua trong quá trình thực thi tiến trình bằng cách tính hiệu số giữa các giá trị trả về từ các cặp lời gọi `times()`. Tuy nhiên, ngay cả đối với mục đích này, giá trị trả về của `times()` vẫn không đáng tin cậy, vì nó có thể vượt quá giới hạn (overflow) dải giá trị của `clock_t`, tại thời điểm đó giá trị sẽ quay vòng (cycle) bắt đầu lại từ 0 (tức là một lời gọi `times()` sau đó có thể trả về một số nhỏ hơn lời gọi `times()` trước đó). Cách đáng tin cậy để đo khoảng thời gian trôi qua là sử dụng `gettimeofday()` (được mô tả trong Mục [10.1\)](#page-33-0).

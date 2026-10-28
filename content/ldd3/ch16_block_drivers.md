@@ -1,4 +1,4 @@
-# Chương 16: Trình điều khiển Khối (Block Drivers)
+# Chương 16: Driver khối (Block Drivers)
 
 Cho đến nay, các cuộc thảo luận của chúng ta chỉ giới hạn ở các trình điều khiển ký tự (char drivers). Tuy nhiên, có những loại trình điều khiển khác trong các hệ thống Linux, và đã đến lúc chúng ta mở rộng tầm nhìn của mình hơn một chút. Theo đó, chương này thảo luận về các trình điều khiển khối (block drivers).
 
@@ -395,7 +395,7 @@ Do đó, khi hàng đợi được tạo, hàm *request* được liên kết v�
 
 Khóa của hàng đợi (queue lock) cũng ngăn không cho kernel xếp hàng (queue) bất kỳ yêu cầu nào khác cho thiết bị của bạn trong khi hàm *request* đang giữ khóa. Trong một số điều kiện, bạn có thể muốn cân nhắc việc nhả khóa (dropping the lock) này trong khi hàm *request* đang chạy. Tuy nhiên, nếu bạn làm như vậy, bạn phải đảm bảo không truy cập vào request queue, hoặc bất kỳ cấu trúc dữ liệu nào khác được bảo vệ bởi khóa, trong khoảng thời gian khóa không được giữ. Bạn cũng phải lấy lại khóa (reacquire the lock) trước khi hàm *request* trả về.
 
-Cuối cùng, việc gọi hàm *request* (thường là) hoàn toàn bất đồng bộ (asynchronous) đối với các hành động của bất kỳ tiến trình không gian người dùng (user-space process) nào. Bạn không thể giả định rằng kernel đang chạy trong ngữ cảnh của tiến trình đã khởiinitiated yêu cầu hiện tại. Bạn cũng không biết liệu bộ đệm I/O (I/O buffer) do yêu cầu cung cấp nằm trong kernel space hay user space. Vì vậy, bất kỳ loại thao tác nào truy cập trực tiếp vào user space đều là sai lầm và chắc chắn sẽ dẫn đến rắc rối. Như bạn sẽ thấy, mọi thứ mà driver của bạn cần biết về yêu cầu đều được chứa bên trong các cấu trúc dữ liệu được truyền cho bạn thông qua request queue.
+Cuối cùng, việc gọi hàm *request* (thường là) hoàn toàn bất đồng bộ (asynchronous) đối với các hành động của bất kỳ tiến trình không gian người dùng (user-space process) nào. Bạn không thể giả định rằng kernel đang chạy trong ngữ cảnh của tiến trình đã khởi tạo yêu cầu hiện tại. Bạn cũng không biết liệu bộ đệm I/O (I/O buffer) do yêu cầu cung cấp nằm trong kernel space hay user space. Vì vậy, bất kỳ loại thao tác nào truy cập trực tiếp vào user space đều là sai lầm và chắc chắn sẽ dẫn đến rắc rối. Như bạn sẽ thấy, mọi thứ mà driver của bạn cần biết về yêu cầu đều được chứa bên trong các cấu trúc dữ liệu được truyền cho bạn thông qua request queue.
 
 ## Một phương thức request đơn giản
 
@@ -432,7 +432,7 @@ Một block request queue có thể chứa các yêu cầu thực tế không di
 void end_request(struct request *req, int succeeded);
 ```
 
-Khi chúng ta xử lý các yêu cầu không phải hệ thống tập tin, chúng ta truyền tham số `succeeded` là `0` để chỉ ra rằng chúng ta đã không hoàn thành yêu cầu một cách thành công. Ngược lại, chúng ta gọi *sbull_transfer* để thực1 hiện việc di chuyển dữ liệu thực tế, sử dụng một tập hợp các trường (fields) được cung cấp trong cấu trúc request:
+Khi chúng ta xử lý các yêu cầu không phải hệ thống tập tin, chúng ta truyền tham số `succeeded` là `0` để chỉ ra rằng chúng ta đã không hoàn thành yêu cầu một cách thành công. Ngược lại, chúng ta gọi *sbull_transfer* để thực hiện việc di chuyển dữ liệu thực tế, sử dụng một tập hợp các trường (fields) được cung cấp trong cấu trúc request:
 
 ```c
 sector_t sector;
@@ -497,19 +497,16 @@ Các hàng đợi request theo dõi các request I/O khối đang chờ xử lý
 
 Các hàng đợi request cũng triển khai một giao diện plug-in cho phép sử dụng nhiều *lập lịch I/O* (*I/O schedulers* - hoặc *thang máy* - *elevators*). Công việc của một bộ lập lịch I/O là trình bày các request I/O cho driver của bạn theo cách tối đa hóa hiệu suất. Để đạt được mục đích này, hầu hết các bộ lập lịch I/O tích lũy một loạt các request, sắp xếp chúng theo thứ tự chỉ số khối tăng dần (hoặc giảm dần), và trình bày các request cho driver theo thứ tự đó. Đầu đĩa, khi được cung cấp một danh sách các request đã được sắp xếp, sẽ di chuyển từ đầu này sang đầu kia của đĩa, giống như một chiếc thang máy đầy khách di chuyển theo một hướng duy nhất cho đến khi tất cả các "request" của nó (những người đang chờ xuống) đã được thỏa mãn. Kernel 2.6 bao gồm một "lập lịch hạn chót" (deadline scheduler), nỗ lực đảm bảo rằng mọi request được thỏa mãn trong một khoảng thời gian tối đa được thiết lập trước, và một "lập lịch dự đoán" (anticipatory scheduler), thực tế tạm dừng thiết bị một chút sau một request đọc với dự đoán rằng một request đọc liền kề khác sẽ đến gần như ngay lập tức. Tính đến thời điểm viết bài này, bộ lập lịch mặc định là lập lịch dự đoán, dường như mang lại hiệu suất hệ thống tương tác tốt nhất.
 
-```
-
 Bộ lập lịch I/O (I/O scheduler) cũng chịu trách nhiệm gộp các yêu cầu (request) liền kề lại với nhau. Khi một yêu cầu I/O mới được chuyển cho bộ lập lịch, nó sẽ tìm kiếm trong hàng đợi (queue) các yêu cầu liên quan đến các sector liền kề; nếu tìm thấy một yêu cầu như vậy và nếu yêu cầu kết quả không quá lớn, thì hai yêu cầu sẽ được gộp lại.
 
 Hàng đợi yêu cầu (request queue) có kiểu `struct request_queue` hoặc `request_queue_t`. Kiểu dữ liệu này và nhiều hàm thao tác với nó được định nghĩa trong *<linux/blkdev.h>*. Nếu bạn quan tâm đến việc triển khai các hàng đợi yêu cầu, bạn có thể tìm thấy phần lớn mã nguồn trong *drivers/block/ll_rw_block.c* và *elevator.c*.
 
 ### Tạo và hủy hàng đợi (Queue creation and deletion)
+
 Như chúng ta đã thấy trong mã nguồn ví dụ, hàng đợi yêu cầu là một cấu trúc dữ liệu động phải được tạo bởi hệ thống con I/O khối (block I/O subsystem). Hàm để tạo và khởi tạo một hàng đợi yêu cầu là:
 
 ```c
-
 request_queue_t *blk_init_queue(request_fn_proc *request, spinlock_t *lock);
-
 ```
 
 Các tham số, tất nhiên, là hàm *request* cho hàng đợi này và một khóa spinlock (`spinlock_t`) dùng để kiểm soát quyền truy cập vào hàng đợi. Hàm này cấp phát bộ nhớ (thực tế là khá nhiều bộ nhớ) và có thể thất bại vì lý do này; bạn nên luôn luôn kiểm tra giá trị trả về trước khi cố gắng sử dụng hàng đợi.
@@ -527,6 +524,7 @@ void blk_cleanup_queue(request_queue_t *);
 Sau lời gọi này, driver của bạn sẽ không nhận thêm yêu cầu nào từ hàng đợi đã cho nữa và không được tham chiếu lại nó.
 
 #### Các hàm quản lý hàng đợi (Queueing functions)
+
 Chỉ có một tập hợp rất nhỏ các hàm để thao tác với các yêu cầu trên hàng đợi—ít nhất là đối với các driver. Bạn phải giữ khóa hàng đợi (queue lock) trước khi gọi các hàm này.
 
 Hàm trả về yêu cầu tiếp theo cần xử lý là *elv_next_request*:
@@ -558,6 +556,7 @@ void elv_requeue_request(request_queue_t *queue, struct request *req);
 ```
 
 #### Các hàm điều khiển hàng đợi (Queue control functions)
+
 Tầng khối (block layer) cung cấp một tập hợp các hàm có thể được driver sử dụng để kiểm soát cách thức hoạt động của hàng đợi yêu cầu. Các hàm này bao gồm:
 
 ```c
@@ -595,6 +594,7 @@ Các hàm thiết lập các tham số mô tả các yêu cầu có thể đư�
 `void blk_queue_hardsect_size(request_queue_t *queue, unsigned short max);` Thông báo cho kernel biết kích thước sector phần cứng (hardware sector size) của thiết bị. Tất cả các request do kernel tạo ra đều là bội số của kích thước này và được căn chỉnh phù hợp. Tuy nhiên, mọi giao tiếp giữa tầng block (block layer) và trình điều khiển (driver) vẫn tiếp tục được biểu diễn bằng các sector 512 byte.
 
 ## Giải phẫu của một Request (The Anatomy of a Request)
+
 Trong ví dụ đơn giản của chúng ta, chúng ta đã gặp cấu trúc `request`. Tuy nhiên, chúng ta mới chỉ chạm đến bề mặt của cấu trúc dữ liệu phức tạp đó. Trong phần này, chúng ta sẽ xem xét chi tiết về cách các request I/O khối (block I/O request) được biểu diễn trong Linux kernel.
 
 Mỗi cấu trúc `request` đại diện cho một request I/O khối, mặc dù nó có thể được hình thành thông qua việc hợp nhất (merger) của một vài request độc lập ở tầng cao hơn. Các sector cần truyền tải cho bất kỳ request cụ thể nào có thể được phân tán khắp bộ nhớ chính (main memory), mặc dù chúng luôn tương ứng với một tập hợp các sector liên tiếp trên thiết bị khối (block device). Request được biểu diễn dưới dạng một tập hợp các đoạn (segment), mỗi đoạn tương ứng với một bộ đệm trong bộ nhớ (in-memory buffer). Kernel có thể ghép nhiều request liên quan đến các sector kề nhau trên đĩa, nhưng nó không bao giờ kết hợp các thao tác đọc và ghi trong một cấu trúc `request` duy nhất. Kernel cũng đảm bảo không kết hợp các request nếu kết quả vi phạm bất kỳ giới hạn hàng đợi request (request queue limit) nào được mô tả trong phần trước.
@@ -602,6 +602,7 @@ Mỗi cấu trúc `request` đại diện cho một request I/O khối, mặc d�
 Một cấu trúc `request` được thực thi, về cơ bản, như một danh sách liên kết (linked list) của các cấu trúc `bio` kết hợp với một số thông tin quản lý (housekeeping information) để cho phép driver theo dõi vị trí của nó khi xử lý request. Cấu trúc `bio` là một mô tả cấp thấp của một phần request I/O khối; chúng ta sẽ xem xét nó ngay bây giờ.
 
 #### Cấu trúc bio (The bio structure)
+
 Khi kernel, dưới hình thức là một hệ thống tập tin (filesystem), hệ thống con bộ nhớ ảo (virtual memory subsystem), hoặc một system call, quyết định rằng một tập hợp các khối (block) phải được truyền tải đến hoặc đi từ một thiết bị I/O khối; nó sẽ tạo ra một cấu trúc `bio` để mô tả thao tác đó. Cấu trúc đó sau đó được chuyển cho mã nguồn I/O khối (block I/O code), mã này sẽ hợp nhất nó vào một cấu trúc `request` hiện có hoặc, nếu cần thiết, tạo một cấu trúc mới. Cấu trúc `bio` chứa mọi thứ mà một block driver cần để thực hiện request mà không cần tham chiếu đến tiến trình không gian người dùng (user-space process) đã khởi tạo request đó.
 
 Cấu trúc `bio`, được định nghĩa trong *<linux/bio.h>*, chứa một số trường (field) có thể hữu ích cho các tác giả viết driver:
@@ -750,6 +751,7 @@ Bây giờ chúng ta đã có hình dung về cách cấu trúc `bio` hoạt đ�
 
 sector\_t hard\_sector; unsigned long hard\_nr\_sectors; unsigned int hard\_cur\_sectors;
 
+> [!NOTE]
 > Các trường theo dõi các sector mà trình điều khiển (driver) chưa hoàn thành. Sector đầu tiên *chưa* được truyền được lưu trữ trong `hard_sector`, tổng số sector chưa truyền nằm trong `hard_nr_sectors`, và số lượng sector còn lại trong `bio` hiện tại là `hard_cur_sectors`. Các trường này chỉ dành cho việc sử dụng nội bộ trong phân hệ khối (block subsystem); các driver không nên sử dụng chúng.
 
 struct bio \*bio;
@@ -802,6 +804,7 @@ Hình 16-2 cho thấy cấu trúc yêu cầu và các cấu trúc `bio` thành p
 Có rất nhiều trường khác bên trong cấu trúc yêu cầu, nhưng danh sách trong phần này sẽ là đủ đối với hầu hết các nhà phát triển driver.
 
 #### Yêu cầu rào cản (Barrier requests)
+
 Tầng khối (block layer) sắp xếp lại các yêu cầu trước khi driver của bạn nhìn thấy chúng nhằm cải thiện hiệu năng I/O. Driver của bạn cũng có thể sắp xếp lại các yêu cầu nếu có lý do để làm như vậy. Thông thường, việc sắp xếp lại này diễn ra bằng cách chuyển nhiều yêu cầu đến ổ đĩa và để phần cứng tự tìm ra thứ tự tối ưu. Tuy nhiên, có một vấn đề với việc sắp xếp lại yêu cầu một cách không hạn chế: một số ứng dụng yêu cầu đảm bảo rằng các thao tác nhất định phải hoàn thành trước khi các thao tác khác bắt đầu. Ví dụ, các trình quản lý cơ sở dữ liệu quan hệ (relational database managers) phải hoàn toàn chắc chắn rằng thông tin nhật ký (journaling) của chúng đã được xả (flush) xuống ổ đĩa trước khi thực thi một giao dịch (transaction) trên nội dung cơ sở dữ liệu. Các hệ thống tập tin nhật ký (journaling filesystems), hiện đang được sử dụng trên phần lớn các hệ thống Linux, có các ràng buộc về thứ tự rất giống nhau. Nếu các thao tác sai bị sắp xếp lại, kết quả có thể dẫn đến tình trạng hỏng dữ liệu nghiêm trọng mà không được phát hiện.
 
 Tầng khối phiên bản 2.6 giải quyết vấn đề này với khái niệm *yêu cầu rào cản* (*barrier request*). Nếu một yêu cầu được đánh dấu bằng cờ `REQ_HARDBARRER`, nó phải được ghi xuống ổ đĩa trước khi bất kỳ yêu cầu tiếp theo nào được khởi tạo. Bằng cụm từ "được ghi xuống ổ đĩa", ý chúng tôi là dữ liệu phải thực sự nằm và tồn tại bền vững (persistent) trên phương tiện lưu trữ vật lý. Nhiều ổ đĩa thực hiện việc lưu đệm (caching) các yêu cầu ghi; việc lưu đệm này giúp cải thiện hiệu năng, nhưng nó có thể làm mất đi mục đích của các yêu cầu rào cản. Nếu sự cố mất điện xảy ra khi dữ liệu quan trọng vẫn còn đang nằm trong
@@ -829,6 +832,7 @@ int blk_barrier_rq(struct request *req);
 Nếu macro này trả về một giá trị khác không, yêu cầu đó là một yêu cầu rào cản. Tùy thuộc vào cách phần cứng của bạn hoạt động, bạn có thể phải ngừng nhận các yêu cầu từ hàng đợi (queue) cho đến khi yêu cầu rào cản được hoàn thành. Các ổ đĩa khác có thể tự hiểu các yêu cầu rào cản; trong trường hợp này, tất cả những gì driver của bạn phải làm là phát ra các thao tác phù hợp cho các ổ đĩa đó.
 
 #### Các yêu cầu không thể thử lại (Nonretryable requests)
+
 Các block driver thường cố gắng thử lại các yêu cầu gặp lỗi trong lần chạy đầu tiên. Hành vi này có thể dẫn đến một hệ thống đáng tin cậy hơn và giúp tránh mất dữ liệu. Tuy nhiên, kernel đôi khi đánh dấu các yêu cầu là không được phép thử lại. Các yêu cầu như vậy sẽ phải thất bại càng nhanh càng tốt nếu chúng không thể được thực thi ngay trong lần thử đầu tiên.
 
 Nếu driver của bạn đang cân nhắc việc thử lại một yêu cầu bị lỗi, trước tiên nó nên gọi hàm:
@@ -842,6 +846,7 @@ int blk_noretry_request(struct request *req);
 Nếu macro này trả về một giá trị khác không, driver của bạn nên hủy bỏ yêu cầu (abort) bằng một mã lỗi thay vì thử lại nó.
 
 ## Các hàm hoàn thành yêu cầu (Request Completion Functions)
+
 Như chúng ta sẽ thấy, có một số cách khác nhau để xử lý một cấu trúc yêu cầu (`request structure`). Tuy nhiên, tất cả chúng đều sử dụng một vài hàm chung, xử lý việc hoàn thành một yêu cầu I/O (I/O request) hoặc một phần của yêu cầu. Cả hai hàm này đều là nguyên tử (atomic) và có thể được gọi một cách an toàn từ ngữ cảnh nguyên tử (atomic context).
 
 Khi thiết bị của bạn đã hoàn tất việc truyền một phần hoặc toàn bộ các sector trong một yêu cầu I/O, nó phải thông báo cho hệ thống con khối (block subsystem) bằng hàm:
@@ -882,6 +887,7 @@ end_that_request_last(req);
 Hàm *add\_disk\_randomness* sử dụng thời gian thực hiện các yêu cầu block I/O để đóng góp entropy cho bể số ngẫu nhiên (random number pool) của hệ thống; nó chỉ nên được gọi nếu thời gian của ổ đĩa thực sự ngẫu nhiên. Điều đó đúng với hầu hết các thiết bị cơ học, nhưng không đúng đối với một thiết bị ảo dựa trên bộ nhớ, chẳng hạn như *sbull*. Vì lý do này, phiên bản phức tạp hơn của *sbull* được trình bày trong phần tiếp theo không gọi *add\_disk\_randomness*.
 
 #### Làm việc với bios
+
 Bây giờ bạn đã biết đủ để viết một block driver hoạt động trực tiếp với các cấu trúc bio tạo nên một yêu cầu. Tuy nhiên, một ví dụ sẽ hữu ích hơn. Nếu driver *sbull* được tải với tham số `request_mode` được đặt thành 1, nó sẽ đăng ký một hàm *request* nhận biết bio (bio-aware) thay vì hàm đơn giản mà chúng ta đã thấy ở trên. Hàm đó trông như thế này:
 
 ```c
@@ -956,6 +962,7 @@ Hàm này đơn giản là duyệt qua từng segment trong cấu trúc bio, l�
 Mỗi thiết bị có các yêu cầu riêng của mình, nhưng theo nguyên tắc chung, đoạn mã vừa được hiển thị sẽ đóng vai trò như một mô hình cho nhiều tình huống cần đào sâu vào các cấu trúc bio.
 
 #### Block requests và DMA
+
 Nếu bạn đang làm việc trên một trình điều khiển khối (block driver) hiệu suất cao, rất có thể bạn sẽ sử dụng DMA cho việc truyền dữ liệu thực tế. Một block driver hoàn toàn có thể duyệt qua các cấu trúc bio như đã mô tả ở trên, tạo một ánh xạ DMA (DMA mapping) cho từng cấu trúc, và truyền kết quả cho thiết bị. Tuy nhiên, có một cách dễ dàng hơn nếu thiết bị của bạn có khả năng thực hiện I/O dạng phân tán/tập trung (scatter/gather I/O). Hàm sau:
 
 ```c
@@ -980,6 +987,7 @@ clear_bit(QUEUE_FLAG_CLUSTER, &queue->queue_flags);
 Một số trình điều khiển đĩa SCSI đánh dấu hàng đợi request của chúng theo cách này, vì chúng không nhận được lợi ích gì từ việc gộp các request.
 
 #### Xử lý không cần hàng đợi request (request queue)
+
 Trước đây, chúng ta đã thảo luận về công việc mà kernel thực hiện để tối ưu hóa thứ tự các request trong hàng đợi; công việc này bao gồm việc sắp xếp các request và, có lẽ, thậm chí tạm dừng hàng đợi để cho phép một request dự kiến xuất hiện. Những kỹ thuật này giúp cải thiện hiệu suất của hệ thống khi xử lý một ổ đĩa quay thực tế. Tuy nhiên, chúng hoàn toàn lãng phí đối với một thiết bị như *sbull*. Nhiều thiết bị định hướng khối (block-oriented devices), chẳng hạn như mảng bộ nhớ flash, trình đọc thẻ nhớ dùng trong máy ảnh kỹ thuật số, và đĩa RAM (RAM disks), có hiệu suất truy cập hoàn toàn ngẫu nhiên (random-access) và không hưởng lợi từ logic xếp hàng request nâng cao. Các thiết bị khác, chẳng hạn như mảng RAID phần mềm hoặc đĩa ảo được tạo bởi trình quản lý ổ đĩa logic (logical volume managers), không có các đặc tính hiệu suất mà hàng đợi request của tầng khối (block layer) tối ưu hóa cho chúng. Đối với loại thiết bị này, sẽ
 
 tốt hơn nếu chấp nhận các request trực tiếp từ block layer mà không cần bận tâm đến request queue làm gì.
@@ -991,6 +999,7 @@ tốt hơn nếu chấp nhận các request trực tiếp từ block layer mà k
 typedef int (make_request_fn) (request_queue_t *q, struct bio *bio);
 
 ```
+
 ```
 
 Lưu ý rằng một hàng đợi yêu cầu (request queue) vẫn hiện diện, mặc dù trên thực tế nó sẽ không bao giờ chứa bất kỳ yêu cầu nào. Hàm *make_request* nhận tham số chính là một cấu trúc bio (`struct bio`), đại diện cho một hoặc nhiều bộ đệm (buffer) cần được truyền dữ liệu. Hàm *make_request* có thể thực hiện một trong hai việc: hoặc thực hiện việc truyền dữ liệu trực tiếp, hoặc chuyển hướng yêu cầu sang một thiết bị khác.
@@ -998,7 +1007,9 @@ Lưu ý rằng một hàng đợi yêu cầu (request queue) vẫn hiện diện
 Việc thực hiện truyền dữ liệu trực tiếp chỉ đơn giản là làm việc thông qua bio bằng các phương thức truy cập (accessor methods) mà chúng ta đã mô tả trước đó. Tuy nhiên, vì không có cấu trúc request (`struct request`) để làm việc cùng, hàm của bạn nên báo hiệu việc hoàn thành trực tiếp cho người tạo ra cấu trúc bio bằng một lời gọi đến *bio_endio*:
 
 ```c
+
 void bio_endio(struct bio *bio, unsigned int bytes, int error);
+
 ```
 
 Ở đây, `bytes` là số byte mà bạn đã truyền cho đến thời điểm hiện tại. Nó có thể nhỏ hơn tổng số byte mà bio đại diện; bằng cách này, bạn có thể báo hiệu hoàn thành một phần (partial completion), và cập nhật các con trỏ "bộ đệm hiện tại" ("current buffer" pointers) bên trong bio. Bạn nên gọi lại *bio_endio* khi thiết bị của bạn tiến hành thêm các bước xử lý tiếp theo, hoặc báo hiệu một lỗi nếu bạn không thể hoàn thành yêu cầu. Các lỗi được biểu thị bằng cách cung cấp một giá trị khác không cho tham số `error`; giá trị này thông thường là một mã lỗi chẳng hạn như `-EIO`. Hàm *make_request* phải trả về `0`, bất kể thao tác I/O có thành công hay không.
@@ -1006,14 +1017,16 @@ void bio_endio(struct bio *bio, unsigned int bytes, int error);
 Nếu *sbull* được nạp với `request_mode=2`, nó hoạt động với một hàm *make_request*. Vì *sbull* đã có sẵn một hàm có thể truyền một bio đơn lẻ, hàm *make_request* rất đơn giản:
 
 ```c
+
 static int sbull_make_request(request_queue_t *q, struct bio *bio)
 {
- struct sbull_dev *dev = q->queuedata;
- int status;
- status = sbull_xfer_bio(dev, bio);
- bio_endio(bio, bio->bi_size, status);
- return 0;
+struct sbull_dev *dev = q->queuedata;
+int status;
+status = sbull_xfer_bio(dev, bio);
+bio_endio(bio, bio->bi_size, status);
+return 0;
 }
+
 ```
 
 Xin lưu ý rằng bạn không bao giờ được gọi *bio_endio* từ một hàm *request* thông thường; công việc đó thay vào đó được xử lý bởi *end_that_request_first*.
@@ -1023,22 +1036,28 @@ Một số trình điều khiển khối (block driver), chẳng hạn như các
 Dù theo cách nào đi nữa, bạn phải thông báo cho hệ thống con khối (block subsystem) rằng trình điều khiển của bạn đang sử dụng một hàm *make_request* tùy chỉnh. Để làm điều đó, bạn phải cấp phát một hàng đợi yêu cầu (request queue) bằng:
 
 ```c
+
 request_queue_t *blk_alloc_queue(int flags);
+
 ```
 
 Hàm này khác với *blk_init_queue* ở chỗ nó không thực sự thiết lập hàng đợi để chứa các yêu cầu. Đối số `flags` là một tập hợp các cờ cấp phát (allocation flags) sẽ được sử dụng khi cấp phát bộ nhớ cho hàng đợi; thông thường giá trị phù hợp là `GFP_KERNEL`. Một khi bạn đã có một hàng đợi, hãy truyền nó và hàm *make_request* của bạn vào *blk_queue_make_request*:
 
 ```c
+
 void blk_queue_make_request(request_queue_t *queue, make_request_fn *func);
+
 ```
 
 Mã nguồn của *sbull* để thiết lập hàm *make_request* trông giống như sau:
 
 ```c
+
 dev->queue = blk_alloc_queue(GFP_KERNEL);
 if (dev->queue == NULL)
- goto out_vfree;
+goto out_vfree;
 blk_queue_make_request(dev->queue, sbull_make_request);
+
 ```
 
 Dành cho những ai tò mò, sau một khoảng thời gian đào sâu vào `drivers/block/ll_rw_block.c`, ta thấy rằng tất cả các hàng đợi đều có một hàm *make_request*. Phiên bản mặc định, *generic_make_request*, xử lý việc kết hợp bio vào một cấu trúc request. Bằng cách cung cấp hàm *make_request* của riêng mình, một trình điều khiển thực chất chỉ đang ghi đè lên một phương thức *request queue* cụ thể và tự giải quyết phần lớn công việc.
@@ -1054,7 +1073,9 @@ Tầng khối cung cấp một cơ chế cho các trình điều khiển kiểm 
 Nếu bạn muốn sử dụng tính năng này, hãy tạo một hàm chuẩn bị lệnh phù hợp với nguyên mẫu (prototype) sau:
 
 ```c
+
 typedef int (prep_rq_fn) (request_queue_t *queue, struct request *req);
+
 ```
 
 Cấu trúc request bao gồm một trường gọi là `cmd`, là một mảng có kích thước `BLK_MAX_CDB` byte; mảng này có thể được sử dụng bởi hàm chuẩn bị để lưu trữ lệnh phần cứng thực tế (hoặc bất kỳ thông tin hữu ích nào khác). Hàm này nên trả về một trong các giá trị sau:
@@ -1076,7 +1097,9 @@ Hàm chuẩn bị được gọi bởi *elv\_next\_request* ngay trước khi re
 Để tầng khối (block layer) gọi hàm chuẩn bị của bạn, hãy truyền nó tới:
 
 ```
+
 void blk_queue_prep_rq(request_queue_t *queue, prep_rq_fn *func);
+
 ```
 
 Theo mặc định, các hàng đợi request không có hàm chuẩn bị nào.
@@ -1088,8 +1111,10 @@ Phần cứng có thể xử lý nhiều request hoạt động cùng một lúc
 Nếu ổ đĩa của bạn thực hiện xếp hàng lệnh có thẻ, bạn nên thông báo cho kernel biết điều đó tại thời điểm khởi tạo bằng lời gọi:
 
 ```
+
 int blk_queue_init_tags(request_queue_t *queue, int depth,
- struct blk_queue_tag *tags);
+struct blk_queue_tag *tags);
+
 ```
 
 Ở đây, `queue` là hàng đợi request của bạn và `depth` là số lượng request được gắn thẻ mà thiết bị của bạn có thể xử lý đồng thời tại bất kỳ thời điểm nào. `tags` là một con trỏ tùy chọn trỏ đến một mảng các cấu trúc `struct blk_queue_tag`; phải có đúng `depth` phần tử trong mảng này. Thông thường, `tags` có thể được truyền dưới dạng NULL và *blk\_queue\_init\_tags* sẽ tự cấp phát mảng đó. Tuy nhiên, nếu bạn cần chia sẻ cùng một tập thẻ giữa nhiều thiết bị, bạn có thể truyền con trỏ mảng thẻ (được lưu trữ trong trường `queue_tags`) từ một hàng đợi request khác. Bạn không bao giờ nên tự mình cấp phát mảng thẻ; tầng khối (block layer) cần khởi tạo mảng này và không xuất hàm khởi tạo ra các module.
@@ -1099,7 +1124,9 @@ Vì *blk\_queue\_init\_tags* thực hiện cấp phát bộ nhớ (memory alloca
 Nếu số lượng thẻ mà thiết bị của bạn có thể xử lý thay đổi, bạn có thể thông báo cho kernel bằng:
 
 ```
+
 int blk_queue_resize_tags(request_queue_t *queue, int new_depth);
+
 ```
 
 Khóa hàng đợi (queue lock) phải được giữ trong suốt lời gọi này. Lời gọi này có thể thất bại và trả về một mã lỗi âm trong trường hợp đó.
@@ -1107,7 +1134,9 @@ Khóa hàng đợi (queue lock) phải được giữ trong suốt lời gọi n
 Việc liên kết một thẻ với cấu trúc request được thực hiện bằng hàm *blk\_queue\_start\_tag*, hàm này phải được gọi khi đang giữ khóa hàng đợi (queue lock):
 
 ```
+
 int blk_queue_start_tag(request_queue_t *queue, struct request *req);
+
 ```
 
 Nếu có sẵn một thẻ, hàm này sẽ cấp phát thẻ đó cho request này, lưu số thẻ vào `req->tag` và trả về 0. Nó cũng lấy request ra khỏi hàng đợi (dequeue) và liên kết nó vào cấu trúc theo dõi thẻ của chính nó, vì vậy trình điều khiển của bạn cần lưu ý không tự ý lấy request ra khỏi hàng đợi nếu đang sử dụng thẻ. Nếu không còn thẻ nào có sẵn, *blk\_queue\_start\_tag* sẽ giữ nguyên request trong hàng đợi và trả về một giá trị khác không.
@@ -1115,7 +1144,9 @@ Nếu có sẵn một thẻ, hàm này sẽ cấp phát thẻ đó cho request n
 Khi tất cả các quá trình truyền dữ liệu cho một request cụ thể đã hoàn tất, trình điều khiển của bạn nên trả lại thẻ bằng:
 
 ```
+
 void blk_queue_end_tag(request_queue_t *queue, struct request *req);
+
 ```
 
 Một lần nữa, bạn phải giữ khóa hàng đợi trước khi gọi hàm này. Lời gọi này nên được thực hiện sau khi *end\_that\_request\_first* trả về 0 (có nghĩa là request đã hoàn tất) nhưng trước khi gọi *end\_that\_request\_last*. Hãy nhớ rằng request đã được lấy ra khỏi hàng đợi từ trước, vì vậy sẽ là một lỗi nếu trình điều khiển của bạn làm điều đó lần nữa tại thời điểm này.
@@ -1123,7 +1154,9 @@ Một lần nữa, bạn phải giữ khóa hàng đợi trước khi gọi hàm
 Nếu bạn cần tìm request liên kết với một thẻ cụ thể (ví dụ: khi ổ đĩa báo cáo hoàn thành), hãy sử dụng *blk\_queue\_find\_tag*:
 
 ```
+
 struct request *blk_queue_find_tag(request_queue_t *qeue, int tag);
+
 ```
 
 Giá trị trả về là cấu trúc request được liên kết, trừ khi có điều gì đó thực sự sai sót xảy ra.
@@ -1131,54 +1164,60 @@ Giá trị trả về là cấu trúc request được liên kết, trừ khi c�
 Nếu mọi chuyện thực sự tồi tệ, trình điều khiển của bạn có thể phải thực hiện reset hoặc thực hiện một số hành động khắc phục mạnh mẽ khác đối với một trong các thiết bị của nó. Trong trường hợp đó, bất kỳ lệnh gắn thẻ nào đang chờ xử lý sẽ không được hoàn thành. Tầng khối (block layer) cung cấp một hàm có thể hỗ trợ nỗ lực khôi phục trong những tình huống như vậy:
 
 ```
+
 void blk_queue_invalidate_tags(request_queue_t *queue);
+
 ```
 
 Hàm này trả tất cả các thẻ đang chờ xử lý về lại pool và đưa các request liên kết quay trở lại hàng đợi request. Khóa hàng đợi (queue lock) phải được giữ khi bạn gọi hàm này.
 
 ## Tài liệu tham khảo nhanh (Quick Reference)
 
-```
+```c
+
 ## include <linux/fs.h>
+
 int register_blkdev(unsigned int major, const char *name);
 int unregister_blkdev(unsigned int major, const char *name);
-    register_blkdev đăng ký một block driver với kernel và tùy chọn cấp phát một
-    major number. Có thể hủy đăng ký driver bằng unregister_blkdev.
+register_blkdev đăng ký một block driver với kernel và tùy chọn cấp phát một
+major number. Có thể hủy đăng ký driver bằng unregister_blkdev.
 struct block_device_operations
-    Cấu trúc chứa hầu hết các phương thức dành cho block driver.
+Cấu trúc chứa hầu hết các phương thức dành cho block driver.
+
 ## include <linux/genhd.h>
+
 struct gendisk;
-    Cấu trúc mô tả một block device đơn lẻ bên trong kernel.
+Cấu trúc mô tả một block device đơn lẻ bên trong kernel.
 struct gendisk *alloc_disk(int minors);
 void add_disk(struct gendisk *gd);
-    Các hàm cấp phát cấu trúc gendisk và trả chúng về hệ thống.
+Các hàm cấp phát cấu trúc gendisk và trả chúng về hệ thống.
 void set_capacity(struct gendisk *gd, sector_t sectors);
-    Lưu trữ dung lượng của thiết bị (tính bằng các sector 512 byte) vào trong cấu trúc gendisk.
+Lưu trữ dung lượng của thiết bị (tính bằng các sector 512 byte) vào trong cấu trúc gendisk.
 void add_disk(struct gendisk *gd);
-    Thêm một đĩa vào kernel. Ngay khi hàm này được gọi, các phương thức của đĩa
-    có thể được kernel gọi thực thi.
+Thêm một đĩa vào kernel. Ngay khi hàm này được gọi, các phương thức của đĩa
+có thể được kernel gọi thực thi.
 int check_disk_change(struct block_device *bdev);
-    Hàm kernel kiểm tra việc thay đổi thiết bị lưu trữ (media change) trong ổ đĩa được chỉ định và
-    thực hiện các hành động dọn dẹp cần thiết khi phát hiện sự thay đổi đó.
+Hàm kernel kiểm tra việc thay đổi thiết bị lưu trữ (media change) trong ổ đĩa được chỉ định và
+thực hiện các hành động dọn dẹp cần thiết khi phát hiện sự thay đổi đó.
+
 ## include <linux/blkdev.h>
+
 request_queue_t blk_init_queue(request_fn_proc *request, spinlock_t *lock);
 void blk_cleanup_queue(request_queue_t *);
-    Các hàm xử lý việc tạo và xóa hàng đợi request của thiết bị khối.
+Các hàm xử lý việc tạo và xóa hàng đợi request của thiết bị khối.
 struct request *elv_next_request(request_queue_t *queue);
 void end_request(struct request *req, int success);
-    elv_next_request lấy request tiếp theo từ hàng đợi request; end_request có thể
-    được sử dụng trong các trình điều khiển rất đơn giản để đánh dấu việc hoàn thành (hoặc một phần) request.
+elv_next_request lấy request tiếp theo từ hàng đợi request; end_request có thể
+được sử dụng trong các trình điều khiển rất đơn giản để đánh dấu việc hoàn thành (hoặc một phần) request.
 void blkdev_dequeue_request(struct request *req);
 void elv_requeue_request(request_queue_t *queue, struct request *req);
-    Các hàm loại bỏ request khỏi hàng đợi và đưa nó trở lại nếu cần thiết.
+Các hàm loại bỏ request khỏi hàng đợi và đưa nó trở lại nếu cần thiết.
 void blk_stop_queue(request_queue_t *queue);
 void blk_start_queue(request_queue_t *queue);
-    Nếu bạn cần ngăn chặn các lời gọi tiếp theo đến phương thức request của mình, gọi blk_stop_queue
-    sẽ đạt được mục đích đó. Lời gọi blk_start_queue là cần thiết để khiến phương thức request
-    của bạn được gọi lại một lần nữa.
-```
+Nếu bạn cần ngăn chặn các lời gọi tiếp theo đến phương thức request của mình, gọi blk_stop_queue
+sẽ đạt được mục đích đó. Lời gọi blk_start_queue là cần thiết để khiến phương thức request
+của bạn được gọi lại một lần nữa.
 
-```c
 void blk_queue_bounce_limit(request_queue_t *queue, u64 dma_addr);
 void blk_queue_max_sectors(request_queue_t *queue, unsigned short max);
 void blk_queue_max_phys_segments(request_queue_t *queue, unsigned short max);
@@ -1187,51 +1226,60 @@ void blk_queue_max_segment_size(request_queue_t *queue, unsigned int max);
 blk_queue_segment_boundary(request_queue_t *queue, unsigned long mask);
 void blk_queue_dma_alignment(request_queue_t *queue, int mask);
 void blk_queue_hardsect_size(request_queue_t *queue, unsigned short max);
-```
-
 Các hàm thiết lập các tham số hàng đợi (queue parameter) khác nhau nhằm kiểm soát cách các request (yêu cầu) được tạo cho một thiết bị cụ thể; các tham số này được mô tả trong phần "Hàm điều khiển hàng đợi (Queue control functions)."
 
-```c
 ## include <linux/bio.h>
+
 struct bio;
+
 ```
 
 Cấu trúc cấp thấp đại diện cho một phần của request I/O khối (block I/O request).
 
 ```c
+
 bio_sectors(struct bio *bio);
 bio_data_dir(struct bio *bio);
+
 ```
 
 Hai macro trả về kích thước và hướng (direction) của một lượt truyền dữ liệu được mô tả bởi một cấu trúc `bio`.
 
 ```c
+
 bio_for_each_segment(bvec, bio, segno);
+
 ```
 
 Một cấu trúc giả điều khiển (pseudocontrol structure) được sử dụng để lặp qua các phân đoạn (segment) cấu thành nên một cấu trúc `bio`.
 
 ```c
+
 char *__bio_kmap_atomic(struct bio *bio, int i, enum km_type type);
 void __bio_kunmap_atomic(char *buffer, enum km_type type);
+
 ```
 
 `__bio_kmap_atomic` có thể được sử dụng để tạo một địa chỉ ảo nhân (kernel virtual address) cho một segment cho trước bên trong cấu trúc `bio`. Việc ánh xạ này phải được hủy bỏ bằng `__bio_kunmap_atomic`.
 
 ```c
+
 struct page *bio_page(struct bio *bio);
 int bio_offset(struct bio *bio);
 int bio_cur_sectors(struct bio *bio);
 char *bio_data(struct bio *bio);
 char *bio_kmap_irq(struct bio *bio, unsigned long *flags);
 void bio_kunmap_irq(char *buffer, unsigned long *flags);
+
 ```
 
 Một tập hợp các macro truy cập (accessor macro) cung cấp quyền truy cập vào segment "hiện tại" bên trong cấu trúc `bio`.
 
 ```c
+
 void blk_queue_ordered(request_queue_t *queue, int flag);
 int blk_barrier_rq(struct request *req);
+
 ```
 
 Gọi `blk_queue_ordered` nếu trình điều khiển (driver) của bạn hỗ trợ các request rào cản (barrier request)—lẽ ra nên làm vậy. Macro `blk_barrier_rq` trả về một giá trị khác không nếu request hiện tại là một barrier request.
@@ -1243,5 +1291,7 @@ Gọi `blk_queue_ordered` nếu trình điều khiển (driver) của bạn hỗ
 Các hàm hỗ trợ cho các driver sử dụng xếp hàng lệnh có thẻ (tagged command queueing).
 
 ```c
+
 void blk_queue_invalidate_tags(request_queue_t *queue);
+
 ```

@@ -60,8 +60,8 @@ function highlightCpp(code)
     s = s.replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g, m => save('tok-comment', m));
     // 2. Strings & Characters
     s = s.replace(/(".*?"|'(\\.|[^\\'])*?')/g, m => save('tok-string', m));
-    // 3. Preprocessor (#include, #define, #pragma...)
-    s = s.replace(/(#[a-zA-Z_]+[^\n]*)/g, m => save('tok-preproc', m));
+    // 3. Preprocessor (#include, #define, ## include, #pragma...)
+    s = s.replace(/(#{1,2}\s*[a-zA-Z_]+[^\n]*)/g, m => save('tok-preproc', m));
     // 4. Numbers (Hex, float, int)
     s = s.replace(/\b(0x[0-9a-fA-F]+|\d+(?:\.\d+)?(?:f|u|l|ul|ll)?)\b/gi, m => save('tok-num', m));
     // 5. C++ Keywords
@@ -282,6 +282,118 @@ function renderMarkdown(mdText)
         calloutLines = [];
     };
 
+    const flushCodeBlock = () =>
+    {
+        if (!inCodeBlock)
+        {
+            return;
+        }
+
+        inCodeBlock = false;
+        const codeContent = codeBlockLines.join('\n');
+        const snippetId = 'code-snip-' + Math.random().toString(36).substr(2, 8);
+
+        if (codeBlockLang === 'cpp' || codeBlockLang === 'c++' || codeBlockLang === 'c')
+        {
+            output.push(`
+                <div class="code-editor-card">
+                    <div class="code-editor-header">
+                        <div class="code-header-left">
+                            <span class="editor-dot dot-red"></span>
+                            <span class="editor-dot dot-yellow"></span>
+                            <span class="editor-dot dot-green"></span>
+                            <span class="code-lang-badge">C++</span>
+                        </div>
+                        <button class="btn-copy-code" onclick="copyCode('${snippetId}', this)" title="Sao chép mã nguồn C++">
+                            <span class="btn-copy-icon">📋</span>
+                            <span class="btn-copy-text">Sao chép</span>
+                        </button>
+                    </div>
+                    <pre><code id="${snippetId}">${highlightCpp(codeContent)}</code></pre>
+                </div>
+            `);
+        }
+        else if (codeBlockLang === 'bash' || codeBlockLang === 'sh' || codeBlockLang === 'shell')
+        {
+            output.push(`
+                <div class="code-editor-card">
+                    <div class="code-editor-header">
+                        <div class="code-header-left">
+                            <span class="editor-dot dot-red"></span>
+                            <span class="editor-dot dot-yellow"></span>
+                            <span class="editor-dot dot-green"></span>
+                            <span class="code-lang-badge">BASH</span>
+                        </div>
+                        <button class="btn-copy-code" onclick="copyCode('${snippetId}', this)" title="Sao chép câu lệnh Terminal">
+                            <span class="btn-copy-icon">📋</span>
+                            <span class="btn-copy-text">Sao chép</span>
+                        </button>
+                    </div>
+                    <pre><code id="${snippetId}">${highlightBash(codeContent)}</code></pre>
+                </div>
+            `);
+        }
+        else if (codeBlockLang === 'mermaid' || codeBlockLang.startsWith('mermaid'))
+        {
+            output.push(`
+                <div class="mermaid-card" id="card-${snippetId}">
+                    <div class="mermaid-card-header">
+                        <div class="mermaid-header-left">
+                            <span class="editor-dot dot-red"></span>
+                            <span class="editor-dot dot-yellow"></span>
+                            <span class="editor-dot dot-green"></span>
+                            <span class="mermaid-lang-badge">📊 MERMAID</span>
+                        </div>
+                        <div class="mermaid-header-actions">
+                            <button class="btn-mermaid-toggle" onclick="toggleMermaidSource('${snippetId}', this)" title="Chuyển đổi xem mã nguồn / sơ đồ">Mã nguồn</button>
+                            <button class="btn-copy-code" onclick="copyCode('${snippetId}', this)" title="Sao chép cú pháp sơ đồ">
+                                <span class="btn-copy-icon">📋</span>
+                                <span class="btn-copy-text">Sao chép</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mermaid-body">
+                        <div class="mermaid-viewport" id="viewport-${snippetId}">
+                            <div class="mermaid-render-target" id="render-${snippetId}" data-snippet-id="${snippetId}">
+                                <div class="mermaid-loading">
+                                    <span class="mermaid-spinner"></span>
+                                    <span>Đang dựng sơ đồ...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mermaid-source-wrapper" id="source-${snippetId}" style="display: none;">
+                            <pre class="ascii-art"><code id="${snippetId}">${escapeHtml(codeContent)}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+        else
+        {
+            // ASCII Memory Diagram / Topology
+            output.push(`
+                <div class="ascii-diagram-card">
+                    <div class="ascii-diagram-header">
+                        <div class="ascii-header-left">
+                            <span class="editor-dot dot-red"></span>
+                            <span class="editor-dot dot-yellow"></span>
+                            <span class="editor-dot dot-green"></span>
+                            <span class="ascii-lang-badge">📐 SƠ ĐỒ / TOPOLOGY</span>
+                        </div>
+                        <button class="btn-copy-code" onclick="copyCode('${snippetId}', this)" title="Sao chép sơ đồ">
+                            <span class="btn-copy-icon">📋</span>
+                            <span class="btn-copy-text">Sao chép</span>
+                        </button>
+                    </div>
+                    <pre class="ascii-art"><code id="${snippetId}">${escapeHtml(codeContent)}</code></pre>
+                </div>
+            `);
+        }
+
+        codeBlockLines = [];
+        codeBlockLang = '';
+    };
+
     for (let i = 0; i < lines.length; i++)
     {
         const line = lines[i];
@@ -303,55 +415,28 @@ function renderMarkdown(mdText)
             }
             else
             {
-                inCodeBlock = false;
-                const codeContent = codeBlockLines.join('\n');
-                const snippetId = 'code-snip-' + Math.random().toString(36).substr(2, 8);
-
-                if (codeBlockLang === 'cpp' || codeBlockLang === 'c++' || codeBlockLang === 'c')
-                {
-                    output.push(`
-                        <div class="code-editor-card">
-                            <div class="code-editor-header">
-                                <span>[ C++ SOURCE ]</span>
-                                <button class="btn-copy-code" onclick="copyCode('${snippetId}', this)">Sao chép</button>
-                            </div>
-                            <pre><code id="${snippetId}">${highlightCpp(codeContent)}</code></pre>
-                        </div>
-                    `);
-                }
-                else if (codeBlockLang === 'bash' || codeBlockLang === 'sh' || codeBlockLang === 'shell')
-                {
-                    output.push(`
-                        <div class="code-editor-card">
-                            <div class="code-editor-header">
-                                <span>[ TERMINAL / BASH ]</span>
-                                <button class="btn-copy-code" onclick="copyCode('${snippetId}', this)">Sao chép</button>
-                            </div>
-                            <pre><code id="${snippetId}">${highlightBash(codeContent)}</code></pre>
-                        </div>
-                    `);
-                }
-                else
-                {
-                    // ASCII Memory Diagram / Topology
-                    output.push(`
-                        <div class="ascii-diagram-card">
-                            <div class="ascii-diagram-header">
-                                <span>[ SƠ ĐỒ BỘ NHỚ / TOPOLOGY ]</span>
-                                <button class="btn-copy-code" onclick="copyCode('${snippetId}', this)">Sao chép sơ đồ</button>
-                            </div>
-                            <pre class="ascii-art"><code id="${snippetId}">${escapeHtml(codeContent)}</code></pre>
-                        </div>
-                    `);
-                }
+                flushCodeBlock();
                 continue;
             }
         }
 
         if (inCodeBlock)
         {
-            codeBlockLines.push(line);
-            continue;
+            // Tự động khôi phục nếu khối code bị lỗi không đóng (gặp tiêu đề chương/mục hoặc alert)
+            const isDocHeading = /^#{1,4}\s+(Chương|\d+(\.\d+)*\s+|[A-ZÀ-Ỵ]|\*\*|\$|\#\s+)/i.test(trimmed) &&
+                                 !/^##\s+(include|define|pragma|ifdef|ifndef|endif|if|elif|else)/i.test(trimmed);
+            const isCallout = /^>\s*\[!(NOTE|IMPORTANT|CAUTION|WARNING|TIP)\]/i.test(trimmed);
+
+            if (isDocHeading || isCallout)
+            {
+                flushCodeBlock();
+                // Không continue để dòng tiêu đề hoặc callout được xử lý tiếp bên dưới
+            }
+            else
+            {
+                codeBlockLines.push(line);
+                continue;
+            }
         }
 
         // 2. Callouts / Obsidian Alerts (> [!NOTE])
@@ -468,6 +553,7 @@ function renderMarkdown(mdText)
     closeLists();
     flushTable();
     flushCallout();
+    flushCodeBlock();
 
     return output.join('\n');
 }
@@ -596,6 +682,9 @@ function renderDocumentView(meta, rawMarkdown)
 
     // Render Bottom Prev / Next Navigation
     renderFooterNav(meta.id);
+
+    // Render All Mermaid Schematics in Current Document
+    renderAllMermaidDiagrams();
 }
 
 /* ==========================================================================
@@ -1102,15 +1191,220 @@ function copyCode(elemId, btn)
     }
     navigator.clipboard.writeText(elem.innerText).then(() =>
     {
-        const origText = btn.textContent;
-        btn.textContent = 'Đã Copy!';
-        btn.style.color = 'var(--accent-emerald)';
+        const textSpan = btn.querySelector('.btn-copy-text');
+        const iconSpan = btn.querySelector('.btn-copy-icon');
+        const origText = textSpan ? textSpan.textContent : btn.textContent;
+
+        if (textSpan)
+        {
+            textSpan.textContent = 'Đã chép!';
+        }
+        else
+        {
+            btn.textContent = 'Đã chép!';
+        }
+
+        if (iconSpan)
+        {
+            iconSpan.textContent = '✔️';
+        }
+
+        btn.classList.add('copied');
+
         setTimeout(() =>
         {
-            btn.textContent = origText;
-            btn.style.color = '';
+            if (textSpan)
+            {
+                textSpan.textContent = origText;
+            }
+            else
+            {
+                btn.textContent = origText;
+            }
+
+            if (iconSpan)
+            {
+                iconSpan.textContent = '📋';
+            }
+
+            btn.classList.remove('copied');
         }, 1800);
     });
+}
+
+/* ==========================================================================
+   MERMAID SCHEMATICS ENGINE & CONTROLLER
+   ========================================================================== */
+let mermaidRenderCounter = 0;
+
+function waitForMermaid(maxWaitMs = 5000, intervalMs = 60)
+{
+    return new Promise((resolve) =>
+    {
+        if (typeof mermaid !== 'undefined')
+        {
+            resolve(true);
+            return;
+        }
+
+        const start = Date.now();
+        const timer = setInterval(() =>
+        {
+            if (typeof mermaid !== 'undefined')
+            {
+                clearInterval(timer);
+                resolve(true);
+            }
+            else if (Date.now() - start >= maxWaitMs)
+            {
+                clearInterval(timer);
+                resolve(false);
+            }
+        }, intervalMs);
+    });
+}
+
+async function renderAllMermaidDiagrams()
+{
+    const targets = document.querySelectorAll('.mermaid-render-target');
+    if (!targets || targets.length === 0)
+    {
+        return;
+    }
+
+    if (typeof mermaid === 'undefined')
+    {
+        const isLoaded = await waitForMermaid();
+        if (!isLoaded)
+        {
+            console.warn('Thư viện Mermaid chưa tải xong từ CDN.');
+            return;
+        }
+    }
+
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const isDark = currentTheme === 'dark';
+
+    try
+    {
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'loose',
+            theme: isDark ? 'dark' : 'default',
+            themeVariables: isDark ? {
+                darkMode: true,
+                background: '#18191e',
+                primaryColor: '#202228',
+                primaryTextColor: '#f9fafb',
+                primaryBorderColor: '#454955',
+                lineColor: '#38bdf8',
+                secondaryColor: '#1f2127',
+                tertiaryColor: '#121316',
+                fontFamily: 'JetBrains Mono, Plus Jakarta Sans, monospace',
+                fontSize: '13px'
+            } : {
+                darkMode: false,
+                background: '#f0ece1',
+                primaryColor: '#e2ddd0',
+                primaryTextColor: '#111827',
+                primaryBorderColor: '#b5ac99',
+                lineColor: '#0369a1',
+                secondaryColor: '#faf7f0',
+                tertiaryColor: '#f4f0e6',
+                fontFamily: 'JetBrains Mono, Plus Jakarta Sans, monospace',
+                fontSize: '13px'
+            }
+        });
+    }
+    catch (e)
+    {
+        console.warn('Cấu hình Mermaid initialize:', e);
+    }
+
+    for (let i = 0; i < targets.length; i++)
+    {
+        const target = targets[i];
+        if (!document.body.contains(target))
+        {
+            continue;
+        }
+
+        const snippetId = target.getAttribute('data-snippet-id');
+        const codeElem = document.getElementById(snippetId);
+        if (!codeElem)
+        {
+            continue;
+        }
+
+        const rawCode = codeElem.textContent.trim();
+        if (!rawCode)
+        {
+            continue;
+        }
+
+        mermaidRenderCounter++;
+        const renderId = 'mermaid_svg_' + snippetId.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + mermaidRenderCounter;
+
+        try
+        {
+            const { svg } = await mermaid.render(renderId, rawCode);
+            if (document.body.contains(target))
+            {
+                target.innerHTML = svg;
+            }
+        }
+        catch (err)
+        {
+            console.error('Lỗi dựng Mermaid [' + snippetId + ']:', err);
+            const stray = document.getElementById(renderId) || document.getElementById('d' + renderId);
+            if (stray && stray.parentNode)
+            {
+                stray.parentNode.removeChild(stray);
+            }
+
+            if (document.body.contains(target))
+            {
+                target.innerHTML = `
+                    <div class="mermaid-render-error">
+                        <div class="mermaid-err-title">⚠️ Không thể dựng đồ họa sơ đồ này tự động</div>
+                        <div class="mermaid-err-desc">Một số ký tự hoặc cú pháp có thể chưa được hỗ trợ. Nhấn nút "Mã nguồn" để xem cấu trúc chi tiết.</div>
+                    </div>
+                `;
+            }
+        }
+    }
+}
+
+function toggleMermaidSource(snippetId, btn)
+{
+    const viewport = document.getElementById('viewport-' + snippetId);
+    const source = document.getElementById('source-' + snippetId);
+    if (!viewport || !source)
+    {
+        return;
+    }
+
+    const isShowingSource = source.style.display !== 'none';
+    if (isShowingSource)
+    {
+        source.style.display = 'none';
+        viewport.style.display = 'flex';
+        if (btn)
+        {
+            btn.textContent = 'Mã nguồn';
+            btn.classList.remove('active');
+        }
+    }
+    else
+    {
+        source.style.display = 'block';
+        viewport.style.display = 'none';
+        if (btn)
+        {
+            btn.textContent = 'Xem sơ đồ';
+            btn.classList.add('active');
+        }
+    }
 }
 
 /* ==========================================================================
@@ -1324,6 +1618,9 @@ function toggleTheme()
     {
         themeBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
     }
+
+    // Re-render toàn bộ sơ đồ Mermaid theo màu sắc theme mới
+    renderAllMermaidDiagrams();
 }
 
 /* Reading Progress Bar */

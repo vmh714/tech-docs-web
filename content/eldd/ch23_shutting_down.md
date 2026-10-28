@@ -1,4 +1,4 @@
-# Chương 23. Tắt hệ thống (Shutting Down)
+# Chương 23: Lời kết (Shutting Down)
 
 ## Trong chương này
 

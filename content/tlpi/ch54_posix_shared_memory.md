@@ -1,313 +1,336 @@
-# Chương 54: POSIX SHARED MEMORY
+# Chương 54: Bộ nhớ chia sẻ POSIX (POSIX Shared Memory)
 
-Trong các chương trước, chúng ta đã xem xét hai kỹ thuật cho phép các tiến trình (process) không có quan hệ họ hàng chia sẻ các vùng bộ nhớ để thực hiện IPC: System V shared memory (Chương 48) và ánh xạ tệp chia sẻ (shared file mappings - Mục 49.4.2). Cả hai kỹ thuật này đều có những nhược điểm tiềm ẩn:
+Trong các chương trước, chúng ta đã xem xét hai kỹ thuật cho phép các tiến trình không có quan hệ cha-con (unrelated processes) chia sẻ các vùng bộ nhớ nhằm thực hiện giao tiếp liên tiến trình (IPC): System V shared memory (Chương 48) và ánh xạ tệp chia sẻ (shared file mappings - Mục 49.4.2). Cả hai kỹ thuật này đều tồn tại những nhược điểm tiềm ẩn:
 
-- Mô hình System V shared memory, sử dụng các khóa (key) và định danh (identifier), không đồng nhất với mô hình I/O tiêu chuẩn của UNIX, vốn sử dụng tên tệp (filename) và bộ mô tả tệp (file descriptor). Sự khác biệt này có nghĩa là chúng ta cần một tập hợp hoàn toàn mới các system call (lời gọi hệ thống) và lệnh để làm việc với các phân đoạn System V shared memory.
-- Việc sử dụng ánh xạ tệp chia sẻ (shared file mapping) cho IPC đòi hỏi phải tạo ra một tệp trên đĩa, ngay cả khi chúng ta không quan tâm đến việc có một kho lưu trữ hậu thuẫn (backing store) bền vững cho vùng chia sẻ hay không. Bên cạnh sự bất tiện khi phải tạo tệp, kỹ thuật này còn phát sinh thêm chi phí chung (overhead) về I/O tệp.
+- Mô hình System V shared memory, vốn sử dụng các khóa (key) và định danh (identifier), không nhất quán với mô hình I/O tiêu chuẩn của UNIX (vốn sử dụng tên tệp và bộ mô tả tệp - file descriptor). Sự khác biệt này đòi hỏi chúng ta phải có một tập hợp các system call và câu lệnh hoàn toàn mới để làm việc với các phân đoạn System V shared memory.
+- Việc sử dụng ánh xạ tệp chia sẻ (shared file mapping) cho IPC đòi hỏi phải tạo một tệp trên đĩa, ngay cả khi chúng ta không có nhu cầu duy trì một kho lưu trữ nền bền vững (persistent backing store) cho vùng nhớ chia sẻ. Bên cạnh sự bất tiện khi phải tạo tệp, kỹ thuật này còn phát sinh chi phí phụ trội (overhead) cho các thao tác I/O tệp.
 
-Do những nhược điểm này, tiêu chuẩn POSIX.1b đã định nghĩa một API chia sẻ bộ nhớ mới: POSIX shared memory, đây là chủ đề của chương này.
+Chính vì những hạn chế này, tiêu chuẩn POSIX.1b đã định nghĩa một API chia sẻ bộ nhớ mới: **POSIX shared memory**, đây cũng là chủ đề chính của chương này.
 
-> POSIX sử dụng thuật ngữ đối tượng bộ nhớ chia sẻ (shared memory objects), trong khi System V gọi là các phân đoạn bộ nhớ chia sẻ (shared memory segments). Sự khác biệt về thuật ngữ này mang tính lịch sử—cả hai thuật ngữ đều được sử dụng để chỉ các vùng bộ nhớ được chia sẻ giữa các tiến trình.
+> [!NOTE]
+> POSIX sử dụng thuật ngữ *đối tượng bộ nhớ chia sẻ* (shared memory objects), trong khi System V gọi là *các phân đoạn bộ nhớ chia sẻ* (shared memory segments). Sự khác biệt về thuật ngữ này mang tính lịch sử—cả hai đều được dùng để chỉ các vùng bộ nhớ được chia sẻ giữa các tiến trình.
 
 ## 54.1 Tổng quan
 
-POSIX shared memory cho phép chúng ta chia sẻ một vùng được ánh xạ (mapped region) giữa các tiến trình không có quan hệ họ hàng mà không cần tạo một tệp được ánh xạ tương ứng. POSIX shared memory đã được hỗ trợ trên Linux kể từ Linux kernel 2.4.
+POSIX shared memory cho phép chúng ta chia sẻ một vùng bộ nhớ được ánh xạ (mapped region) giữa các tiến trình không có quan hệ cha-con mà không cần phải tạo một tệp ánh xạ tương ứng trên đĩa. POSIX shared memory được hỗ trợ trên Linux từ kernel 2.4.
 
-Tiêu chuẩn SUSv3 không quy định bất kỳ chi tiết nào về cách thức triển khai POSIX shared memory. Cụ thể, không có yêu cầu nào về việc sử dụng hệ thống tệp (thực hoặc ảo) để định danh các đối tượng bộ nhớ chia sẻ, mặc dù nhiều hệ thống UNIX thực sự sử dụng hệ thống tệp cho mục đích này. Một số hệ thống UNIX tạo tên cho các đối tượng bộ nhớ chia sẻ dưới dạng tệp tại một vị trí đặc biệt trong hệ thống tệp tiêu chuẩn. Linux sử dụng một hệ thống tệp tmpfs chuyên dụng (Mục 14.10) được gắn kết (mount) dưới thư mục `/dev/shm`. Hệ thống tệp này có tính bền vững trong kernel (kernel persistence)—các đối tượng bộ nhớ chia sẻ nằm trong đó sẽ vẫn tồn tại ngay cả khi không có tiến trình nào đang mở chúng, nhưng chúng sẽ bị mất nếu hệ thống tắt nguồn (shutdown).
+Tiêu chuẩn SUSv3 không quy định chi tiết về cách thức triển khai POSIX shared memory. Cụ thể, không có yêu cầu bắt buộc phải sử dụng một hệ thống tệp (thực hoặc ảo) để định danh các đối tượng bộ nhớ chia sẻ, mặc dù nhiều bản phân phối UNIX áp dụng phương pháp này. Một số hệ thống UNIX tạo tên cho các đối tượng bộ nhớ chia sẻ dưới dạng các tệp tại một vị trí đặc biệt trong hệ thống tệp tiêu chuẩn. Linux sử dụng một hệ thống tệp `tmpfs` chuyên dụng (Mục 14.10) được mount tại thư mục `/dev/shm`. Hệ thống tệp này có *tính bền vững cấp nhân* (kernel persistence)—các đối tượng bộ nhớ chia sẻ chứa trong đó vẫn tồn tại ngay cả khi không có tiến trình nào đang mở chúng, nhưng sẽ bị mất khi hệ thống tắt nguồn (shutdown).
 
-> Tổng lượng bộ nhớ trong tất cả các vùng POSIX shared memory trên hệ thống bị giới hạn bởi dung lượng của hệ thống tệp tmpfs bên dưới. Hệ thống tệp này thường được gắn kết khi khởi động hệ thống với một kích thước mặc định nào đó (ví dụ: 256 MB). Nếu cần thiết, người dùng siêu cấp (superuser) có thể thay đổi kích thước của hệ thống tệp bằng cách gắn kết lại (remount) nó bằng lệnh `mount –o remount,size=<num-bytes>`.
+> [!NOTE]
+> Tổng dung lượng bộ nhớ dành cho tất cả các vùng POSIX shared memory trên hệ thống bị giới hạn bởi kích thước của hệ thống tệp `tmpfs` bên dưới. Hệ thống tệp này thường được mount lúc khởi động với một dung lượng mặc định (ví dụ: 256 MB). Nếu cần, người dùng quản trị (superuser) có thể thay đổi kích thước của hệ thống tệp bằng cách mount lại (remount) thông qua lệnh: `mount -o remount,size=<num-bytes>`.
 
 Để sử dụng một đối tượng POSIX shared memory, chúng ta thực hiện hai bước:
 
-- 1. Sử dụng hàm `shm_open()` để mở một đối tượng với một tên được chỉ định. (Chúng tôi đã mô tả các quy tắc chi phối việc đặt tên cho các đối tượng POSIX shared memory trong Mục [51.1](#page-1-0)). Hàm `shm_open()` tương tự như system call `open()`. Nó hoặc tạo một đối tượng bộ nhớ chia sẻ mới hoặc mở một đối tượng đã tồn tại. Là kết quả trả về của hàm, `shm_open()` trả về một file descriptor trỏ đến đối tượng đó.
-- 2. Truyền file descriptor lấy được ở bước trước vào lệnh gọi `mmap()` với cờ `MAP_SHARED` được chỉ định trong đối số `flags`. Thao tác này ánh xạ đối tượng bộ nhớ chia sẻ vào không gian địa chỉ ảo (virtual address space) của tiến trình. Giống như các cách sử dụng `mmap()` khác, một khi chúng ta đã ánh xạ đối tượng, chúng ta có thể đóng file descriptor mà không làm ảnh hưởng đến việc ánh xạ. Tuy nhiên, chúng ta có thể cần giữ cho file descriptor mở để sử dụng tiếp trong các lệnh gọi `fstat()` và `ftruncate()` (xem Mục [54.2](#page-52-0)).
+1. Sử dụng hàm `shm_open()` để mở một đối tượng với tên được chỉ định. (Các quy tắc đặt tên cho đối tượng POSIX shared memory được mô tả trong Mục 51.1). Hàm `shm_open()` tương tự như system call `open()`. Nó có thể tạo một đối tượng bộ nhớ chia sẻ mới hoặc mở một đối tượng đã tồn tại. Kết quả trả về của `shm_open()` là một file descriptor tham chiếu đến đối tượng đó.
+2. Truyền file descriptor nhận được từ bước trên vào hàm `mmap()` với cờ `MAP_SHARED` trong đối số `flags`. Thao tác này sẽ ánh xạ đối tượng bộ nhớ chia sẻ vào không gian địa chỉ ảo (virtual address space) của tiến trình. Tương tự như các trường hợp sử dụng `mmap()` khác, sau khi đã ánh xạ đối tượng, chúng ta có thể đóng file descriptor mà không làm ảnh hưởng đến vùng ánh xạ. Tuy nhiên, chúng ta có thể giữ file descriptor mở nếu cần sử dụng cho các lời gọi `fstat()` hoặc `ftruncate()` tiếp theo (xem Mục 54.2).
 
-Mối quan hệ giữa `shm_open()` và `mmap()` đối với POSIX shared memory tương tự như mối quan hệ giữa `shmget()` và `shmat()` đối với System V shared memory. Nguồn gốc của quy trình hai bước (`shm_open()` cộng với `mmap()`) để sử dụng các đối tượng POSIX shared memory thay vì sử dụng một hàm duy nhất thực hiện cả hai tác vụ mang tính lịch sử. Khi ủy ban POSIX bổ sung tính năng này, lệnh gọi `mmap()` đã tồn tại sẵn ([Stevens, 1999]). Trên thực tế, tất cả những gì chúng ta đang làm là thay thế các lệnh gọi `open()` bằng các lệnh gọi `shm_open()`, với điểm khác biệt là việc sử dụng `shm_open()` không đòi hỏi phải tạo một tệp trên hệ thống tệp dựa trên đĩa (disk-based file system).
+Mối quan hệ giữa `shm_open()` và `mmap()` trong POSIX shared memory tương tự như mối quan hệ giữa `shmget()` và `shmat()` trong System V shared memory. Nguồn gốc của quy trình hai bước (`shm_open()` kết hợp `mmap()`) thay vì dùng một hàm duy nhất thực hiện cả hai tác vụ mang tính lịch sử: khi ủy ban POSIX bổ sung tính năng này, lời gọi `mmap()` đã tồn tại từ trước ([Stevens, 1999]). Thực chất, chúng ta chỉ đang thay thế lời gọi `open()` bằng `shm_open()`, với điểm khác biệt là `shm_open()` không yêu cầu tạo tệp thực sự trên hệ thống tệp lưu trữ đĩa (disk-based file system).
 
-Vì một đối tượng bộ nhớ chia sẻ được tham chiếu thông qua một file descriptor, chúng ta có thể tận dụng hiệu quả các system call về file descriptor khác nhau đã được định nghĩa sẵn trong hệ thống UNIX (ví dụ: `ftruncate()`), thay vì cần đến các system call chuyên dụng hoàn toàn mới (như yêu cầu đối với System V shared memory).
+Do đối tượng bộ nhớ chia sẻ được tham chiếu thông qua một file descriptor, chúng ta có thể tái sử dụng các system call thao tác trên file descriptor đã có sẵn trong hệ thống UNIX (ví dụ: `ftruncate()`), thay vì phải bổ sung các system call chuyên dụng mới (như cách làm của System V shared memory).
 
-## 54.2 Tạo các đối tượng bộ nhớ chia sẻ (Shared Memory Objects)
+## 54.2 Tạo các đối tượng bộ nhớ chia sẻ
 
-Hàm shm\_open() tạo và mở một đối tượng bộ nhớ chia sẻ (shared memory object) mới hoặc mở một đối tượng đã tồn tại. Các tham số truyền vào shm\_open() tương tự như các tham số của hàm open().
+Hàm `shm_open()` tạo và mở một đối tượng bộ nhớ chia sẻ mới hoặc mở một đối tượng đã có sẵn. Các đối số của `shm_open()` tương tự như của `open()`.
 
-```
-## include <fcntl.h> /* Định nghĩa các hằng số O_* */
+```c
+## include <fcntl.h>    /* Định nghĩa các hằng số O_* */
 ## include <sys/stat.h> /* Định nghĩa các hằng số mode */
 ## include <sys/mman.h>
+
 int shm_open(const char *name, int oflag, mode_t mode);
-                             Trả về File Descriptor khi thành công, hoặc –1 khi lỗi
+// Trả về file descriptor khi thành công, hoặc -1 khi gặp lỗi
 ```
 
-Tham số `name` xác định đối tượng bộ nhớ chia sẻ cần tạo hoặc mở. Tham số `oflag` là một mặt nạ bit (bit mask) làm thay đổi hành vi của lời gọi hàm. Các giá trị có thể được bao gồm trong mặt nạ này được tóm tắt tại [Bảng 54-1.](#page-52-1)
+Đối số `name` định danh đối tượng bộ nhớ chia sẻ cần tạo hoặc mở. Đối số `oflag` là một mặt nạ bit (bit mask) điều chỉnh hành vi của lời gọi hàm. Các giá trị có thể kết hợp trong mặt nạ này được tóm tắt trong Bảng 54-1.
 
-| Bảng 54-1: Các giá trị bit cho tham số | oflag | của shm_open() |
-|----------------------------------------|-------|----------------|
-|----------------------------------------|-------|----------------|
+**Bảng 54-1:** Các giá trị bit cho đối số `oflag` của hàm `shm_open()`
 
 | Cờ (Flag) | Mô tả |
-|----------|---|
-| O_CREAT | Tạo đối tượng nếu nó chưa tồn tại |
-| O_EXCL | Dùng kết hợp với O_CREAT, tạo độc quyền đối tượng |
-| O_RDONLY | Mở với quyền chỉ đọc (read-only) |
-| O_RDWR | Mở với quyền đọc-ghi (read-write) |
-| O_TRUNC | Cắt ngắn đối tượng về độ dài bằng 0 |
+| :--- | :--- |
+| `O_CREAT` | Tạo đối tượng nếu nó chưa tồn tại |
+| `O_EXCL` | Dùng kết hợp với `O_CREAT` để tạo độc quyền (báo lỗi nếu đối tượng đã tồn tại) |
+| `O_RDONLY` | Mở đối tượng chỉ để đọc |
+| `O_RDWR` | Mở đối tượng để đọc và ghi |
+| `O_TRUNC` | Cắt ngắn (truncate) độ dài đối tượng về 0 |
 
-Một trong những mục đích của tham số `oflag` là xác định xem chúng ta đang mở một đối tượng bộ nhớ chia sẻ đã tồn tại hay đang tạo và mở một đối tượng mới. Nếu `oflag` không bao gồm `O_CREAT`, chúng ta đang mở một đối tượng đã có sẵn. Nếu `O_CREAT` được chỉ định, đối tượng sẽ được tạo ra nếu nó chưa tồn tại. Việc chỉ định `O_EXCL` kết hợp cùng với `O_CREAT` là một yêu cầu nhằm đảm bảo rằng tiến trình gọi (calling process) là bên tạo ra đối tượng; nếu đối tượng đã tồn tại, lỗi sẽ xảy ra (EEXIST).
+Một mục đích của đối số `oflag` là xác định xem chúng ta đang mở một đối tượng đã tồn tại hay tạo mới. Nếu `oflag` không chứa `O_CREAT`, hàm sẽ mở đối tượng hiện có. Nếu chỉ định `O_CREAT`, đối tượng sẽ được tạo nếu chưa tồn tại. Việc kết hợp `O_EXCL` cùng `O_CREAT` nhằm đảm bảo tiến trình gọi chính là bên tạo ra đối tượng; nếu đối tượng đã tồn tại từ trước, hàm sẽ trả về lỗi (`EEXIST`).
 
-Tham số `oflag` cũng chỉ định loại truy cập mà tiến trình gọi sẽ thực hiện đối với đối tượng bộ nhớ chia sẻ, bằng cách chỉ định chính xác một trong các giá trị `O_RDONLY` hoặc `O_RDWR`.
+Đối số `oflag` cũng quy định quyền truy cập của tiến trình gọi tới đối tượng bằng cách chỉ định chính xác một trong hai giá trị: `O_RDONLY` hoặc `O_RDWR`.
 
-Giá trị cờ còn lại, `O_TRUNC`, khiến cho một thao tác mở thành công đối tượng bộ nhớ chia sẻ đã tồn tại sẽ cắt ngắn đối tượng đó về độ dài bằng không.
+Cờ còn lại, `O_TRUNC`, khi được sử dụng sẽ làm cho một thao tác mở thành công đối tượng hiện có tự động cắt ngắn độ dài của đối tượng đó về 0 byte.
 
-> Trên Linux, việc cắt ngắn vẫn diễn ra ngay cả khi mở với quyền chỉ đọc. Tuy nhiên, tiêu chuẩn SUSv3 cho biết kết quả của việc sử dụng `O_TRUNC` với chế độ mở chỉ đọc là không xác định (undefined), vì vậy chúng ta không thể phụ thuộc vào hành vi cụ thể này trong các mã nguồn có tính tương thích cao (portable).
+> [!NOTE]
+> Trên Linux, việc cắt ngắn độ dài vẫn diễn ra ngay cả khi mở với cờ chỉ đọc (`O_RDONLY`). Tuy nhiên, SUSv3 quy định rằng kết quả của việc dùng `O_TRUNC` với `O_RDONLY` là không xác định (undefined), do đó không nên dựa vào hành vi này để đảm bảo tính di động (portability) của mã nguồn.
 
-Khi một đối tượng bộ nhớ chia sẻ mới được tạo, quyền sở hữu người dùng và nhóm (ownership và group ownership) của nó được lấy từ ID người dùng hiệu dụng (effective user ID) và ID nhóm của tiến trình gọi shm\_open(), và quyền hạn của đối tượng được thiết lập theo giá trị được cung cấp trong tham số mặt nạ bit `mode`. Các giá trị bit cho `mode` giống như đối với các tệp tin (Bảng 15-4, trang 295). Giống như System Call open(), mặt nạ quyền hạn trong `mode` được lọc qua umask của tiến trình (Mục 15.4.6). Khác với open(), tham số `mode` là bắt buộc đối với mọi lời gọi shm\_open(); nếu chúng ta không tạo đối tượng mới, tham số này nên được chỉ định là 0.
+Khi một đối tượng bộ nhớ chia sẻ mới được tạo, UID và GID sở hữu của nó được lấy từ ID người dùng hiệu dụng (effective user ID) và ID nhóm hiệu dụng của tiến trình gọi `shm_open()`. Quyền truy cập của đối tượng được thiết lập theo mặt nạ bit truyền vào đối số `mode`. Các giá trị bit của `mode` tương tự như đối với tệp tin (Bảng 15-4). Giống như system call `open()`, mặt nạ quyền hạn trong `mode` sẽ được lọc qua `umask` của tiến trình (Mục 15.4.6). Khác với `open()`, đối số `mode` trong `shm_open()` luôn bắt buộc phải truyền vào; nếu không phải tạo mới đối tượng, giá trị này nên được đặt là `0`.
 
-Cờ đóng-khi-exec (close-on-exec flag - `FD_CLOEXEC`, Mục 27.4) được thiết lập trên file descriptor do shm\_open() trả về, nhờ đó file descriptor sẽ tự động được đóng lại nếu tiến trình thực thi một lời gọi `exec()`. (Điều này nhất quán với thực tế là các vùng nhớ ánh xạ - mappings - sẽ bị hủy ánh xạ - unmapped - khi một tiến trình thực hiện `exec()`.)
+Cờ close-on-exec (`FD_CLOEXEC`, Mục 27.4) sẽ tự động được thiết lập trên file descriptor do `shm_open()` trả về, giúp file descriptor này tự động đóng lại khi tiến trình thực thi lời gọi `exec()`. (Điều này phù hợp với thực tế là các vùng ánh xạ bộ nhớ cũng sẽ bị hủy ánh xạ - unmapped - khi tiến trình thực hiện `exec()`).
 
-Khi một đối tượng bộ nhớ chia sẻ mới được tạo, ban đầu nó có độ dài bằng không. Điều này có nghĩa là sau khi tạo một đối tượng bộ nhớ chia sẻ mới, thông thường chúng ta gọi `ftruncate()` (Mục 5.8) để thiết lập kích thước của đối tượng trước khi gọi `mmap()`. Sau lời gọi `mmap()`, chúng ta cũng có thể sử dụng `ftruncate()` để mở rộng hoặc thu nhỏ đối tượng bộ nhớ chia sẻ theo ý muốn, với lưu ý cần ghi nhớ các điểm đã thảo luận ở Mục 49.4.3.
+Khi một đối tượng bộ nhớ chia sẻ mới được tạo, ban đầu nó có độ dài bằng 0. Do đó, sau khi tạo đối tượng, chúng ta thường phải gọi `ftruncate()` (Mục 5.8) để thiết lập kích thước cho đối tượng trước khi gọi `mmap()`. Sau khi đã ánh xạ bằng `mmap()`, chúng ta vẫn có thể dùng `ftruncate()` để mở rộng hoặc thu nhỏ đối tượng bộ nhớ chia sẻ tùy ý (cần lưu ý các điểm đã thảo luận ở Mục 49.4.3).
 
-Khi một đối tượng bộ nhớ chia sẻ được mở rộng, các byte mới được thêm vào sẽ tự động được khởi tạo về giá trị 0.
+Khi một đối tượng bộ nhớ chia sẻ được mở rộng, các byte mới thêm vào sẽ tự động được khởi tạo bằng giá trị `0`.
 
-Tại bất kỳ thời điểm nào, chúng ta có thể áp dụng `fstat()` (Mục 15.1) lên file descriptor do shm\_open() trả về để thu được một cấu trúc `stat` mà các trường của nó chứa thông tin về đối tượng bộ nhớ chia sẻ, bao gồm kích thước (`st_size`), quyền hạn (`st_mode`), chủ sở hữu (`st_uid`), và nhóm (`st_gid`). (Đây là các trường duy nhất mà SUSv3 yêu cầu `fstat()` phải thiết lập trong cấu trúc `stat`, mặc dù Linux cũng trả về thông tin có ý nghĩa trong các trường thời gian, cùng với một số thông tin ít hữu ích khác trong các trường còn lại).
+Tại bất kỳ thời điểm nào, chúng ta có thể gọi `fstat()` (Mục 15.1) trên file descriptor do `shm_open()` trả về để lấy cấu trúc `stat` chứa thông tin về đối tượng, bao gồm kích thước (`st_size`), quyền hạn (`st_mode`), UID chủ sở hữu (`st_uid`), và GID nhóm (`st_gid`). (Đây là các trường duy nhất mà SUSv3 bắt buộc `fstat()` phải cập nhật đối với shared memory object, dù Linux vẫn trả về thông tin thời gian có ý nghĩa và một số thông tin khác).
 
-Quyền hạn và quyền sở hữu của một đối tượng bộ nhớ chia sẻ có thể được thay đổi lần lượt bằng cách sử dụng `fchmod()` và `fchown()`.
+Quyền hạn và quyền sở hữu của một đối tượng bộ nhớ chia sẻ có thể được thay đổi tương ứng bằng cách sử dụng `fchmod()` và `fchown()`.
 
 ### Chương trình ví dụ
 
-[Listing 54-1](#page-53-0) cung cấp một ví dụ đơn giản về việc sử dụng `shm_open()`, `ftruncate()` và `mmap()`. Chương trình này tạo ra một đối tượng bộ nhớ chia sẻ (shared memory object) với kích thước được chỉ định bởi một tham số dòng lệnh (command-line argument), và ánh xạ (map) đối tượng đó vào không gian địa chỉ ảo (virtual address space) của tiến trình (Process). (Bước ánh xạ này là dư thừa vì chúng ta không thực sự thao tác gì với bộ nhớ chia sẻ, nhưng nó đóng vai trò minh họa cách sử dụng `mmap()`.) Chương trình cho phép sử dụng các tùy chọn dòng lệnh để chọn các cờ (flag) (`O_CREAT` và `O_EXCL`) cho lời gọi hàm `shm_open()`.
+Listing 54-1 minh họa cách sử dụng đơn giản các hàm `shm_open()`, `ftruncate()`, và `mmap()`. Chương trình này tạo một đối tượng bộ nhớ chia sẻ với kích thước nhận từ tham số dòng lệnh, sau đó ánh xạ đối tượng đó vào không gian địa chỉ ảo của tiến trình. (Bước ánh xạ ở đây mang tính chất minh họa cách dùng `mmap()`, vì chương trình không thực sự đọc/ghi dữ liệu vào vùng nhớ). Chương trình cho phép dùng các tùy chọn dòng lệnh để bật các cờ (`O_CREAT` và `O_EXCL`) cho lời gọi `shm_open()`.
 
-Trong ví dụ sau, chúng ta sử dụng chương trình này để tạo một đối tượng bộ nhớ chia sẻ có kích thước 10.000 byte, và sau đó sử dụng lệnh `ls` để hiển thị đối tượng này trong `/dev/shm`:
+Trong ví dụ dưới đây, chúng ta dùng chương trình này để tạo một đối tượng bộ nhớ chia sẻ có kích thước 10,000 byte, sau đó dùng lệnh `ls` để kiểm tra đối tượng trong `/dev/shm`:
 
-```
+```bash
 $ ./pshm_create -c /demo_shm 10000
 $ ls -l /dev/shm
 total 0
 -rw------- 1 mtk users 10000 Jun 20 11:31 demo_shm
 ```
 
-**Listing 54-1:** Tạo một đối tượng bộ nhớ chia sẻ POSIX (POSIX shared memory object)
+**Listing 54-1:** Tạo đối tượng POSIX shared memory
 
+```c
+Wait, line below should not be executable
 ```
-––––––––––––––––––––––––––––––––––––––––––––––––––––––– pshm/pshm_create.c
+
+```c
+/* pshm/pshm_create.c */
+
 ## include <sys/stat.h>
 ## include <fcntl.h>
 ## include <sys/mman.h>
 ## include "tlpi_hdr.h"
-```
 
-```
 static void
 usageError(const char *progName)
 {
- fprintf(stderr, "Usage: %s [-cx] name size [octal-perms]\n", progName);
- fprintf(stderr, " -c Create shared memory (O_CREAT)\n");
- fprintf(stderr, " -x Create exclusively (O_EXCL)\n");
- exit(EXIT_FAILURE);
+    fprintf(stderr, "Usage: %s [-cx] name size [octal-perms]\n", progName);
+    fprintf(stderr, "  -c Create shared memory (O_CREAT)\n");
+    fprintf(stderr, "  -x Create exclusively (O_EXCL)\n");
+    exit(EXIT_FAILURE);
 }
+
 int
 main(int argc, char *argv[])
 {
- int flags, opt, fd;
- mode_t perms;
- size_t size;
- void *addr;
- flags = O_RDWR;
- while ((opt = getopt(argc, argv, "cx")) != -1) {
- switch (opt) {
- case 'c': flags |= O_CREAT; break;
- case 'x': flags |= O_EXCL; break;
- default: usageError(argv[0]);
- }
- }
- if (optind + 1 >= argc)
- usageError(argv[0]);
- size = getLong(argv[optind + 1], GN_ANY_BASE, "size");
- perms = (argc <= optind + 2) ? (S_IRUSR | S_IWUSR) :
- getLong(argv[optind + 2], GN_BASE_8, "octal-perms");
- /* Tạo đối tượng bộ nhớ chia sẻ và thiết lập kích thước của nó */
- fd = shm_open(argv[optind], flags, perms);
- if (fd == -1)
- errExit("shm_open");
- if (ftruncate(fd, size) == -1)
- errExit("ftruncate");
- /* Ánh xạ đối tượng bộ nhớ chia sẻ */
- addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
- if (addr == MAP_FAILED)
- errExit("mmap");
- exit(EXIT_SUCCESS);
+    int flags, opt, fd;
+    mode_t perms;
+    size_t size;
+    void *addr;
+
+    flags = O_RDWR;
+    while ((opt = getopt(argc, argv, "cx")) != -1) {
+        switch (opt) {
+        case 'c': flags |= O_CREAT; break;
+        case 'x': flags |= O_EXCL; break;
+        default: usageError(argv[0]);
+        }
+    }
+
+    if (optind + 1 >= argc)
+        usageError(argv[0]);
+
+    size = getLong(argv[optind + 1], GN_ANY_BASE, "size");
+    perms = (argc <= optind + 2) ? (S_IRUSR | S_IWUSR) :
+            getLong(argv[optind + 2], GN_BASE_8, "octal-perms");
+
+    /* Tạo đối tượng bộ nhớ chia sẻ và thiết lập kích thước */
+    fd = shm_open(argv[optind], flags, perms);
+    if (fd == -1)
+        errExit("shm_open");
+
+    if (ftruncate(fd, size) == -1)
+        errExit("ftruncate");
+
+    /* Ánh xạ đối tượng bộ nhớ chia sẻ vào không gian địa chỉ */
+    addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (addr == MAP_FAILED)
+        errExit("mmap");
+
+    exit(EXIT_SUCCESS);
 }
-––––––––––––––––––––––––––––––––––––––––––––––––––––––– pshm/pshm_create.c
 ```
 
 ## 54.3 Sử dụng các đối tượng bộ nhớ chia sẻ
 
-[Listing 54-2](#page-55-0) và [Listing 54-3](#page-56-0) minh họa việc sử dụng một đối tượng bộ nhớ chia sẻ để truyền dữ liệu từ tiến trình này sang tiến trình khác. Chương trình trong [Listing 54-2](#page-55-0) sao chép chuỗi ký tự nằm ở tham số dòng lệnh thứ hai của nó vào đối tượng bộ nhớ chia sẻ hiện có được đặt tên ở tham số dòng lệnh thứ nhất. Trước khi ánh xạ đối tượng và thực hiện việc sao chép, chương trình sử dụng `ftruncate()` để thay đổi kích thước đối tượng bộ nhớ chia sẻ sao cho bằng với độ dài của chuỗi cần sao chép.
+Listing 54-2 và Listing 54-3 minh họa việc sử dụng đối tượng bộ nhớ chia sẻ để truyền dữ liệu giữa hai tiến trình. Chương trình trong Listing 54-2 sao chép chuỗi ký tự ở đối số dòng lệnh thứ hai vào đối tượng bộ nhớ chia sẻ đã tồn tại (được đặt tên ở đối số thứ nhất). Trước khi ánh xạ đối tượng và sao chép dữ liệu, chương trình gọi `ftruncate()` để điều chỉnh kích thước bộ nhớ chia sẻ bằng đúng độ dài chuỗi ký tự.
 
-**Listing 54-2:** Sao chép dữ liệu vào một đối tượng bộ nhớ chia sẻ POSIX
+**Listing 54-2:** Ghi dữ liệu vào đối tượng POSIX shared memory
 
-```
-–––––––––––––––––––––––––––––––––––––––––––––––––––––––– pshm/pshm_write.c
+```c
+/* pshm/pshm_write.c */
+
 ## include <fcntl.h>
 ## include <sys/mman.h>
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- int fd;
- size_t len; /* Kích thước của đối tượng bộ nhớ chia sẻ */
- char *addr;
- if (argc != 3 || strcmp(argv[1], "--help") == 0)
- usageErr("%s shm-name string\n", argv[0]);
- fd = shm_open(argv[1], O_RDWR, 0); /* Mở đối tượng đã tồn tại */
- if (fd == -1)
- errExit("shm_open");
- len = strlen(argv[2]);
- if (ftruncate(fd, len) == -1) /* Thay đổi kích thước đối tượng để chứa chuỗi */
- errExit("ftruncate");
- printf("Resized to %ld bytes\n", (long) len);
- addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
- if (addr == MAP_FAILED)
- errExit("mmap");
- if (close(fd) == -1)
- errExit("close"); /* 'fd' không còn cần thiết nữa */
- printf("copying %ld bytes\n", (long) len);
- memcpy(addr, argv[2], len); /* Sao chép chuỗi vào bộ nhớ chia sẻ */
-   exit(EXIT_SUCCESS);
+    int fd;
+    size_t len; /* Kích thước của đối tượng bộ nhớ chia sẻ */
+    char *addr;
+
+    if (argc != 3 || strcmp(argv[1], "--help") == 0)
+        usageErr("%s shm-name string\n", argv[0]);
+
+    fd = shm_open(argv[1], O_RDWR, 0); /* Mở đối tượng hiện có */
+    if (fd == -1)
+        errExit("shm_open");
+
+    len = strlen(argv[2]);
+    if (ftruncate(fd, len) == -1) /* Thay đổi kích thước để chứa chuỗi */
+        errExit("ftruncate");
+    printf("Resized to %ld bytes\n", (long) len);
+
+    addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (addr == MAP_FAILED)
+        errExit("mmap");
+
+    if (close(fd) == -1)
+        errExit("close"); /* 'fd' không còn cần thiết sau khi đã mmap */
+
+    printf("copying %ld bytes\n", (long) len);
+    memcpy(addr, argv[2], len); /* Sao chép chuỗi vào bộ nhớ chia sẻ */
+
+    exit(EXIT_SUCCESS);
 }
-–––––––––––––––––––––––––––––––––––––––––––––––––––––––– pshm/pshm_write.c
 ```
 
-Chương trình trong [Listing 54-3](#page-56-0) hiển thị chuỗi trong đối tượng bộ nhớ chia sẻ hiện có được chỉ định bởi tên trong tham số dòng lệnh ra đầu ra tiêu chuẩn (standard output). Sau khi gọi `shm_open()`, chương trình sử dụng `fstat()` để xác định kích thước của bộ nhớ chia sẻ và sử dụng kích thước đó trong lời gọi `mmap()` (để ánh xạ đối tượng) cũng như trong lời gọi `write()` (để in chuỗi).
+Chương trình trong Listing 54-3 đọc và in chuỗi ký tự từ đối tượng bộ nhớ chia sẻ ra đầu ra tiêu chuẩn (stdout). Sau khi gọi `shm_open()`, chương trình dùng `fstat()` để lấy kích thước đối tượng và truyền kích thước đó vào lời gọi `mmap()` cũng như lời gọi `write()` hiển thị dữ liệu.
 
-```
-––––––––––––––––––––––––––––––––––––––––––––––––––––––––– pshm/pshm_read.c
+```c
+/* pshm/pshm_read.c */
+
 ## include <fcntl.h>
 ## include <sys/mman.h>
 ## include <sys/stat.h>
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- int fd;
- char *addr;
- struct stat sb;
- if (argc != 2 || strcmp(argv[1], "--help") == 0)
- usageErr("%s shm-name\n", argv[0]);
- fd = shm_open(argv[1], O_RDONLY, 0); /* Mở đối tượng đã tồn tại */
- if (fd == -1)
- errExit("shm_open");
- /* Sử dụng kích thước đối tượng bộ nhớ chia sẻ làm đối tham số độ dài cho mmap()
- và làm số lượng byte cho write() */
- if (fstat(fd, &sb) == -1)
- errExit("fstat");
- addr = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
- if (addr == MAP_FAILED)
- errExit("mmap");
- if (close(fd) == -1); /* 'fd' không còn cần thiết nữa */
- errExit("close");
- write(STDOUT_FILENO, addr, sb.st_size);
- printf("\n");
-   exit(EXIT_SUCCESS);
+    int fd;
+    char *addr;
+    struct stat sb;
+
+    if (argc != 2 || strcmp(argv[1], "--help") == 0)
+        usageErr("%s shm-name\n", argv[0]);
+
+    fd = shm_open(argv[1], O_RDONLY, 0); /* Mở đối tượng hiện có */
+    if (fd == -1)
+        errExit("shm_open");
+
+    /* Lấy kích thước đối tượng để dùng cho mmap() và write() */
+    if (fstat(fd, &sb) == -1)
+        errExit("fstat");
+
+    addr = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    if (addr == MAP_FAILED)
+        errExit("mmap");
+
+    if (close(fd) == -1)
+        errExit("close"); /* 'fd' không còn cần thiết */
+
+    write(STDOUT_FILENO, addr, sb.st_size);
+    printf("\n");
+
+    exit(EXIT_SUCCESS);
 }
-––––––––––––––––––––––––––––––––––––––––––––––––––––––––– pshm/pshm_read.c
 ```
 
-Phiên làm việc shell dưới đây minh họa cách sử dụng các chương trình trong [Listing 54-2](#page-55-0) và [Listing 54-3.](#page-56-0) Đầu tiên, chúng ta tạo một đối tượng bộ nhớ chia sẻ (shared memory object) có độ dài bằng 0 bằng cách sử dụng chương trình trong [Listing 54-1](#page-53-0).
+Kịch bản chạy thử nghiệm dưới đây trình bày cách kết hợp các chương trình trên. Đầu tiên, chúng ta tạo một đối tượng bộ nhớ chia sẻ có độ dài 0 bằng chương trình trong Listing 54-1:
 
-```
+```bash
 $ ./pshm_create -c /demo_shm 0
-$ ls -l /dev/shm Kiểm tra kích thước của đối tượng
+$ ls -l /dev/shm
 total 4
 -rw------- 1 mtk users 0 Jun 21 13:33 demo_shm
 ```
 
-Sau đó, chúng ta sử dụng chương trình trong [Listing 54-2](#page-55-0) để sao chép một chuỗi vào đối tượng bộ nhớ chia sẻ:
+Tiếp theo, ta dùng chương trình trong Listing 54-2 để ghi một chuỗi ký tự vào đối tượng:
 
-```
+```bash
 $ ./pshm_write /demo_shm 'hello'
-$ ls -l /dev/shm Kiểm tra xem kích thước của đối tượng đã thay đổi chưa
+$ ls -l /dev/shm
 total 4
 -rw------- 1 mtk users 5 Jun 21 13:33 demo_shm
 ```
 
-Từ kết quả đầu ra, chúng ta có thể thấy rằng chương trình đã thay đổi kích thước của đối tượng bộ nhớ chia sẻ để nó đủ lớn nhằm chứa chuỗi được chỉ định.
+Kết quả cho thấy kích thước của đối tượng bộ nhớ chia sẻ đã được mở rộng thành 5 bytes để chứa đủ chuỗi ký tự.
 
-Cuối cùng, chúng ta sử dụng chương trình trong [Listing 54-3](#page-56-0) để hiển thị chuỗi nằm trong đối tượng bộ nhớ chia sẻ:
+Cuối cùng, ta dùng chương trình trong Listing 54-3 để đọc dữ liệu từ vùng nhớ chia sẻ:
 
-```
+```bash
 $ ./pshm_read /demo_shm
 hello
 ```
 
-Các ứng dụng thường phải sử dụng một số kỹ thuật đồng bộ hóa (synchronization technique) để cho phép các tiến trình (Process) phối hợp quyền truy cập của chúng vào bộ nhớ chia sẻ. Trong phiên làm việc shell được minh họa ở đây, việc phối hợp được thực hiện bởi người dùng khi chạy các chương trình nối tiếp nhau. Thông thường, các ứng dụng sẽ sử dụng một primitive đồng bộ hóa (synchronization primitive) (ví dụ: semaphore) để điều phối việc truy cập vào một đối tượng bộ nhớ chia sẻ.
+Trong thực tế, các ứng dụng bắt buộc phải áp dụng cơ chế đồng bộ hóa để điều phối quyền truy cập của các tiến trình vào bộ nhớ chia sẻ. Trong ví dụ chạy lệnh ở trên, việc điều phối đơn giản là do người dùng chủ động chạy lần lượt từng lệnh. Trong ứng dụng thực tế, người ta sẽ sử dụng các nguyên hàm đồng bộ hóa (synchronization primitives - ví dụ: semaphore) để quản lý truy cập.
 
 ## 54.4 Xóa các đối tượng bộ nhớ chia sẻ
 
-SUSv3 yêu cầu các đối tượng bộ nhớ chia sẻ POSIX phải có ít nhất độ bền vững cấp nhân (kernel persistence); nghĩa là, chúng tiếp tục tồn tại cho đến khi bị xóa một cách tường minh hoặc hệ thống được khởi động lại (reboot). Khi một đối tượng bộ nhớ chia sẻ không còn cần thiết nữa, nó nên được xóa bằng cách sử dụng `shm_unlink()`.
+Tiêu chuẩn SUSv3 quy định rằng các đối tượng POSIX shared memory phải có ít nhất *tính bền vững cấp nhân* (kernel persistence); tức là chúng tiếp tục tồn tại cho đến khi bị xóa một cách tường minh hoặc khi hệ thống được khởi động lại. Khi một đối tượng bộ nhớ chia sẻ không còn dùng tới, nó cần được giải phóng bằng hàm `shm_unlink()`.
 
-```
+```c
 ## include <sys/mman.h>
+
 int shm_unlink(const char *name);
-                                            Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
+// Trả về 0 khi thành công, hoặc -1 khi gặp lỗi
 ```
 
-Hàm `shm_unlink()` sẽ xóa đối tượng bộ nhớ chia sẻ được chỉ định bởi `name`. Việc xóa một đối tượng bộ nhớ chia sẻ không làm ảnh hưởng đến các ánh xạ hiện có của đối tượng (vẫn sẽ giữ nguyên hiệu lực cho đến khi các tiến trình tương ứng gọi `munmap()` hoặc kết thúc), nhưng ngăn chặn các lời gọi `shm_open()` tiếp theo mở đối tượng đó. Một khi tất cả các tiến trình đã hủy ánh xạ (unmap) đối tượng, đối tượng sẽ bị xóa và nội dung của nó sẽ bị mất.
+Hàm `shm_unlink()` xóa đối tượng bộ nhớ chia sẻ có tên được truyền trong tham số `name`. Thao tác xóa không làm ảnh hưởng đến các ánh xạ (mappings) đang tồn tại (các ánh xạ này vẫn hiệu lực cho đến khi các tiến trình liên quan gọi `munmap()` hoặc kết thúc), nhưng nó sẽ ngăn chặn các lời gọi `shm_open()` tiếp theo mở đối tượng này. Khi tất cả các tiến trình đã hủy ánh xạ, đối tượng sẽ hoàn toàn bị loại bỏ và nội dung của nó sẽ mất đi.
 
-Chương trình trong [Listing 54-4](#page-57-0) sử dụng `shm_unlink()` để xóa đối tượng bộ nhớ chia sẻ được chỉ định trong tham số dòng lệnh (command-line argument) của chương trình.
+Chương trình trong Listing 54-4 sử dụng `shm_unlink()` để xóa đối tượng bộ nhớ chia sẻ được truyền vào từ tham số dòng lệnh.
 
-**Listing 54-4:** Sử dụng `shm_unlink()` để hủy liên kết một đối tượng bộ nhớ chia sẻ POSIX
+**Listing 54-4:** Sử dụng `shm_unlink()` để hủy liên kết đối tượng POSIX shared memory
 
-```
-––––––––––––––––––––––––––––––––––––––––––––––––––––––– pshm/pshm_unlink.c
+```c
+/* pshm/pshm_unlink.c */
+
 ## include <fcntl.h>
 ## include <sys/mman.h>
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- if (argc != 2 || strcmp(argv[1], "--help") == 0)
- usageErr("%s shm-name\n", argv[0]);
-   if (shm_unlink(argv[1]) == -1)
- errExit("shm_unlink");
-   exit(EXIT_SUCCESS);
+    if (argc != 2 || strcmp(argv[1], "--help") == 0)
+        usageErr("%s shm-name\n", argv[0]);
+
+    if (shm_unlink(argv[1]) == -1)
+        errExit("shm_unlink");
+
+    exit(EXIT_SUCCESS);
 }
-––––––––––––––––––––––––––––––––––––––––––––––––––––––– pshm/pshm_unlink.c
 ```
 
-## 54.5 So sánh giữa các API chia sẻ bộ nhớ (Shared Memory APIs)
+## 54.5 So sánh giữa các API chia sẻ bộ nhớ
 
-Đến đây, chúng ta đã xem xét một số kỹ thuật khác nhau để chia sẻ các vùng bộ nhớ (shared memory regions) giữa các tiến trình (process) không có quan hệ họ hàng:
+Cho đến nay, chúng ta đã nghiên cứu các kỹ thuật khác nhau để chia sẻ các vùng bộ nhớ giữa các tiến trình không có quan hệ cha-con:
 
-- Bộ nhớ chia sẻ System V (System V shared memory - Chương 48);
+- System V shared memory (Chương 48);
 - Ánh xạ tệp chia sẻ (shared file mappings - Mục 49.4.2); và
-- Các đối tượng bộ nhớ chia sẻ POSIX (POSIX shared memory objects - chủ đề của chương này).
+- Đối tượng POSIX shared memory (chủ đề của chương này).
 
-Nhiều điểm mà chúng ta đưa ra trong phần này cũng có liên quan đến các ánh xạ ẩn danh chia sẻ (shared anonymous mappings - Mục 49.4), được sử dụng để chia sẻ bộ nhớ giữa các tiến trình có quan hệ họ hàng thông qua `fork()`.
+Rất nhiều phân tích trong phần này cũng đúng cho ánh xạ ẩn danh chia sẻ (shared anonymous mappings - Mục 49.7), vốn dùng để chia sẻ bộ nhớ giữa các tiến trình có quan hệ cha-con được tạo qua `fork()`.
 
-Một số điểm áp dụng cho tất cả các kỹ thuật này:
+### Các điểm chung của tất cả các kỹ thuật:
 
-- Chúng cung cấp cơ chế IPC (Interprocess Communication) tốc độ cao và các ứng dụng thường phải sử dụng semaphore (hoặc các nguyên hàm đồng bộ hóa - synchronization primitive khác) để đồng bộ hóa quyền truy cập vào vùng được chia sẻ.
-- Một khi vùng bộ nhớ chia sẻ đã được ánh xạ vào không gian địa chỉ ảo (virtual address space) của tiến trình, nó trông giống như bất kỳ phần nào khác trong không gian bộ nhớ của tiến trình.
-- Hệ thống đặt các vùng bộ nhớ chia sẻ trong không gian địa chỉ ảo của tiến trình theo cách tương tự. Chúng ta đã phác thảo vị trí đặt này khi mô tả bộ nhớ chia sẻ System V ở Mục 48.5. Tệp `/proc/PID/maps` đặc thù của Linux liệt kê thông tin về tất cả các loại vùng bộ nhớ chia sẻ.
-- Giả sử rằng chúng ta không cố gắng ánh xạ một vùng bộ nhớ chia sẻ tại một địa chỉ cố định (fixed address), chúng ta nên đảm bảo rằng tất cả các tham chiếu đến các vị trí trong vùng được tính toán dưới dạng phần bù (offset - thay vì con trỏ), vì vùng này có thể được đặt tại các địa chỉ ảo khác nhau bên trong các tiến trình khác nhau (Mục 48.6).
-- Các hàm được mô tả trong Chương 50 hoạt động trên các vùng bộ nhớ ảo (virtual memory) có thể được áp dụng cho các vùng bộ nhớ chia sẻ được tạo bằng bất kỳ kỹ thuật nào trong số này.
+- Đều cung cấp cơ chế IPC tốc độ cao. Các ứng dụng thường phải dùng semaphore (hoặc các nguyên hàm đồng bộ hóa khác) để điều phối truy cập.
+- Khi vùng bộ nhớ chia sẻ đã được ánh xạ vào không gian địa chỉ ảo của tiến trình, nó thao tác hoàn toàn giống như bất kỳ vùng nhớ thông thường nào khác của tiến trình.
+- Kernel sắp xếp vị trí các vùng bộ nhớ chia sẻ trong không gian địa chỉ ảo tương tự như nhau (đã mô tả ở Mục 48.5). Tệp `/proc/PID/maps` trên Linux hiển thị chi tiết thông tin về tất cả các loại vùng bộ nhớ chia sẻ này.
+- Trừ khi chúng ta cố tình ánh xạ vùng bộ nhớ tại một địa chỉ cố định, chúng ta phải đảm bảo mọi tham chiếu đến các vị trí trong vùng nhớ chia sẻ đều được tính toán theo địa chỉ tương đối (offset) thay vì dùng con trỏ (pointer) tuyệt đối, bởi vì vùng bộ nhớ có thể nằm ở các địa chỉ ảo khác nhau trong các tiến trình khác nhau (Mục 48.6).
+- Các hàm thao tác trên vùng bộ nhớ ảo ở Chương 50 đều có thể áp dụng cho các vùng bộ nhớ chia sẻ được tạo bởi bất kỳ kỹ thuật nào ở trên.
 
-Cũng có một số điểm khác biệt đáng chú ý giữa các kỹ thuật chia sẻ bộ nhớ:
+### Các điểm khác biệt quan trọng:
 
-- Thực tế là nội dung của một ánh xạ tệp chia sẻ được đồng bộ hóa với tệp được ánh xạ bên dưới (underlying mapped file) có nghĩa là dữ liệu được lưu trữ trong một vùng bộ nhớ chia sẻ có thể tồn tại bền vững qua các lần khởi động lại hệ thống (system restarts).
-- Bộ nhớ chia sẻ System V và POSIX sử dụng các cơ chế khác nhau để định danh và tham chiếu đến một đối tượng bộ nhớ chia sẻ (shared memory object). System V sử dụng sơ đồ khóa (key) và định danh (identifier) của riêng mình, không phù hợp với mô hình I/O tiêu chuẩn của UNIX và yêu cầu các system call riêng biệt (ví dụ: `shmctl()`) cùng các câu lệnh (như `ipcs` và `ipcrm`). Ngược lại, bộ nhớ chia sẻ POSIX sử dụng tên và file descriptor, do đó các đối tượng bộ nhớ chia sẻ có thể được kiểm tra và thao tác bằng cách sử dụng các system call hiện có của UNIX (ví dụ: `fstat()` và `fchmod()`).
-- Kích thước của một phân đoạn bộ nhớ chia sẻ System V được cố định tại thời điểm tạo (thông qua `shmget()`). Ngược lại, đối với một ánh xạ được hỗ trợ bởi tệp hoặc bởi một đối tượng bộ nhớ chia sẻ POSIX, chúng ta có thể sử dụng `ftruncate()` để điều chỉnh kích thước của đối tượng bên dưới, sau đó tạo lại ánh xạ bằng cách sử dụng `munmap()` và `mmap()` (hoặc hàm `mremap()` đặc thù của Linux).
+- Dữ liệu trong ánh xạ tệp chia sẻ (shared file mapping) được đồng bộ hóa xuống tệp lưu trữ bên dưới, nghĩa là dữ liệu có thể tồn tại qua các lần khởi động lại hệ thống (persistent across system restarts).
+- System V và POSIX shared memory sử dụng các cơ chế khác nhau để định danh đối tượng. System V dùng cơ chế khóa (key) và định danh (identifier) riêng biệt, không tương thích với mô hình I/O UNIX tiêu chuẩn và đòi hỏi các system call (`shmctl()`) cũng như các lệnh quản trị riêng (`ipcs`, `ipcrm`). Ngược lại, POSIX shared memory dùng tên gọi và file descriptor, giúp nó có thể dễ dàng kiểm tra và thao tác bằng các system call UNIX tiêu chuẩn (như `fstat()`, `fchmod()`).
+- Kích thước của phân đoạn System V shared memory bị cố định ngay tại thời điểm tạo (qua `shmget()`). Trong khi đó, đối với ánh xạ tệp hoặc POSIX shared memory, chúng ta có thể linh hoạt dùng `ftruncate()` để điều chỉnh kích thước của đối tượng bên dưới, sau đó cập nhật lại ánh xạ bằng `munmap()`/`mmap()` (hoặc hàm `mremap()` riêng của Linux).
 
-Về mặt lịch sử, bộ nhớ chia sẻ System V có tính khả dụng rộng rãi hơn so với `mmap()` và bộ nhớ chia sẻ POSIX, mặc dù hầu hết các hệ thống thực thi UNIX hiện nay đều cung cấp tất cả các kỹ thuật này.
+Về mặt lịch sử, System V shared memory có độ phủ phổ biến cao hơn so với `mmap()` và POSIX shared memory, dù ngày nay hầu hết các hệ điều hành UNIX hiện đại đều hỗ trợ đầy đủ cả ba kỹ thuật này.
 
-Ngoại trừ điểm cuối cùng liên quan đến tính di động (portability), các điểm khác biệt được liệt kê ở trên đều là ưu điểm nghiêng về phía ánh xạ tệp chia sẻ và các đối tượng bộ nhớ chia sẻ POSIX. Do đó, trong các ứng dụng mới, một trong những giao diện này có thể được ưu tiên hơn bộ nhớ chia sẻ System V. Việc chúng ta chọn giao diện nào phụ thuộc vào việc chúng ta có yêu cầu một kho lưu trữ nền tảng bền vững (persistent backing store) hay không. Các ánh xạ tệp chia sẻ cung cấp kho lưu trữ như vậy; trong khi các đối tượng bộ nhớ chia sẻ POSIX cho phép chúng ta tránh được chi phí chung (overhead) khi sử dụng tệp trên đĩa khi không cần kho lưu trữ nền tảng.
+Ngoại trừ yếu tố tính di động lịch sử ở trên, tất cả các ưu điểm còn lại đều nghiêng về phía ánh xạ tệp chia sẻ và POSIX shared memory. Do đó, đối với các ứng dụng mới, hai giao diện này luôn là sự lựa chọn ưu tiên so với System V shared memory. Lựa chọn cụ thể giữa hai giao diện sẽ phụ thuộc vào việc ứng dụng có cần kho lưu trữ nền bền vững trên đĩa hay không: Ánh xạ tệp chia sẻ cung cấp khả năng lưu trữ bền vững; trong khi POSIX shared memory giúp triệt tiêu hoàn toàn chi phí I/O đĩa khi không yêu cầu lưu trữ dữ liệu lâu dài.
 
-## 54.6 Tổng kết
-
-Một đối tượng bộ nhớ chia sẻ POSIX (POSIX shared memory object) được sử dụng để chia sẻ một vùng bộ nhớ giữa các tiến trình không có quan hệ họ hàng (unrelated processes) với nhau mà không cần tạo ra một tệp đĩa cơ sở. Để làm điều này, chúng ta thay thế lời gọi `open()` vốn thường đi trước `mmap()` bằng một lời gọi `shm_open()`. Lời gọi `shm_open()` tạo ra một tệp trong hệ thống tệp dựa trên bộ nhớ (memory-based file system), và chúng ta có thể sử dụng các System Call thao tác trên File Descriptor (file descriptor system calls) truyền thống để thực hiện các thao tác khác nhau trên tệp ảo này. Cụ thể, `ftruncate()` phải được sử dụng để thiết lập kích thước của đối tượng bộ nhớ chia sẻ, vì ban đầu nó có độ dài bằng không.
-
-Chúng ta đã mô tả ba kỹ thuật để chia sẻ các vùng bộ nhớ giữa các tiến trình không có quan hệ họ hàng: Bộ nhớ chia sẻ System V (System V shared memory), ánh xạ tệp chia sẻ (shared file mappings) và đối tượng bộ nhớ chia sẻ POSIX. Có một số điểm tương đồng giữa ba kỹ thuật này. Ngoài ra cũng có một số điểm khác biệt quan trọng, và ngoại trừ vấn đề tính di động (portability), những điểm khác biệt này nghiêng về phía ánh xạ tệp chia sẻ và đối tượng bộ nhớ chia sẻ POSIX.
-
-## 54.7 Bài tập
-
-**54-1.** Viết lại các chương trình trong Liệt kê 48-2 (`svshm_xfr_writer.c`) và Liệt kê 48-3 (`svshm_xfr_reader.c`) để sử dụng các đối tượng bộ nhớ chia sẻ POSIX thay vì bộ nhớ chia sẻ System V.
+## 5

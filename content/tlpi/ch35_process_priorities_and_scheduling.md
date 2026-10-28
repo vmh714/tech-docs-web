@@ -1,4 +1,4 @@
-# Chương 35: ĐỘ ƯU TIÊN TIẾN TRÌNH VÀ LẬP LỊCH (PROCESS PRIORITIES AND SCHEDULING)
+# Chương 35: Độ ưu tiên tiến trình và Lập lịch (Process Priorities and Scheduling)
 
 Chương này thảo luận về các system call (system call) và thuộc tính tiến trình khác nhau, quyết định thời điểm và tiến trình nào được quyền truy cập vào (các) CPU. Chúng ta bắt đầu bằng việc mô tả nice value (giá trị nice), một đặc tính tiến trình ảnh hưởng đến lượng thời gian CPU được cấp phát cho một tiến trình bởi kernel scheduler (bộ lập lịch nhân). Tiếp theo là mô tả về API lập lịch realtime (realtime scheduling API) theo chuẩn POSIX. API này cho phép chúng ta định nghĩa policy (chính sách) và priority (độ ưu tiên) được sử dụng để lập lịch cho các tiến trình, mang lại khả năng kiểm soát chặt chẽ hơn nhiều đối với cách các tiến trình được cấp phát cho CPU. Kết thúc chương là phần thảo luận về các system call dùng để thiết lập CPU affinity mask (mặt nạ gắn kết CPU) của tiến trình, qua đó xác định tập hợp các CPU mà một tiến trình đang chạy trên hệ thống đa xử lý (multiprocessor system) sẽ thực thi.
 
@@ -15,6 +15,7 @@ Tuy nhiên, một thuộc tính của tiến trình là nice value (giá trị n
 
 Nice value được kế thừa bởi tiến trình con (child process) được tạo ra thông qua `fork()` và được bảo toàn qua hàm `exec()`.
 
+> [!NOTE]
 > Thay vì trả về nice value thực tế, routine dịch vụ của system call `getpriority()` trả về một số nằm trong khoảng từ 1 (độ ưu tiên thấp) đến 40 (độ ưu tiên cao), được tính toán theo công thức `unice = 20 – knice`. Việc này được thực hiện để tránh việc routine dịch vụ của system call trả về một giá trị âm vốn được dùng để chỉ báo lỗi. (Xem mô tả về các routine dịch vụ system call tại Mục 3.1.) Các ứng dụng không hề hay biết về giá trị đã qua thao tác này do wrapper function (hàm bọc) `getpriority()` của thư viện C đã đảo ngược phép tính, trả về giá trị `20 – unice` cho chương trình gọi.
 
 ```text
@@ -38,19 +39,19 @@ nice
 
 Các tiến trình (process) không được lập lịch (schedule) theo một phân cấp nghiêm ngặt dựa trên giá trị nice; thay vào đó, giá trị nice đóng vai trò là một hệ số trọng số (weighting factor) khiến bộ lập lịch kernel (kernel scheduler) ưu tiên các tiến trình có mức ưu tiên cao hơn. Việc gán cho một tiến trình mức ưu tiên thấp (tức là giá trị nice cao) sẽ không khiến nó bị thiếu hụt hoàn toàn CPU (starved of the CPU), nhưng sẽ làm cho nó nhận được thời gian CPU tương đối ít hơn. Mức độ mà giá trị nice ảnh hưởng đến việc lập lịch của một tiến trình có sự khác nhau giữa các phiên bản Linux kernel, cũng như giữa các hệ thống UNIX.
 
+> [!NOTE]
 > Bắt đầu từ phiên bản kernel 2.6.23, một thuật toán lập lịch kernel mới có nghĩa là các khác biệt tương đối về giá trị nice có tác dụng mạnh hơn rất nhiều so với các phiên bản kernel trước đó. Kết quả là, các tiến trình có giá trị nice thấp sẽ nhận được ít CPU hơn trước, và các tiến trình có giá trị nice cao sẽ chiếm được tỷ lệ CPU lớn hơn.
 
 ### Truy vấn và sửa đổi mức ưu tiên (priorities)
 
 Các lời gọi hệ thống (system call) `getpriority()` và `setpriority()` cho phép một tiến trình truy vấn và thay đổi giá trị nice của chính nó hoặc của một tiến trình khác.
 
-```
+```c
 ## include <sys/resource.h>
 int getpriority(int which, id_t who);
-           Returns (possibly negative) nice value of specified process on success,
-                                                                   or –1 on error
+           /* Trả về giá trị nice (có thể âm) của tiến trình chỉ định khi thành công, hoặc –1 khi lỗi */
 int setpriority(int which, id_t who, int prio);
-                                             Returns 0 on success, or –1 on error
+                                             /* Trả về 0 khi thành công, hoặc –1 khi lỗi */
 ```
 
 Cả hai lời gọi hệ thống đều nhận các tham số `which` và `who`, dùng để xác định (các) tiến trình cần truy vấn hoặc sửa đổi mức ưu tiên. Tham số `which` quyết định cách thức `who` được diễn giải. Tham số này nhận một trong các giá trị sau:
@@ -73,12 +74,15 @@ Lời gọi hệ thống `getpriority()` trả về giá trị nice của tiến
 
 Lời gọi hệ thống `setpriority()` thiết lập giá trị nice của (các) tiến trình được chỉ định bởi `which` và `who` thành giá trị được chỉ định trong `prio`. Các nỗ lực thiết lập giá trị nice nằm ngoài phạm vi cho phép (từ –20 đến +19) sẽ được giới hạn một cách âm thầm (silently bounded) trong phạm vi này.
 
+> [!NOTE]
 > Về mặt lịch sử, giá trị nice được thay đổi bằng cách sử dụng lời gọi `nice(incr)`, hàm này cộng thêm `incr` vào giá trị nice của tiến trình gọi. Hàm này vẫn khả dụng, nhưng đã bị thay thế bởi lời gọi hệ thống tổng quát hơn là `setpriority()`.
 
+> [!NOTE]
 > Các công cụ dòng lệnh (command-line) tương đương với `setpriority()` là `nice(1)`, có thể được sử dụng bởi người dùng không có đặc quyền (unprivileged user) để chạy một lệnh với mức ưu tiên thấp hơn hoặc bởi người dùng có đặc quyền (privileged user) để chạy một lệnh với mức ưu tiên cao hơn, và `renice(8)`, có thể được sử dụng bởi siêu người dùng (superuser) để thay đổi giá trị nice của một tiến trình đang tồn tại.
 
 Một tiến trình có đặc quyền (`CAP_SYS_NICE`) có thể thay đổi mức ưu tiên của bất kỳ tiến trình nào. Một tiến trình không có đặc quyền có thể thay đổi mức ưu tiên của chính nó (bằng cách chỉ định `which` là `PRIO_PROCESS` và `who` là 0) hoặc mức ưu tiên của một tiến trình (mục tiêu) khác, nếu ID người dùng hiệu dụng (effective user ID) của nó khớp với ID người dùng thực hoặc hiệu dụng của tiến trình mục tiêu. Các quy tắc phân quyền trên Linux đối với `setpriority()` khác với SUSv3, quy định rằng một tiến trình không có đặc quyền có thể thay đổi mức ưu tiên của tiến trình khác nếu ID người dùng thực hoặc hiệu dụng của nó khớp với ID người dùng hiệu dụng của tiến trình mục tiêu. Các cài đặt (implementation) UNIX có một số biến thể về điểm này. Một số tuân theo các quy tắc SUSv3, nhưng những hệ thống khác—đáng chú ý là các hệBSD—hành xử theo cùng một cách như Linux.
 
+> [!NOTE]
 > Trong các phiên bản Linux kernel trước 2.6.12, các quy tắc phân quyền cho các lời gọi `setpriority()` bởi các tiến trình không có đặc quyền thì khác với các kernel sau này (và cũng khác với SUSv3). Một tiến trình không có đặc quyền có thể thay đổi mức ưu tiên của tiến trình khác nếu ID người dùng thực hoặc hiệu dụng của nó khớp với ID người dùng thực của tiến trình mục tiêu. Từ Linux 2.6.12 trở đi, các kiểm tra quyền đã được thay đổi để đồng nhất với các API tương tự khác có sẵn trên Linux, chẳng hạn như `sched_setscheduler()` và `sched_setaffinity()`.
 
 Trong các phiên bản Linux kernel trước 2.6.12, một tiến trình không có đặc quyền chỉ có thể sử dụng `setpriority()` để hạ thấp (không thể đảo ngược) giá trị nice của chính nó hoặc của tiến trình khác. Một tiến trình có đặc quyền (`CAP_SYS_NICE`) có thể sử dụng `setpriority()` để tăng các giá trị nice.
@@ -132,7 +136,8 @@ Thuật toán lên lịch chuẩn của kernel thường cung cấp hiệu năng
 
 Một ứng dụng thời gian thực phải cung cấp thời gian phản hồi tối đa được đảm bảo cho các đầu vào bên ngoài. Trong nhiều trường hợp, thời gian phản hồi tối đa được đảm bảo này phải rất ngắn (ví dụ: cỡ một phần của một giây). Chẳng hạn, phản hồi chậm từ một hệ thống định vị xe hơi có thể dẫn đến thảm họa. Để thỏa mãn yêu cầu này, kernel phải cung cấp cơ chế cho phép một tiến trình ưu tiên cao giành quyền kiểm soát CPU một cách kịp thời, chiếm quyền (preempting) bất kỳ tiến trình nào hiện đang chạy.
 
-> Một ứng dụng đòi hỏi tính thời gian khắt khe (time-critical application) có thể cần thực hiện các bước khác để tránh độ trễ không thể chấp nhận được. Ví dụ, để tránh bị chậm trễ do lỗi trang (page fault), một ứng dụng có thể khóa toàn bộ bộ nhớ ảo của nó vào RAM bằng cách sử dụng `mlog()` hoặc `mlogall()` (được mô tả trong Mục 50.2).
+> [!NOTE]
+> Một ứng dụng đòi hỏi tính thời gian khắt khe (time-critical application) có thể cần thực hiện các bước khác để tránh độ trễ không thể chấp nhận được. Ví dụ, để tránh bị chậm trễ do lỗi trang (page fault), một ứng dụng có thể khóa toàn bộ bộ nhớ ảo của nó vào RAM bằng cách sử dụng `mlock()` hoặc `mlockall()` (được mô tả trong Mục 50.2).
 
 Một tiến trình ưu tiên cao phải có khả năng duy trì quyền truy cập độc quyền vào CPU cho đến khi nó hoàn thành hoặc tự nguyện nhường CPU.
 
@@ -142,8 +147,10 @@ SUSv3 quy định một API lên lịch tiến trình thời gian thực (ban đ
 
 Mỗi chính sách thời gian thực cho phép một dải các mức ưu tiên. SUSv3 yêu cầu một bản cài đặt phải cung cấp ít nhất 32 mức ưu tiên rời rạc cho các chính sách thời gian thực. Trong mỗi chính sách lên lịch, các tiến trình có thể chạy (runnable process) với độ ưu tiên cao hơn sẽ luôn có quyền ưu tiên trước các tiến trình có độ ưu tiên thấp hơn khi tranh giành quyền truy cập CPU.
 
+> [!NOTE]
 > Phát biểu cho rằng các tiến trình có thể chạy với độ ưu tiên cao hơn luôn có quyền ưu tiên trước các tiến trình có độ ưu tiên thấp hơn cần phải được làm rõ đối với các hệ thống Linux đa xử lý (multiprocessor) (bao gồm cả các hệ thống hỗ trợ siêu phân luồng - hyperthreaded). Trên hệ thống đa xử lý, mỗi CPU có một hàng đợi chạy (run queue) riêng biệt (điều này mang lại hiệu năng tốt hơn so với một hàng đợi chạy đơn cho toàn hệ thống), và các tiến trình chỉ được ưu tiên tính trên từng hàng đợi chạy của CPU đó. Ví dụ, trên một hệ thống hai bộ xử lý với ba tiến trình, tiến trình A có độ ưu tiên thời gian thực là 20 có thể được đưa vào hàng đợi chờ CPU 0, nơi hiện đang chạy tiến trình B với độ ưu tiên 30, mặc dù CPU 1 đang chạy tiến trình C với độ ưu tiên 10.
 
+> [!NOTE]
 > Các ứng dụng thời gian thực (realtime application) sử dụng nhiều tiến trình (process) hoặc luồng (thread) có thể sử dụng API ái lực CPU (CPU affinity API) được mô tả ở Mục [35.4](#page-15-0) để tránh bất kỳ vấn đề nào có thể phát sinh từ hành vi lập lịch này. Ví dụ, trên một hệ thống bốn bộ xử lý (four-processor system), tất cả các tiến trình không quan trọng (noncritical process) có thể được cô lập trên một CPU duy nhất, để lại ba CPU còn lại cho ứng dụng sử dụng.
 
 Linux cung cấp 99 mức độ ưu tiên thời gian thực (realtime priority level), được đánh số từ 1 (thấp nhất) đến 99 (cao nhất), và dải giá trị này áp dụng cho cả hai chính sách lập lịch thời gian thực (realtime scheduling policy). Các mức ưu tiên trong mỗi chính sách là tương đương nhau. Điều này có nghĩa là, với hai tiến trình có cùng mức ưu tiên, một tiến trình hoạt động theo chính sách `SCHED_RR` và tiến trình kia theo `SCHED_FIFO`, bất kỳ tiến trình nào cũng có thể là tiến trình tiếp theo đủ điều kiện thực thi, tùy thuộc vào thứ tự chúng được lập lịch. Thực tế là, mỗi mức ưu tiên duy trì một hàng đợi (queue) chứa các tiến trình có thể chạy (runnable process), và tiến trình tiếp theo được chọn chạy sẽ lấy từ đầu hàng đợi không trống có mức ưu tiên cao nhất.
@@ -195,6 +202,7 @@ Chính sách SCHED\_IDLE, được thêm vào từ phiên bản nhân 2.6.23, c�
 
 Bây giờ chúng ta xem xét các System Call khác nhau cấu thành nên API lập lịch tiến trình thời gian thực (realtime process scheduling API). Các System Call này cho phép chúng ta kiểm soát các chính sách lập lịch và mức độ ưu tiên của tiến trình (process).
 
+> [!NOTE]
 > Mặc dù lập lịch thời gian thực (realtime scheduling) đã là một phần của Linux kể từ phiên bản nhân 2.0, một số vấn đề vẫn tồn tại trong một thời gian dài ở phần cài đặt (implementation). Một số tính năng của phần cài đặt vẫn bị lỗi trong nhân 2.2, và thậm chí trong các phiên bản nhân 2.4 đầu. Hầu hết các vấn đề này đã được khắc phục vào khoảng phiên bản nhân 2.4.20.
 
 ### 35.3.1 Dải Độ ưu tiên Thời gian thực (Realtime Priority Ranges)
@@ -212,6 +220,7 @@ int sched_get_priority_max(int policy);
 
 Dải độ ưu tiên thời gian thực khác nhau giữa các bản cài đặt UNIX khác nhau. Do đó, thay vì mã hóa cứng (hard-coding) các giá trị độ ưu tiên vào một ứng dụng, chúng ta nên chỉ định độ ưu tiên tương đối theo giá trị trả về từ một trong các hàm này. Do đó, độ ưu tiên `SCHED_RR` thấp nhất sẽ được chỉ định là `sched_get_priority_min(SCHED_FIFO)`, độ ưu tiên cao hơn tiếp theo là `sched_get_priority_min(SCHED_FIFO) + 1`, v.v.
 
+> [!NOTE]
 > SUSv3 không yêu cầu các chính sách `SCHED_RR` và `SCHED_FIFO` phải sử dụng cùng dải độ ưu tiên, nhưng thực tế chúng làm như vậy trên hầu hết các bản cài đặt UNIX. Ví dụ, trên Solaris 8, dải độ ưu tiên cho cả hai chính sách là từ 0 đến 59, và trên FreeBSD 6.1, là từ 0 đến 31.
 
 ### 35.3.2 Thay đổi và Truy xuất Chính sách (Policy) và Độ ưu tiên (Priority)
@@ -222,18 +231,21 @@ Trong phần này, chúng ta sẽ xem xét các System Call dùng để thay đ�
 
 System Call `sched_setscheduler()` thay đổi cả chính sách lịch biểu và độ ưu tiên của tiến trình (process) có ID được chỉ định bởi `pid`. Nếu `pid` được chỉ định là 0, các thuộc tính của tiến trình gọi (calling process) sẽ được thay đổi.
 
-```
 ## include <sched.h>
+
 int sched_setscheduler(pid_t pid, int policy, const struct sched_param *param);
-                                            Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Tham số `param` là một con trỏ trỏ đến một cấu trúc (structure) có dạng sau:
 
 ```
+
 struct sched_param {
- int sched_priority; /* Độ ưu tiên lịch biểu */
+int sched_priority; /* Độ ưu tiên lịch biểu */
 };
+
 ```
 
 SUSv3 định nghĩa tham số `param` như một cấu trúc nhằm cho phép một cài đặt (implementation) có thể bao gồm các trường bổ sung cụ thể theo cài đặt đó, điều này có thể hữu ích nếu cài đặt cung cấp thêm các chính sách lịch biểu bổ sung. Tuy nhiên, giống như hầu hết các cài đặt UNIX, Linux chỉ cung cấp trường `sched_priority`, trong đó chỉ định độ ưu tiên lịch biểu. Đối với các chính sách `SCHED_RR` và `SCHED_FIFO`, giá trị này phải nằm trong phạm vi được chỉ ra bởi `sched_get_priority_min()` và `sched_get_priority_max()`; đối với các chính sách khác, độ ưu tiên bắt buộc phải là 0.
@@ -260,7 +272,6 @@ Chính sách lịch biểu và độ ưu tiên được kế thừa bởi tiến
 
 System Call `sched_setparam()` cung cấp một tập con các chức năng của `sched_setscheduler()`. Nó thay đổi độ ưu tiên lịch biểu của một tiến trình trong khi giữ nguyên chính sách lịch biểu.
 
-```
 ## include <sched.h>
 int sched_setparam(pid_t pid, const struct sched_param *param);
                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
@@ -328,12 +339,13 @@ Bắt đầu từ kernel 2.6.25, Linux bổ sung khái niệm nhóm lập lịch
 
 System Call (lời hệ thống) `sched_getscheduler()` và `sched_getparam()` dùng để truy xuất chính sách lập lịch (scheduling policy) và độ ưu tiên (priority) của một Process (tiến trình).
 
-```
 ## include <sched.h>
+
 int sched_getscheduler(pid_t pid);
-                                       Trả về chính sách lập lịch, hoặc –1 khi lỗi
+Trả về chính sách lập lịch, hoặc –1 khi lỗi
 int sched_getparam(pid_t pid, struct sched_param *param);
-                                            Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Đối với cả hai system call này, `pid` chỉ định ID của tiến trình cần truy xuất thông tin. Nếu `pid` bằng 0, thông tin sẽ được truy xuất cho tiến trình gọi (calling process). Cả hai system call đều có thể được sử dụng bởi một tiến trình không có đặc quyền (unprivileged process) để truy xuất thông tin về bất kỳ tiến trình nào, không phụ thuộc vào Credentials (thông tin định danh).
@@ -344,50 +356,71 @@ Khi thực thi thành công, `sched_getscheduler()` trả về một trong các 
 
 Chương trình trong Listing 35-3 sử dụng `sched_getscheduler()` và `sched_getparam()` để truy xuất chính sách và độ ưu tiên của tất cả các tiến trình có Process ID (ID tiến trình) được truyền vào làm tham số dòng lệnh (command-line arguments). Phiên làm việc shell sau đây minh họa cách sử dụng chương trình này, cũng như chương trình trong [Listing 35-2:](#page-10-0)
 
-```
-$ su Giả định có đặc quyền để chúng ta có thể thiết lập chính sách thời gian thực
+```bash
+
+$ su # Giả định có đặc quyền để thiết lập chính sách thời gian thực
 Password:
-## sleep 100 & Tạo một tiến trình
+
+## sleep 100 & # Tạo một tiến trình nền
+
 [1] 2006
-## ./sched_view 2006 Xem chính sách và độ ưu tiên ban đầu của tiến trình sleep
+
+## ./sched_view 2006 # Xem chính sách và độ ưu tiên ban đầu của tiến trình sleep
+
 2006: OTHER 0
-## ./sched_set f 25 2006 Chuyển tiến trình sang chính sách SCHED_FIFO, độ ưu tiên 25
-## ./sched_view 2006 Xác 1h nhận thay đổi
+
+## ./sched_set f 25 2006 # Chuyển tiến trình sang chính sách SCHED_FIFO, độ ưu tiên 25
+
+## ./sched_view 2006 # Xác nhận thay đổi
+
 2006: FIFO 25
+
 ```
 
 **Listing 35-3:** Truy xuất chính sách lập lịch và độ ưu tiên của tiến trình
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– procpri/sched_view.c
+
 ## include <sched.h>
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- int j, pol;
- struct sched_param sp;
- for (j = 1; j < argc; j++) {
- pol = sched_getscheduler(getLong(argv[j], 0, "pid"));
- if (pol == -1)
- errExit("sched_getscheduler");
- if (sched_getparam(getLong(argv[j], 0, "pid"), &sp) == -1)
- errExit("sched_getparam");
- printf("%s: %-5s %2d\n", argv[j],
- (pol == SCHED_OTHER) ? "OTHER" :
- (pol == SCHED_RR) ? "RR" :
- (pol == SCHED_FIFO) ? "FIFO" :
+int j, pol;
+struct sched_param sp;
+for (j = 1; j < argc; j++) {
+pol = sched_getscheduler(getLong(argv[j], 0, "pid"));
+if (pol == -1)
+errExit("sched_getscheduler");
+if (sched_getparam(getLong(argv[j], 0, "pid"), &sp) == -1)
+errExit("sched_getparam");
+printf("%s: %-5s %2d\n", argv[j],
+(pol == SCHED_OTHER) ? "OTHER" :
+(pol == SCHED_RR) ? "RR" :
+(pol == SCHED_FIFO) ? "FIFO" :
+
 ## ifdef SCHED_BATCH /* Dành riêng cho Linux */
- (pol == SCHED_BATCH) ? "BATCH" :
+
+(pol == SCHED_BATCH) ? "BATCH" :
+
 ## endif
+
 ## ifdef SCHED_IDLE /* Dành riêng cho Linux */
- (pol == SCHED_IDLE) ? "IDLE" :
+
+(pol == SCHED_IDLE) ? "IDLE" :
+
 ## endif
- "???", sp.sched_priority);
- }
- exit(EXIT_SUCCESS);
+
+"???", sp.sched_priority);
+}
+exit(EXIT_SUCCESS);
 }
 –––––––––––––––––––––––––––––––––––––––––––––––––––––– procpri/sched_view.c
+
 ```
 
 ### Ngăn chặn các tiến trình thời gian thực (realtime process) làm treo hệ thống
@@ -417,9 +450,12 @@ Một khi cờ `SCHED_RESET_ON_FORK` đã được bật cho một tiến trình
 Một tiến trình thời gian thực (realtime process) có thể chủ động từ bỏ CPU theo hai cách: bằng cách gọi một system call làm chặn (block) tiến trình đó (ví dụ: thao tác `read()` từ một thiết bị đầu cuối) hoặc bằng cách gọi `sched_yield()`.
 
 ```c
+
 ## include <sched.h>
+
 int sched_yield(void);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Hoạt động của `sched_yield()` rất đơn giản. Nếu có bất kỳ tiến trình có thể chạy (runnable process) nào khác đang nằm trong hàng đợi ở cùng mức ưu tiên với tiến trình gọi, thì tiến trình gọi sẽ được đưa về cuối hàng đợi, và tiến trình ở đầu hàng đợi sẽ được lập lịch để sử dụng CPU. Nếu không có tiến trình có thể chạy nào khác trong hàng đợi ở mức ưu tiên này, thì `sched_yield()` không làm gì cả; tiến trình gọi đơn giản là tiếp tục sử dụng CPU.
@@ -433,18 +469,23 @@ Việc sử dụng `sched_yield()` cho các tiến trình phi thời gian thực
 System call `sched_rr_get_interval()` cho phép chúng ta tìm ra độ dài của lát cắt thời gian (time slice) được cấp phát cho một tiến trình `SCHED_RR` mỗi khi nó được cấp quyền sử dụng CPU.
 
 ```c
+
 ## include <sched.h>
+
 int sched_rr_get_interval(pid_t pid, struct timespec *tp);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Giống như các system call lập lịch tiến trình khác, `pid` xác định tiến trình mà chúng ta muốn lấy thông tin, và việc chỉ định `pid` là 0 có nghĩa là tiến trình đang gọi. Lát cắt thời gian được trả về trong cấu trúc `timespec` được trỏ tới bởi `tp`:
 
 ```c
+
 struct timespec {
- time_t tv_sec; /* Giây */
- long tv_nsec; /* Nanosecond */
+time_t tv_sec; /* Giây */
+long tv_nsec; /* Nanosecond */
 };
+
 ```
 
 Trên các phiên bản kernel 2.6 gần đây, lát cắt thời gian vòng tròn thời gian thực (realtime round-robin time slice) là 0.1 giây.
@@ -475,11 +516,15 @@ Linux 2.6 cung cấp một cặp system call phi chuẩn để chỉnh sửa và
 
 System call `sched_setaffinity()` thiết lập CPU affinity của tiến trình được chỉ định bởi `pid`. Nếu `pid` bằng 0, CPU affinity của tiến trình gọi sẽ được thay đổi.
 
-```
+```c
+
 ## define _GNU_SOURCE
+
 ## include <sched.h>
+
 int sched_setaffinity(pid_t pid, size_t len, cpu_set_t *set);
-                                              Trả về 0 khi thành công, hoặc –1 nếu có lỗi
+/* Trả về 0 khi thành công, hoặc –1 nếu có lỗi */
+
 ```
 
 CPU affinity được gán cho tiến trình được chỉ định trong cấu trúc `cpu_set_t` được trỏ tới bởi `set`.
@@ -488,14 +533,18 @@ CPU affinity được gán cho tiến trình được chỉ định trong cấu 
 
 Mặc dù kiểu dữ liệu `cpu_set_t` được triển khai dưới dạng một mặt nạ bit (bit mask), chúng ta nên coi nó như một cấu trúc mờ (opaque structure). Mọi thao tác trên cấu trúc này phải được thực hiện bằng cách sử dụng các macro `CPU_ZERO()`, `CPU_SET()`, `CPU_CLR()`, và `CPU_ISSET()`.
 
-```
+```c
+
 ## define _GNU_SOURCE
+
 ## include <sched.h>
+
 void CPU_ZERO(cpu_set_t *set);
 void CPU_SET(int cpu, cpu_set_t *set);
 void CPU_CLR(int cpu, cpu_set_t *set);
 int CPU_ISSET(int cpu, cpu_set_t *set);
-                              Trả về true (1) nếu cpu nằm trong set, hoặc ngược lại là false (0)
+/* Trả về true (1) nếu cpu nằm trong set, ngược lại trả về false (0) */
+
 ```
 
 Các macro này thao tác trên tập hợp CPU (CPU set) được trỏ tới bởi `set` như sau:
@@ -514,12 +563,14 @@ Tham số `len` truyền cho `sched_setaffinity()` phải chỉ định số byt
 Đoạn mã sau ràng buộc tiến trình được xác định bởi `pid` chỉ chạy trên bất kỳ CPU nào ngoài CPU đầu tiên của một hệ thống bốn bộ xử lý:
 
 ```
+
 cpu_set_t set;
 CPU_ZERO(&set);
 CPU_SET(1, &set);
 CPU_SET(2, &set);
 CPU_SET(3, &set);
 sched_setaffinity(pid, CPU_SETSIZE, &set);
+
 ```
 
 Nếu các CPU được chỉ định trong `set` không tương ứng với bất kỳ CPU nào trên hệ thống, thì `sched_setaffinity()` sẽ thất bại và trả về lỗi `EINVAL`.
@@ -530,7 +581,6 @@ Một tiến trình không có đặc quyền (unprivileged process) chỉ có t
 
 System call `sched_getaffinity()` truy vấn mặt nạ CPU affinity của tiến trình được chỉ định bởi `pid`. Nếu `pid` bằng 0, mặt nạ CPU affinity của tiến trình gọi sẽ được trả về.
 
-```
 ## define _GNU_SOURCE
 ## include <sched.h>
 int sched_getaffinity(pid_t pid, size_t len, cpu_set_t *set);
@@ -572,7 +622,7 @@ Mặt nạ độ gắn kết CPU (CPU affinity mask) của tiến trình có th�
 
 Trong câu lệnh trên, *chính_sách* (policy) là `r` cho `SCHED_RR` hoặc `f` cho `SCHED_FIFO`. Chương trình này nên từ bỏ định danh có đặc quyền (privileged ID) của mình trước khi thực hiện hàm `exec` để chạy câu lệnh, vì những lý do được mô tả trong Mục 9.7.1 và [38.3](#page-54-0).
 
-- **35-3.** Viết một chương trình tự đưa nó vào chính sách lập lịch `SCHED_FIFO` và sau đó tạo ra một tiến trình con (child process). Cả hai tiến trình phải thực thi một hàm làm cho tiến trình tiêu thụ tối đa 3 giây thời gian CPU. (Việc này có thể được thực hiện bằng cách sử dụng một vòng lặp trong đó System Call `times()` được gọi liên tục để xác định lượng thời gian CPU đã tiêu thụ cho đến thời điểm đó). Sau mỗi một phần tư giây thời gian CPU được tiêu thụ, hàm này phải in ra một thông báo hiển thị ID tiến trình (process ID) và lượng thời gian CPU đã tiêu thụ cho đến lúc đó. Sau mỗi giây thời gian CPU được tiêu thụ, hàm phải gọi `sched_yield()` để nhường CPU cho tiến trình còn lại. (Ngoài ra, các tiến trình có thể nâng độ ưu tiên lập lịch của nhau bằng cách sử dụng `sched_setparam()`). Đầu ra của chương trình phải chứng minh rằng hai tiến trình thay phiên nhau thực thi trong khoảng thời gian 1 giây CPU. (Hãy chú ý kỹ lời khuyên được đưa ra trong Mục [35.3.2](#page-8-0) về cách ngăn chặn một tiến trình thời gian thực chạy lồng lộn làm độc chiếm CPU).
+- **35-3.** Viết một chương trình tự đưa nó vào chính sách lập lịch `SCHED_FIFO` và sau đó tạo ra một tiến trình con (child process). Cả hai tiến trình phải thực thi một hàm làm cho tiến trình tiêu thụ tối đa 3 giây thời gian CPU. (Việc này có thể được thực hiện bằng cách sử dụng một vòng lặp trong đó System Call `times()` được gọi liên tục để xác định lượng thời gian CPU đã tiêu thụ cho đến thời điểm đó). Sau mỗi một phần tư giây thời gian CPU được tiêu thụ, hàm này phải in ra một thông báo hiển thị ID tiến trình (process ID) và lượng thời gian CPU đã tiêu thụ cho đến lúc đó. Sau mỗi giây thời gian CPU được tiêu thụ, hàm phải gọi `sched_yield()` để nhường CPU cho tiến trình còn lại. (Ngoài ra, các tiến trình có thể nâng độ ưu tiên lập lịch của nhau bằng cách sử dụng `sched_setparam()`). Đầu ra của chương trình phải chứng minh rằng hai tiến trình thay phiên nhau thực thi trong khoảng thời gian 1 giây CPU. (Hãy chú ý kỹ lời khuyên được đưa ra trong Mục [35.3.2](#page-8-0) về cách ngăn chặn một tiến trình thời gian thực chạy mất kiểm soát chiếm dụng CPU).
 - **35-4.** Nếu hai tiến trình sử dụng một đường ống (pipe) để trao đổi một lượng lớn dữ liệu trên một hệ thống đa xử lý (multiprocessor system), quá trình giao tiếp sẽ nhanh hơn nếu các tiến trình chạy trên cùng một CPU so với khi chúng chạy trên các CPU khác nhau. Lý do là khi hai tiến trình chạy trên cùng một CPU, dữ liệu của pipe sẽ được truy cập nhanh hơn vì nó có thể nằm lại trong bộ nhớ cache của CPU đó. Ngược lại, khi các tiến trình chạy trên các CPU riêng biệt, các lợi ích từ bộ nhớ cache của CPU sẽ bị mất đi. Nếu bạn có quyền truy cập vào một hệ thống đa xử lý, hãy viết một chương trình sử dụng `sched_setaffinity()` để minh họa hiệu ứng này, bằng cách ép các tiến trình chạy hoặc là trên cùng các CPU hoặc là trên các CPU khác nhau. (Chương 44 mô tả việc sử dụng các pipe).
 
 Lợi thế nghiêng về các tiến trình chạy trên cùng một CPU sẽ không đúng trên các hệ thống hỗ trợ siêu phân luồng (hyperthreaded systems) và trên một số kiến trúc đa xử lý hiện đại nơi các CPU có chia sẻ bộ nhớ cache. Trong những trường hợp này, lợi thế sẽ nghiêng về phía các tiến trình chạy trên các CPU khác nhau. Thông tin về cấu trúc topo CPU (CPU topology) của một hệ thống đa xử lý có thể thu được bằng cách kiểm tra nội dung của tệp `/proc/cpuinfo` đặc trưng của Linux.

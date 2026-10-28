@@ -1,4 +1,4 @@
-# Chương 10. Giao tiếp Ngoại vi Kết nối (Peripheral Component Interconnect)
+# Chương 10: Chuẩn liên kết thiết bị ngoại vi (PCI - Peripheral Component Interconnect)
 
 | Trong Chương Này                        |     |
 |----------------------------------------|-----|
@@ -534,52 +534,57 @@ MODULE_DEVICE_TABLE(pci, network_driver_pci_table);
 
 ### Liệt kê 10.2. Đăng ký Chức năng Modem
 
-```
 ## include <linux/pci.h>
+
 ## define MY_VENDOR_ID 0xABCD
+
 ## define MY_DEVICE_ID_MDM 0xEF02
+
 /* Tập hợp các thẻ PCI mà trình điều khiển này hỗ trợ */
 struct pci_device_id modem_driver_pci_table[] __devinitdata = {
 {
- { MY_VENDOR_ID, /* ID nhà sản xuất chip giao tiếp */
- MY_DEVICE_ID_MDM, /* ID thiết bị cho chức năng
- modem */
- PCI_ANY_ID, /* Ký tự đại diện cho ID nhà cung cấp phụ */
- PCI_ANY_ID, /* Ký tự đại diện cho ID thiết bị phụ */
- 0, 0, /* class và classmask không được
- chỉ định rõ */
- modem_driver_private_data /* Sử dụng cái này để liên kết
- thông tin cấu hình nếu trình điều khiển
- hỗ trợ nhiều thẻ. Có thể là kiểu liệt kê. */
- }, {0},
+{ MY_VENDOR_ID, /* ID nhà sản xuất chip giao tiếp */
+MY_DEVICE_ID_MDM, /* ID thiết bị cho chức năng
+modem */
+PCI_ANY_ID, /* Ký tự đại diện cho ID nhà cung cấp phụ */
+PCI_ANY_ID, /* Ký tự đại diện cho ID thiết bị phụ */
+0, 0, /* class và classmask không được
+chỉ định rõ */
+modem_driver_private_data /* Sử dụng cái này để liên kết
+thông tin cấu hình nếu trình điều khiển
+hỗ trợ nhiều thẻ. Có thể là kiểu liệt kê. */
+}, {0},
 };
 struct pci_driver modem_pci_driver = {
- .name = "mdm", /* Tên duy nhất */
- .probe = modem_driver_probe, /* Xem Liệt kê 10.4 */
- .remove = __devexit_p(modem_driver_remove),/* Xem Liệt kê 10.4 */
- .id_table = modem_driver_pci_table, /* Xem ở trên */
- /* Các phương thức suspend() và resume() thực thi quản lý nguồn
- không được sử dụng bởi trình điều khiển này */
+.name = "mdm", /* Tên duy nhất */
+.probe = modem_driver_probe, /* Xem Liệt kê 10.4 */
+.remove = __devexit_p(modem_driver_remove),/* Xem Liệt kê 10.4 */
+.id_table = modem_driver_pci_table, /* Xem ở trên */
+/* Các phương thức suspend() và resume() thực thi quản lý nguồn
+không được sử dụng bởi trình điều khiển này */
 };
 /* Khởi tạo trình điều khiển modem */
 static int __init
 modem_driver_init(void)
 {
- pci_register_driver(&modem_pci_driver);
- return 0;
+pci_register_driver(&modem_pci_driver);
+return 0;
 }
 /* Thoát trình điều khiển modem */
 static void __exit
 modem_driver_exit(void)
 {
- pci_unregister_driver(&modem_pci_driver);
+pci_unregister_driver(&modem_pci_driver);
 }
 module_init(modem_driver_init);
 module_exit(modem_driver_exit);
+
 ```
 
 ```
+
 MODULE_DEVICE_TABLE(pci, modem_driver_pci_table);
+
 ```
 
 Liệt kê 10.3 thực thi phương thức `probe()` cho chức năng mạng. Trình điều khiển này:
@@ -600,7 +605,6 @@ Hệ thống con PCI (PCI subsystem) gọi `probe()` với hai tham số:
 
 ### Listing 10.3. Thử nghiệm hàm Mạng (Probing the Network Function)
 
-```
 ## include <linux/pci.h>
 unsigned long ioaddr;
 /* Phương thức probe */
@@ -947,7 +951,8 @@ rxlist->sk_bus = pci_map_single(pdev, rxlist->skb->data,
 ```
 
 ```c
-/* Allocate a DMA descriptor and populate it with the address mapped above. Add the descriptor to the receive descriptor ring */ ^' ... */
+/* Cấp phát một DMA descriptor và điền địa chỉ đã ánh xạ ở trên vào đó. Thêm descriptor vào vòng descriptor nhận */
+/* ... */
 ```
 
 $\langle \cdot \rangle$

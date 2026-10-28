@@ -1,4 +1,4 @@
-# Chương 23: BỘ ĐỊNH THỜI VÀ TRẠNG THÁI NGỦ (TIMERS AND SLEEPING)
+# Chương 23: Bộ định thời và Trạng thái ngủ (Timers and Sleeping)
 
 Bộ định thời (timer) cho phép một tiến trình (process) lên lịch thông báo cho chính nó xảy ra tại một thời điểm nào đó trong tương lai. Trạng thái ngủ (sleeping) cho phép một tiến trình (hoặc luồng - thread) tạm dừng thực thi trong một khoảng thời gian. Chương trình này mô tả các giao diện (interface) được sử dụng để thiết lập bộ định thời và chuyển sang trạng thái ngủ. Nó bao gồm các chủ đề sau:
 
@@ -11,11 +11,12 @@ Bộ định thời (timer) cho phép một tiến trình (process) lên lịch 
 
 System Call `setitimer()` thiết lập một bộ định thời khoảng thời gian, là một bộ định thời sẽ hết hạn vào một thời điểm trong tương lai và (tùy chọn) theo các khoảng thời gian đều đặn sau đó.
 
-```
 ## include <sys/time.h>
+
 int setitimer(int which, const struct itimerval *new_value,
- struct itimerval *old_value);
-                                         Trả về 0 khi thành công, hoặc –1 khi lỗi
+struct itimerval *old_value);
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Sử dụng `setitimer()`, một tiến trình có thể thiết lập ba loại bộ định thời khác nhau bằng cách chỉ định tham số `which` là một trong các giá trị sau:
@@ -37,20 +38,24 @@ Hành vi mặc định (default disposition) của tất cả các tín hiệu b
 Các tham số `new_value` và `old_value` là con trỏ trỏ đến các cấu trúc `itimerval`, được định nghĩa như sau:
 
 ```
+
 struct itimerval {
- struct timeval it_interval; /* Khoảng thời gian cho bộ định thời định kỳ */
- struct timeval it_value; /* Giá trị hiện tại (thời gian cho đến khi
- lần hết hạn tiếp theo) */
+struct timeval it_interval; /* Khoảng thời gian cho bộ định thời định kỳ */
+struct timeval it_value; /* Giá trị hiện tại (thời gian cho đến khi
+lần hết hạn tiếp theo) */
 };
+
 ```
 
 Mỗi trường trong cấu trúc `itimerval` lại là một cấu trúc có kiểu `timeval`, chứa các trường giây và micrô-giây:
 
 ```
+
 struct timeval {
- time_t tv_sec; /* Giây */
- suseconds_t tv_usec; /* Micrô-giây (long int) */
+time_t tv_sec; /* Giây */
+suseconds_t tv_usec; /* Micrô-giây (long int) */
 };
+
 ```
 
 Cấu trúc con `it_value` của tham số `new_value` chỉ định khoảng thời gian trễ cho đến khi bộ định thời hết hạn. Cấu trúc con `it_interval` chỉ định đây có phải là một bộ định thời định kỳ hay không. Nếu cả hai trường của `it_interval` được đặt thành 0, thì bộ định thời chỉ hết hạn một lần duy nhất, tại thời điểm được chỉ định bởi `it_value`. Nếu một hoặc cả hai trường của `it_interval` khác 0, thì sau mỗi lần bộ định thời hết hạn, nó sẽ được thiết lập lại để tiếp tục hết hạn theo khoảng thời gian đã chỉ định.
@@ -63,7 +68,6 @@ Khi một bộ định thời hoạt động, nó đếm ngược từ giá tr�
 
 Tại bất kỳ thời điểm nào, chúng ta có thể sử dụng `getitimer()` để truy xuất trạng thái hiện tại của bộ định thời nhằm xem còn lại bao nhiêu thời gian trước khi nó hết hạn lần tiếp theo.
 
-```
 ## include <sys/time.h>
 int getitimer(int which, struct itimerval *curr_value);
                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
@@ -73,6 +77,7 @@ System Call `getitimer()` trả về trạng thái hiện tại của bộ đị
 
 Các bộ định thời (timer) được thiết lập bằng `setitimer()` (và `alarm()`, mà chúng ta sẽ thảo luận ngắn gọn sau đây) được bảo toàn qua hàm `exec()`, nhưng không được kế thừa bởi tiến trình con (child process) được tạo ra bởi `fork()`.
 
+> [!NOTE]
 > SUSv4 đánh dấu `getitimer()` và `setitimer()` là đã lỗi thời (obsolete), và lưu ý rằng API bộ định thời POSIX (Mục [23.6](#page-16-0)) được ưu tiên sử dụng hơn.
 
 ### Chương trình ví dụ
@@ -503,7 +508,6 @@ Tất cả các clock trong Bảng 23-1 đều được quy định trong SUSv3,
 
 > [!NOTE]
 > Linux 2.6.28 bổ sung một loại clock mới, `CLOCK_MONOTONIC_RAW`, vào danh sách trong Bảng 23-1. Đây là một clock không thể chỉnh sửa tương tự như `CLOCK_MONOTONIC`, nhưng nó cung cấp quyền truy cập vào thời gian thuần túy dựa trên phần cứng (pure hardware-based time) không bị ảnh hưởng bởi các điều chỉnh NTP. Clock phi tiêu chuẩn này được thiết kế để sử dụng trong các ứng dụng đồng bộ hóa thời gian chuyên biệt.
-```
 
 > Linux 2.6.32 bổ sung thêm hai clock mới vào danh sách trong Bảng 23-1: `CLOCK_REALTIME_COARSE` và `CLOCK_MONOTONIC_COARSE`. Các clock này tương tự như `CLOCK_REALTIME` và `CLOCK_MONOTONIC`, nhưng dành cho các ứng dụng muốn lấy các mốc thời gian (timestamp) độ phân giải thấp với chi phí tối thiểu. Các clock phi chuẩn này không gây ra bất kỳ truy cập nào tới phần cứng clock (vốn có thể tốn kém đối với một số nguồn clock phần cứng), và độ phân giải của giá trị trả về chính là một jiffy (Mục 10.6).
 
@@ -511,7 +515,6 @@ Tất cả các clock trong Bảng 23-1 đều được quy định trong SUSv3,
 
 System Call (lời gọi hệ thống) `clock_settime()` thiết lập clock được chỉ định bởi `clockid` thành thời gian được cung cấp trong bộ đệm trỏ tới bởi `tp`.
 
-```
 ## define _POSIX_C_SOURCE 199309
 ## include <time.h>
 int clock_settime(clockid_t clockid, const struct timespec *tp);
@@ -522,6 +525,7 @@ Nếu thời gian được chỉ định bởi `tp` không phải là bội số
 
 Một tiến trình (process) có đặc quyền (`CAP_SYS_TIME`) mới có thể thiết lập clock `CLOCK_REALTIME`. Giá trị ban đầu của clock này thông thường là thời gian tính từ mốc Epoch. Không có clock nào khác trong Bảng 23-1 có thể chỉnh sửa được.
 
+> [!NOTE]
 > Theo tiêu chuẩn SUSv3, một bản cài đặt (implementation) có thể cho phép các clock `CLOCK_PROCESS_CPUTIME_ID` và `CLOCK_THREAD_CPUTIME_ID` có thể chỉnh sửa được. Tại thời điểm viết tài liệu này, các clock này trên Linux chỉ ở chế độ chỉ đọc (read-only).
 
 ### 23.5.3 Lấy Clock ID của một Tiến trình hoặc Luồng Cụ thể
@@ -530,18 +534,19 @@ Các hàm được mô tả trong phần này cho phép chúng ta lấy ID của
 
 Hàm `clock_getcpuclockid()` trả về định danh của clock thời gian CPU (CPU-time clock) của tiến trình có ID là `pid`, thông qua bộ đệm trỏ tới bởi `clockid`.
 
-```
 ## define _XOPEN_SOURCE 600
+
 ## include <time.h>
+
 int clock_getcpuclockid(pid_t pid, clockid_t *clockid);
-                       Trả về 0 khi thành công, hoặc một số dương báo lỗi khi lỗi
+Trả về 0 khi thành công, hoặc một số dương báo lỗi khi lỗi
+
 ```
 
 Nếu `pid` bằng 0, `clock_getcpuclockid()` sẽ trả về ID của clock thời gian CPU của tiến trình gọi hàm (calling process).
 
 Hàm `pthread_getcpuclockid()` là hàm tương đương theo chuẩn POSIX threads của hàm `clock_getcpuclockid()`. Nó trả về định danh của clock đo lường thời gian CPU tiêu thụ bởi một luồng cụ thể thuộc tiến trình gọi hàm.
 
-```
 ## define _XOPEN_SOURCE 600
 ## include <pthread.h>
 ## include <time.h>
@@ -555,13 +560,15 @@ int pthread_getcpuclockid(pthread_t thread, clockid_t *clockid);
 
 Giống như nanosleep(), system call `clock_nanosleep()` đặc trưng của Linux sẽ tạm dừng tiến trình gọi (calling process) cho đến khi một khoảng thời gian được chỉ định trôi qua hoặc có tín hiệu (signal) được gửi đến. Trong phần này, chúng ta sẽ mô tả các tính năng giúp phân biệt `clock_nanosleep()` với nanosleep().
 
-```
 ## define _XOPEN_SOURCE 600
+
 ## include <time.h>
+
 int clock_nanosleep(clockid_t clockid, int flags,
- const struct timespec *request, struct timespec *remain);
-                                     Trả về 0 nếu ngủ hoàn tất thành công,
-                       hoặc một mã lỗi dương nếu lỗi hoặc bị gián đoạn giấc ngủ
+const struct timespec *request, struct timespec *remain);
+Trả về 0 nếu ngủ hoàn tất thành công,
+hoặc một mã lỗi dương nếu lỗi hoặc bị gián đoạn giấc ngủ
+
 ```
 
 Các tham số `request` và `remain` phục vụ các mục đích tương tự như các tham số tương ứng của nanosleep().
@@ -579,18 +586,20 @@ Một tính năng khác phân biệt `clock_nanosleep()` với `nanosleep()` là
 **Listing 23-4:** Sử dụng `clock_nanosleep()`
 
 ```
- struct timespec request;
- /* Truy xuất giá trị hiện tại của clock CLOCK_REALTIME */
- if (clock_gettime(CLOCK_REALTIME, &request) == -1) 
- errExit("clock_gettime");
- request.tv_sec += 20; /* Ngủ trong 20 giây tính từ thời điểm hiện tại */
- s = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &request, NULL); 
- if (s != 0) {
- if (s == EINTR)
- printf("Bị gián đoạn bởi trình xử lý tín hiệu\n");
- else
- errExitEN(s, "clock_nanosleep");
- }
+
+struct timespec request;
+/* Truy xuất giá trị hiện tại của clock CLOCK_REALTIME */
+if (clock_gettime(CLOCK_REALTIME, &request) == -1)
+errExit("clock_gettime");
+request.tv_sec += 20; /* Ngủ trong 20 giây tính từ thời điểm hiện tại */
+s = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &request, NULL);
+if (s != 0) {
+if (s == EINTR)
+printf("Bị gián đoạn bởi trình xử lý tín hiệu\n");
+else
+errExitEN(s, "clock_nanosleep");
+}
+
 ```
 
 ## 23.6 Bộ định thời khoảng thời gian POSIX (POSIX Interval Timers)
@@ -621,11 +630,16 @@ Trên Linux, các chương trình sử dụng POSIX timer API phải được bi
 Hàm `timer_create()` tạo ra một timer mới dùng để đo thời gian bằng cách sử dụng đồng hồ (clock) được chỉ định bởi `clockid`.
 
 ```c
+
 ## define _POSIX_C_SOURCE 199309
+
 ## include <signal.h>
+
 ## include <time.h>
+
 int timer_create(clockid_t clockid, struct sigevent *evp, timer_t *timerid);
-                                             Trả về 0 khi thành công, hoặc –1 khi lỗi
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Tham số `clockid` có thể chỉ định bất kỳ giá trị nào được hiển thị trong Bảng 23-1, hoặc giá trị `clockid` được trả về bởi `clock_getcpuclockid()` hoặc `pthread_getcpuclockid()`. Đối số `timerid` trỏ đến một vùng nhớ đệm trả về một định danh (handle) được dùng để tham chiếu đến timer trong các System Call sau này. Vùng nhớ đệm này có kiểu `timer_t`, đây là một kiểu dữ liệu do SUSv3 quy định để đại diện cho định danh của timer (timer identifier).
@@ -633,25 +647,30 @@ Tham số `clockid` có thể chỉ định bất kỳ giá trị nào được 
 Đối số `evp` xác định cách thức chương trình được thông báo khi timer hết hạn (expires). Nó trỏ đến một cấu trúc kiểu `sigevent`, được định nghĩa như sau:
 
 ```c
+
 union sigval {
- int sival_int; /* Giá trị số nguyên cho dữ liệu đi kèm */
- void *sival_ptr; /* Giá trị con trỏ cho dữ liệu đi kèm */
+int sival_int; /* Giá trị số nguyên cho dữ liệu đi kèm */
+void *sival_ptr; /* Giá trị con trỏ cho dữ liệu đi kèm */
 };
 struct sigevent {
- int sigev_notify; /* Phương thức thông báo */
- int sigev_signo; /* Tín hiệu (signal) hết hạn timer */
- union sigval sigev_value; /* Giá trị đi kèm signal hoặc
- được truyền cho hàm thread */
- union {
- pid_t _tid; /* ID của thread sẽ nhận signal */
- void (*_function) (union sigval);
- /* Hàm thông báo thread */
- void *_attribute; /* Thực chất là 'pthread_attr_t *' */
- } _sigev_un;
+int sigev_notify; /* Phương thức thông báo */
+int sigev_signo; /* Tín hiệu (signal) hết hạn timer */
+union sigval sigev_value; /* Giá trị đi kèm signal hoặc
+được truyền cho hàm thread */
+union {
+pid_t _tid; /* ID của thread sẽ nhận signal */
+void (*_function) (union sigval);
+/* Hàm thông báo thread */
+void *_attribute; /* Thực chất là 'pthread_attr_t *' */
+} _sigev_un;
 };
+
 ## define sigev_notify_function _sigev_un._sigev_thread._function
+
 ## define sigev_notify_attributes _sigev_un._sigev_thread._attribute
+
 ## define sigev_notify_thread_id _sigev_un._tid
+
 ```
 
 Trường `sigev_notify` của cấu trúc này được thiết lập thành một trong các giá trị được hiển thị trong [Bảng 23-2.](#page-17-0)
@@ -694,11 +713,15 @@ Theo cách triển khai hiện tại, kernel sẽ cấp phát trước (prealloc
 Sau khi đã tạo một timer, chúng ta có thể kích hoạt (arm/start) hoặc hủy kích hoạt (disarm/stop) nó bằng cách sử dụng hàm `timer_settime()`.
 
 ```c
+
 ## define _POSIX_C_SOURCE 199309
+
 ## include <time.h>
+
 int timer_settime(timer_t timerid, int flags, const struct itimerspec *value,
- struct itimerspec *old_value);
-                                         Trả về 0 khi thành công, hoặc –1 khi lỗi
+struct itimerspec *old_value);
+Trả về 0 khi thành công, hoặc –1 khi lỗi
+
 ```
 
 Đối số `timerid` của hàm `timer_settime()` là một định danh timer (timer handle) được trả về từ lời gọi `timer_create()` trước đó.
@@ -706,19 +729,23 @@ int timer_settime(timer_t timerid, int flags, const struct itimerspec *value,
 Các đối số `value` và `old_value` có ý nghĩa tương tự như các đối số cùng tên trong hàm `setitimer()`: `value` chỉ định các thiết lập mới cho timer, và `old_value` được dùng để trả về các thiết lập timer trước đó (xem mô tả về hàm `timer_gettime()` bên dưới). Nếu chúng ta không quan tâm đến các thiết lập trước đó, chúng ta có thể truyền `old_value` là `NULL`. Các đối số `value` và `old_value` là con trỏ trỏ đến các cấu trúc `itimerspec`, được định nghĩa như sau:
 
 ```c
+
 struct itimerspec {
- struct timespec it_interval; /* Khoảng thời gian cho periodic timer */
- struct timespec it_value; /* Lần hết hạn đầu tiên */
+struct timespec it_interval; /* Khoảng thời gian cho periodic timer */
+struct timespec it_value; /* Lần hết hạn đầu tiên */
 };
+
 ```
 
 Mỗi trường của cấu trúc `itimerspec` lại là một cấu trúc kiểu `timespec`, trong đó chỉ định các giá trị thời gian dưới dạng số giây và số nano-giây:
 
 ```c
+
 struct timespec {
- time_t tv_sec; /* Giây */
- long tv_nsec; /* Nano-giây */
+time_t tv_sec; /* Giây */
+long tv_nsec; /* Nano-giây */
 };
+
 ```
 
 Trường `it_value` chỉ định thời điểm timer sẽ hết hạn lần đầu tiên. Nếu bất kỳ trường con nào của `it_interval` khác 0, thì đây là một timer định kỳ (periodic timer); sau lần hết hạn ban đầu được chỉ định bởi `it_value`, nó sẽ tiếp tục hết hạn theo tần số được chỉ định trong các trường con này. Nếu cả hai trường con của `it_interval` đều bằng 0, timer này sẽ chỉ hết hạn một lần duy nhất.
@@ -737,7 +764,6 @@ Mỗi khi timer hết hạn, tiến trình (process) sẽ nhận được thông
 
 System Call (lời gọi hệ thống) `timer_gettime()` trả về khoảng thời gian (interval) và thời gian còn lại của POSIX timer được định danh bởi `timerid`.
 
-```
 ## define _POSIX_C_SOURCE 199309
 ## include <time.h>
 int timer_gettime(timer_t timerid, struct itimerspec *curr_value);
@@ -752,11 +778,13 @@ Nếu cả hai trường của cấu trúc `curr_value.it_value` được trả 
 
 Mỗi POSIX timer tiêu tốn một lượng tài nguyên hệ thống (system resource) nhỏ. Do đó, khi chúng ta hoàn tất việc sử dụng một timer, chúng ta nên giải phóng các tài nguyên này bằng cách sử dụng `timer_delete()` để xóa timer đó.
 
-```
 ## define _POSIX_C_SOURCE 199309
+
 ## include <time.h>
+
 int timer_delete(timer_t timerid);
-                                             Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
+Trả về 0 nếu thành công, hoặc –1 nếu có lỗi
+
 ```
 
 Đối số `timerid` là một handle (thẻ định danh) do lời gọi `timer_create()` trước đó trả về. Nếu timer đang ở trạng thái kích hoạt (armed), nó sẽ tự động bị vô hiệu hóa (disarmed) trước khi bị xóa. Nếu vẫn còn tín hiệu đang chờ xử lý (pending signal) từ lần hết hạn trước đó của timer này, tín hiệu đó vẫn giữ nguyên trạng thái pending. (SUSv3 không quy định chi tiết điểm này, vì vậy các cài đặt UNIX khác có thể có hành vi khác nhau.) Các timer sẽ tự động bị xóa khi một Process (tiến trình) kết thúc.
@@ -782,64 +810,76 @@ Liệt kê 23-5 minh họa việc sử dụng signal làm cơ chế thông báo 
 **Liệt kê 23-5:** Thông báo POSIX timer sử dụng tín hiệu (signal)
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––timers/ptmr_sigev_signal.c
+
 ## define _POSIX_C_SOURCE 199309
+
 ## include <signal.h>
+
 ## include <time.h>
+
 ## include "curr_time.h" /* Khai báo hàm currTime() */
+
 ## include "itimerspec_from_str.h" /* Khai báo hàm itimerspecFromStr() */
+
 ## include "tlpi_hdr.h"
+
 ## define TIMER_SIG SIGRTMAX /* Tín hiệu thông báo timer của chúng ta */
-  static void
-  handler(int sig, siginfo_t *si, void *uc)
-  {
-   timer_t *tidptr;
-   tidptr = si->si_value.sival_ptr;
-   /* KHÔNG AN TOÀN: Handler này sử dụng các hàm không an toàn đối với async-signal
-   (printf(); xem Mục 21.1.2) */
+
+static void
+handler(int sig, siginfo_t *si, void *uc)
+{
+timer_t *tidptr;
+tidptr = si->si_value.sival_ptr;
+/* KHÔNG AN TOÀN: Handler này sử dụng các hàm không an toàn đối với async-signal
+(printf(); xem Mục 21.1.2) */
+
 ```
 
 ```
-   printf("[%s] Nhận được tín hiệu %d\n", currTime("%T"), sig);
-   printf(" *sival_ptr = %ld\n", (long) *tidptr);
-   printf(" timer_getoverrun() = %d\n", timer_getoverrun(*tidptr));
-  }
-  int
-  main(int argc, char *argv[])
-  {
-   struct itimerspec ts;
-   struct sigaction sa;
-   struct sigevent sev;
-   timer_t *tidlist;
-   int j;
-   if (argc < 2)
-   usageErr("%s secs[/nsecs][:int-secs[/int-nsecs]]...\n", argv[0]);
-   tidlist = calloc(argc - 1, sizeof(timer_t));
-   if (tidlist == NULL)
-   errExit("malloc");
-   /* Thiết lập handler cho tín hiệu thông báo */
-   sa.sa_flags = SA_SIGINFO;
-   sa.sa_sigaction = handler;
-   sigemptyset(&sa.sa_mask);
-   if (sigaction(TIMER_SIG, &sa, NULL) == -1)
-   errExit("sigaction");
-   /* Tạo và khởi động một timer cho mỗi đối số dòng lệnh */
-   sev.sigev_notify = SIGEV_SIGNAL; /* Thông báo qua tín hiệu */
-   sev.sigev_signo = TIMER_SIG; /* Thông báo bằng tín hiệu này */
-   for (j = 0; j < argc - 1; j++) {
-   itimerspecFromStr(argv[j + 1], &ts);
-   sev.sigev_value.sival_ptr = &tidlist[j];
-   /* Cho phép handler lấy ID của timer này */
-   if (timer_create(CLOCK_REALTIME, &sev, &tidlist[j]) == -1)
-   errExit("timer_create");
-   printf("Timer ID: %ld (%s)\n", (long) tidlist[j], argv[j + 1]);
-   if (timer_settime(tidlist[j], 0, &ts, NULL) == -1)
-   errExit("timer_settime");
-   }
-   for (;;) /* Chờ các tín hiệu timer đến */
-   pause();
-  }
-  –––––––––––––––––––––––––––––––––––––––––––––––––timers/ptmr_sigev_signal.c
+
+printf("[%s] Nhận được tín hiệu %d\n", currTime("%T"), sig);
+printf(" *sival_ptr = %ld\n", (long) *tidptr);
+printf(" timer_getoverrun() = %d\n", timer_getoverrun(*tidptr));
+}
+int
+main(int argc, char *argv[])
+{
+struct itimerspec ts;
+struct sigaction sa;
+struct sigevent sev;
+timer_t *tidlist;
+int j;
+if (argc < 2)
+usageErr("%s secs[/nsecs][:int-secs[/int-nsecs]]...\n", argv[0]);
+tidlist = calloc(argc - 1, sizeof(timer_t));
+if (tidlist == NULL)
+errExit("malloc");
+/* Thiết lập handler cho tín hiệu thông báo */
+sa.sa_flags = SA_SIGINFO;
+sa.sa_sigaction = handler;
+sigemptyset(&sa.sa_mask);
+if (sigaction(TIMER_SIG, &sa, NULL) == -1)
+errExit("sigaction");
+/* Tạo và khởi động một timer cho mỗi đối số dòng lệnh */
+sev.sigev_notify = SIGEV_SIGNAL; /* Thông báo qua tín hiệu */
+sev.sigev_signo = TIMER_SIG; /* Thông báo bằng tín hiệu này */
+for (j = 0; j < argc - 1; j++) {
+itimerspecFromStr(argv[j + 1], &ts);
+sev.sigev_value.sival_ptr = &tidlist[j];
+/* Cho phép handler lấy ID của timer này */
+if (timer_create(CLOCK_REALTIME, &sev, &tidlist[j]) == -1)
+errExit("timer_create");
+printf("Timer ID: %ld (%s)\n", (long) tidlist[j], argv[j + 1]);
+if (timer_settime(tidlist[j], 0, &ts, NULL) == -1)
+errExit("timer_settime");
+}
+for (;;) /* Chờ các tín hiệu timer đến */
+pause();
+}
+–––––––––––––––––––––––––––––––––––––––––––––––––timers/ptmr_sigev_signal.c
+
 ```
 
 Mỗi đối số dòng lệnh (command-line argument) của chương trình trong [Liệt kê 23-5](#page-23-0) chỉ định giá trị ban đầu (initial value) và khoảng thời gian (interval) cho một bộ định thời (timer). Cú pháp của các đối số này được mô tả trong thông báo "usage" của chương trình và được minh họa trong phiên shell dưới đây. Chương trình này thực hiện các bước sau:
@@ -854,68 +894,81 @@ Mỗi đối số dòng lệnh (command-line argument) của chương trình tro
 **Liệt kê 23-6:** Chuyển đổi chuỗi thời gian kết hợp khoảng thời gian thành giá trị `itimerspec`
 
 ```c
+
 ––––––––––––––––––––––––––––––––––––––––––––––– timers/itimerspec_from_str.c
+
 ## define_POSIX_C_SOURCE 199309
+
 ## include <string.h>
+
 ## include <stdlib.h>
+
 ## include "itimerspec_from_str.h" /* Khai báo hàm được định nghĩa ở đây */
+
 /* Chuyển đổi chuỗi có dạng sau thành cấu trúc itimerspec:
- "value.sec[/value.nanosec][:interval.sec[/interval.nanosec]]".
- Các thành phần tùy chọn nếu bị lược bỏ sẽ gán giá trị 0 cho
- các trường cấu trúc tương ứng. */
+"value.sec[/value.nanosec][:interval.sec[/interval.nanosec]]".
+Các thành phần tùy chọn nếu bị lược bỏ sẽ gán giá trị 0 cho
+các trường cấu trúc tương ứng. */
 void
 itimerspecFromStr(char *str, struct itimerspec *tsp)
 {
- char *cptr, *sptr;
- cptr = strchr(str, ':');
- if (cptr != NULL)
- *cptr = '\0';
- sptr = strchr(str, '/');
- if (sptr != NULL)
- *sptr = '\0';
- tsp->it_value.tv_sec = atoi(str);
- tsp->it_value.tv_nsec = (sptr != NULL) ? atoi(sptr + 1) : 0;
+char *cptr, *sptr;
+cptr = strchr(str, ':');
+if (cptr != NULL)
+*cptr = '\0';
+sptr = strchr(str, '/');
+if (sptr != NULL)
+*sptr = '\0';
+tsp->it_value.tv_sec = atoi(str);
+tsp->it_value.tv_nsec = (sptr != NULL) ? atoi(sptr + 1) : 0;
+
 ```
 
 ```c
- if (cptr == NULL) {
- tsp->it_interval.tv_sec = 0;
- tsp->it_interval.tv_nsec = 0;
- } else {
- sptr = strchr(cptr + 1, '/');
- if (sptr != NULL)
- *sptr = '\0';
- tsp->it_interval.tv_sec = atoi(cptr + 1);
- tsp->it_interval.tv_nsec = (sptr != NULL) ? atoi(sptr + 1) : 0;
- }
+
+if (cptr == NULL) {
+tsp->it_interval.tv_sec = 0;
+tsp->it_interval.tv_nsec = 0;
+} else {
+sptr = strchr(cptr + 1, '/');
+if (sptr != NULL)
+*sptr = '\0';
+tsp->it_interval.tv_sec = atoi(cptr + 1);
+tsp->it_interval.tv_nsec = (sptr != NULL) ? atoi(sptr + 1) : 0;
+}
 }
 ––––––––––––––––––––––––––––––––––––––––––––––– timers/itimerspec_from_str.c
+
 ```
 
 Chúng ta minh họa việc sử dụng chương trình trong [Liệt kê 23-5](#page-23-0) trong phiên shell sau đây, tạo một bộ định thời duy nhất với thời gian hết hạn ban đầu là 2 giây và khoảng thời gian lặp lại là 5 giây.
 
 ```bash
+
 $ ./ptmr_sigev_signal 2:5
 Timer ID: 134524952 (2:5)
 [15:54:56] Got signal 64 SIGRTMAX is signal 64 on this system
- *sival_ptr = 134524952 sival_ptr points to the variable tid
- timer_getoverrun() = 0
+*sival_ptr = 134524952 sival_ptr points to the variable tid
+timer_getoverrun() = 0
 [15:55:01] Got signal 64
- *sival_ptr = 134524952
- timer_getoverrun() = 0
+*sival_ptr = 134524952
+timer_getoverrun() = 0
 Type Control-Z to suspend the process
 [1]+ Stopped ./ptmr_sigev_signal 2:5
+
 ```
 
 Sau khi tạm dừng (suspend) chương trình, chúng ta chờ trong vài giây, cho phép một vài lần hết hạn của bộ định thời xảy ra trước khi tiếp tục (resume) chương trình:
 
 ```bash
+
 $ fg
 ./ptmr_sigev_signal 2:5
 [15:55:34] Got signal 64
- *sival_ptr = 134524952
- timer_getoverrun() = 5
+*sival_ptr = 134524952
+timer_getoverrun() = 5
 Type Control-C to kill the program
+
 ```
 
 Dòng cuối cùng của đầu ra chương trình cho thấy năm lần tràn bộ định thời (timer overrun) đã xảy ra, nghĩa là sáu lần hết hạn bộ định thời đã diễn ra kể từ lần gửi tín hiệu trước đó.
@@ -934,10 +987,14 @@ Sau khi nhận được tín hiệu timer, chúng ta có thể lấy số đếm
 Số đếm tràn timer được đặt lại (reset) mỗi khi chúng ta nhận được tín hiệu timer. Nếu timer chỉ hết hạn một lần kể từ khi tín hiệu timer được xử lý hoặc chấp nhận, thì số đếm tràn sẽ là 0 (tức là không có lần tràn nào).
 
 ```c
+
 ## define _POSIX_C_SOURCE 199309
+
 ## include <time.h>
+
 int timer_getoverrun(timer_t timerid);
-                         Trả về số đếm tràn timer nếu thành công, hoặc –1 nếu có lỗi
+Trả về số đếm tràn timer nếu thành công, hoặc –1 nếu có lỗi
+
 ```
 
 Hàm `timer_getoverrun()` trả về số đếm tràn cho timer được chỉ định bởi tham số `timerid` của nó.
@@ -958,115 +1015,128 @@ Cờ `SIGEV_THREAD` cho phép chương trình nhận thông báo về việc b�
 Nhật ký phiên shell (shell session log) sau đây minh họa việc sử dụng chương trình trong Liệt kê 23-7. Trong ví dụ này, chương trình tạo ra hai timer: một timer có thời gian hết hạn ban đầu là 5 giây và chu kỳ lặp là 5 giây, và một timer khác có thời gian hết hạn ban đầu là 10 giây và chu kỳ lặp là 10 giây.
 
 ```
+
 $ ./ptmr_sigev_thread 5:5 10:10
 Timer ID: 134525024 (5:5)
 Timer ID: 134525080 (10:10)
 [13:06:22] Thread notify
- timer ID=134525024
- timer_getoverrun()=0
+timer ID=134525024
+timer_getoverrun()=0
 main(): count = 1
 [13:06:27] Thread notify
- timer ID=134525080
- timer_getoverrun()=0
+timer ID=134525080
+timer_getoverrun()=0
 main(): count = 2
 [13:06:27] Thread notify
- timer ID=134525024
- timer_getoverrun()=0
+timer ID=134525024
+timer_getoverrun()=0
 main(): count = 3
 Type Control-Z to suspend the program
 [1]+ Stopped ./ptmr_sigev_thread 5:5 10:10
 $ fg Resume execution
 ./ptmr_sigev_thread 5:5 10:10
 [13:06:45] Thread notify
- timer ID=134525024
- timer_getoverrun()=2 There were timer overruns
+timer ID=134525024
+timer_getoverrun()=2 There were timer overruns
 main(): count = 6
 [13:06:45] Thread notify
- timer ID=134525080
- timer_getoverrun()=0
+timer ID=134525080
+timer_getoverrun()=0
 main(): count = 7
 Type Control-C to kill the program
+
 ```
 
 **Liệt kê 23-7:** Thông báo POSIX timer sử dụng một hàm thread
 
 ```
+
 –––––––––––––––––––––––––––––––––––––––––––––––––timers/ptmr_sigev_thread.c
+
 ## include <signal.h>
+
 ## include <time.h>
+
 ## include <pthread.h>
+
 ## include "curr_time.h" /* Khai báo của currTime() */
+
 ## include "tlpi_hdr.h"
+
 ## include "itimerspec_from_str.h" /* Khai báo itimerspecFromStr() */
-  static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
-  static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-  static int expireCnt = 0; /* Số lần hết hạn của tất cả các timer */
-  static void /* Hàm thông báo qua Thread */
+
+static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static int expireCnt = 0; /* Số lần hết hạn của tất cả các timer */
+static void /* Hàm thông báo qua Thread */
 q threadFunc(union sigval sv)
-  {
-   timer_t *tidptr;
-   int s;
-   tidptr = sv.sival_ptr;
-   printf("[%s] Thread notify\n", currTime("%T"));
-   printf(" timer ID=%ld\n", (long) *tidptr);
-   printf(" timer_getoverrun()=%d\n", timer_getoverrun(*tidptr));
-   /* Tăng biến đếm được chia sẻ với thread chính và phát tín hiệu
-   cho biến điều kiện để thông báo cho thread chính về sự thay đổi. */
-   s = pthread_mutex_lock(&mtx);
-   if (s != 0)
-   errExitEN(s, "pthread_mutex_lock");
-   expireCnt += 1 + timer_getoverrun(*tidptr);
-   s = pthread_mutex_unlock(&mtx);
-   if (s != 0)
-   errExitEN(s, "pthread_mutex_unlock");
+{
+timer_t *tidptr;
+int s;
+tidptr = sv.sival_ptr;
+printf("[%s] Thread notify\n", currTime("%T"));
+printf(" timer ID=%ld\n", (long) *tidptr);
+printf(" timer_getoverrun()=%d\n", timer_getoverrun(*tidptr));
+/* Tăng biến đếm được chia sẻ với thread chính và phát tín hiệu
+cho biến điều kiện để thông báo cho thread chính về sự thay đổi. */
+s = pthread_mutex_lock(&mtx);
+if (s != 0)
+errExitEN(s, "pthread_mutex_lock");
+expireCnt += 1 + timer_getoverrun(*tidptr);
+s = pthread_mutex_unlock(&mtx);
+if (s != 0)
+errExitEN(s, "pthread_mutex_unlock");
 w s = pthread_cond_signal(&cond);
-   if (s != 0)
-   errExitEN(s, "pthread_cond_signal");
-  }
-  int
-  main(int argc, char *argv[])
-  {
-   struct sigevent sev;
-   struct itimerspec ts;
-   timer_t *tidlist;
-   int s, j;
+if (s != 0)
+errExitEN(s, "pthread_cond_signal");
+}
+int
+main(int argc, char *argv[])
+{
+struct sigevent sev;
+struct itimerspec ts;
+timer_t *tidlist;
+int s, j;
+
 ```
 
 ```
- if (argc < 2)
-   usageErr("%s secs[/nsecs][:int-secs[/int-nsecs]]...\n", argv[0]);
-   tidlist = calloc(argc - 1, sizeof(timer_t));
-   if (tidlist == NULL)
-   errExit("malloc");
+
+if (argc < 2)
+usageErr("%s secs[/nsecs][:int-secs[/int-nsecs]]...\n", argv[0]);
+tidlist = calloc(argc - 1, sizeof(timer_t));
+if (tidlist == NULL)
+errExit("malloc");
 e sev.sigev_notify = SIGEV_THREAD; /* Thông báo qua thread */
 r sev.sigev_notify_function = threadFunc; /* Hàm khởi đầu của thread */
-   sev.sigev_notify_attributes = NULL;
-   /* Có thể là con trỏ trỏ tới cấu trúc pthread_attr_t */
-   /* Tạo và khởi động một timer cho mỗi tham số dòng lệnh */
-   for (j = 0; j < argc - 1; j++) {
-   itimerspecFromStr(argv[j + 1], &ts);
+sev.sigev_notify_attributes = NULL;
+/* Có thể là con trỏ trỏ tới cấu trúc pthread_attr_t */
+/* Tạo và khởi động một timer cho mỗi tham số dòng lệnh */
+for (j = 0; j < argc - 1; j++) {
+itimerspecFromStr(argv[j + 1], &ts);
 t sev.sigev_value.sival_ptr = &tidlist[j];
-   /* Được truyền làm tham số cho threadFunc() */
+/* Được truyền làm tham số cho threadFunc() */
 y if (timer_create(CLOCK_REALTIME, &sev, &tidlist[j]) == -1)
-   errExit("timer_create");
-   printf("Timer ID: %ld (%s)\n", (long) tidlist[j], argv[j + 1]);
+errExit("timer_create");
+printf("Timer ID: %ld (%s)\n", (long) tidlist[j], argv[j + 1]);
 u if (timer_settime(tidlist[j], 0, &ts, NULL) == -1)
-   errExit("timer_settime");
-   }
-   /* Thread chính chờ trên một biến điều kiện được phát tín hiệu
-   vào mỗi lần gọi hàm thông báo thread. Chúng ta
-   in ra một thông báo để người dùng có thể thấy điều này đã xảy ra. */
-   s = pthread_mutex_lock(&mtx);
-   if (s != 0)
-   errExitEN(s, "pthread_mutex_lock");
+errExit("timer_settime");
+}
+/* Thread chính chờ trên một biến điều kiện được phát tín hiệu
+vào mỗi lần gọi hàm thông báo thread. Chúng ta
+in ra một thông báo để người dùng có thể thấy điều này đã xảy ra. */
+s = pthread_mutex_lock(&mtx);
+if (s != 0)
+errExitEN(s, "pthread_mutex_lock");
 i for (;;) {
-   s = pthread_cond_wait(&cond, &mtx);
-   if (s != 0)
-   errExitEN(s, "pthread_cond_wait");
-   printf("main(): expireCnt = %d\n", expireCnt);
-   }
-  }
-  –––––––––––––––––––––––––––––––––––––––––––––––––timers/ptmr_sigev_thread.c
+s = pthread_cond_wait(&cond, &mtx);
+if (s != 0)
+errExitEN(s, "pthread_cond_wait");
+printf("main(): expireCnt = %d\n", expireCnt);
+}
+}
+–––––––––––––––––––––––––––––––––––––––––––––––––timers/ptmr_sigev_thread.c
+
 ```
 
 ## 23.7 Bộ định thời thông báo qua File Descriptor: API timerfd
@@ -1078,9 +1148,12 @@ Hoạt động của ba system call (lệnh gọi hệ thống) mới trong API 
 System call đầu tiên trong số các system call mới là `timerfd_create()`, hàm này tạo một đối tượng bộ định thời mới và trả về một file descriptor tham chiếu đến đối tượng đó.
 
 ```c
+
 ## include <sys/timerfd.h>
+
 int timerfd_create(int clockid, int flags);
-                                Trả về file descriptor nếu thành công, hoặc –1 nếu lỗi
+Trả về file descriptor nếu thành công, hoặc –1 nếu lỗi
+
 ```
 
 Giá trị của `clockid` có thể là `CLOCK_REALTIME` hoặc `CLOCK_MONOTONIC` (xem Bảng 23-1).
@@ -1100,10 +1173,13 @@ Khi chúng ta đã sử dụng xong bộ định thời được tạo bởi `ti
 System call `timerfd_settime()` kích hoạt (bắt đầu) hoặc vô hiệu hóa (dừng) bộ định thời được tham chiếu bởi file descriptor `fd`.
 
 ```c
+
 ## include <sys/timerfd.h>
+
 int timerfd_settime(int fd, int flags, const struct itimerspec *new_value,
- struct itimerspec *old_value);
-                                        Trả về 0 nếu thành công, hoặc –1 nếu lỗi
+struct itimerspec *old_value);
+Trả về 0 nếu thành công, hoặc –1 nếu lỗi
+
 ```
 
 Đối số `new_value` chỉ định các thiết lập mới cho bộ định thời. Đối số `old_value` có thể được sử dụng để trả về các thiết lập trước đó của bộ định thời (xem mô tả về `timerfd_gettime()` bên dưới để biết chi tiết). Nếu chúng ta không quan tâm đến các thiết lập trước đó, chúng ta có thể chỉ định `old_value` là `NULL`. Cả hai đối số này đều là cấu trúc `itimerspec` được sử dụng theo cách tương tự như đối với `timer_settime()` (xem Mục [23.6.2\)](#page-19-0).
@@ -1113,9 +1189,12 @@ int timerfd_settime(int fd, int flags, const struct itimerspec *new_value,
 System call `timerfd_gettime()` trả về khoảng thời gian (interval) và thời gian còn lại cho bộ định thời được nhận diện bởi file descriptor `fd`.
 
 ```c
+
 ## include <sys/timerfd.h>
+
 int timerfd_gettime(int fd, struct itimerspec *curr_value);
-                                             Trả về 0 nếu thành công, hoặc –1 nếu lỗi
+Trả về 0 nếu thành công, hoặc –1 nếu lỗi
+
 ```
 
 Giống như `timer_gettime()`, khoảng thời gian và thời gian cho đến lần hết hạn tiếp theo của bộ định thời được trả về trong cấu trúc `itimerspec` do `curr_value` trỏ tới. Trường `curr_value.it_value` trả về thời gian cho đến lần hết hạn tiếp theo của bộ định thời, ngay cả khi bộ định thời này được thiết lập như một bộ định thời tuyệt đối bằng cách sử dụng `TFD_TIMER_ABSTIME`. Nếu cả hai trường của cấu trúc `curr_value.it_value` được trả về đều bằng 0, thì bộ định thời hiện đang bị vô hiệu hóa. Nếu cả hai trường của cấu trúc `curr_value.it_interval` được trả về đều bằng 0, thì bộ định thời chỉ hết hạn một lần duy nhất, vào thời điểm được chỉ định trong `curr_value.it_value`.
@@ -1143,6 +1222,7 @@ Chương trình tạo một bộ định thời bằng `timerfd_create()` và k�
 Trong nhật ký phiên làm việc shell sau đây, các tham số dòng lệnh chỉ định một bộ định thời với giá trị ban đầu là 1 giây, khoảng lặp 1 giây, và tối đa 100 lần hết hạn.
 
 ```
+
 $ ./demo_timerfd 1:1 100
 1.000: expirations read: 1; total=1
 2.000: expirations read: 1; total=2
@@ -1155,6 +1235,7 @@ $ fg Resume program in foreground
 15.000: expirations read: 1; total=15
 16.000: expirations read: 1; total=16
 Type Control-C to terminate the program
+
 ```
 
 Từ kết quả đầu ra trên, chúng ta có thể thấy rằng nhiều lần hết hạn của bộ định thời đã xảy ra trong khi chương trình bị tạm dừng (`suspend`) ở chế độ nền (`background`), và tất cả các lần hết hạn này đã được trả về trong lần `read()` đầu tiên sau khi chương trình tiếp tục thực thi.
@@ -1162,57 +1243,67 @@ Từ kết quả đầu ra trên, chúng ta có thể thấy rằng nhiều lầ
 **Listing 23-8:** Sử dụng API `timerfd`
 
 ```
+
 ––––––––––––––––––––––––––––––––––––––––––––––––––––– timers/demo_timerfd.c
+
 ## include <sys/timerfd.h>
+
 ## include <time.h>
+
 ## include <stdint.h> /* Definition of uint64_t */
+
 ## include "itimerspec_from_str.h" /* Declares itimerspecFromStr() */
+
 ## include "tlpi_hdr.h"
+
 int
 main(int argc, char *argv[])
 {
- struct itimerspec ts;
- struct timespec start, now;
- int maxExp, fd, secs, nanosecs;
- uint64_t numExp, totalExp;
- ssize_t s;
- if (argc < 2 || strcmp(argv[1], "--help") == 0)
- usageErr("%s secs[/nsecs][:int-secs[/int-nsecs]] [max-exp]\n", argv[0]);
- itimerspecFromStr(argv[1], &ts);
- maxExp = (argc > 2) ? getInt(argv[2], GN_GT_0, "max-exp") : 1;
+struct itimerspec ts;
+struct timespec start, now;
+int maxExp, fd, secs, nanosecs;
+uint64_t numExp, totalExp;
+ssize_t s;
+if (argc < 2 || strcmp(argv[1], "--help") == 0)
+usageErr("%s secs[/nsecs][:int-secs[/int-nsecs]] [max-exp]\n", argv[0]);
+itimerspecFromStr(argv[1], &ts);
+maxExp = (argc > 2) ? getInt(argv[2], GN_GT_0, "max-exp") : 1;
+
 ```
 
 ```
- fd = timerfd_create(CLOCK_REALTIME, 0);
- if (fd == -1)
- errExit("timerfd_create");
- if (timerfd_settime(fd, 0, &ts, NULL) == -1)
- errExit("timerfd_settime");
- if (clock_gettime(CLOCK_MONOTONIC, &start) == -1)
- errExit("clock_gettime");
- for (totalExp = 0; totalExp < maxExp;) {
- /* Read number of expirations on the timer, and then display
- time elapsed since timer was started, followed by number
- of expirations read and total expirations so far. */
- s = read(fd, &numExp, sizeof(uint64_t));
- if (s != sizeof(uint64_t))
- errExit("read");
- totalExp += numExp;
- if (clock_gettime(CLOCK_MONOTONIC, &now) == -1)
- errExit("clock_gettime");
- secs = now.tv_sec - start.tv_sec;
- nanosecs = now.tv_nsec - start.tv_nsec;
- if (nanosecs < 0) {
- secs--;
- nanosecs += 1000000000;
- }
- printf("%d.%03d: expirations read: %llu; total=%llu\n",
- secs, (nanosecs + 500000) / 1000000,
- (unsigned long long) numExp, (unsigned long long) totalExp);
- }
- exit(EXIT_SUCCESS);
+
+fd = timerfd_create(CLOCK_REALTIME, 0);
+if (fd == -1)
+errExit("timerfd_create");
+if (timerfd_settime(fd, 0, &ts, NULL) == -1)
+errExit("timerfd_settime");
+if (clock_gettime(CLOCK_MONOTONIC, &start) == -1)
+errExit("clock_gettime");
+for (totalExp = 0; totalExp < maxExp;) {
+/* Read number of expirations on the timer, and then display
+time elapsed since timer was started, followed by number
+of expirations read and total expirations so far. */
+s = read(fd, &numExp, sizeof(uint64_t));
+if (s != sizeof(uint64_t))
+errExit("read");
+totalExp += numExp;
+if (clock_gettime(CLOCK_MONOTONIC, &now) == -1)
+errExit("clock_gettime");
+secs = now.tv_sec - start.tv_sec;
+nanosecs = now.tv_nsec - start.tv_nsec;
+if (nanosecs < 0) {
+secs--;
+nanosecs += 1000000000;
+}
+printf("%d.%03d: expirations read: %llu; total=%llu\n",
+secs, (nanosecs + 500000) / 1000000,
+(unsigned long long) numExp, (unsigned long long) totalExp);
+}
+exit(EXIT_SUCCESS);
 }
 ––––––––––––––––––––––––––––––––––––––––––––––––––––– timers/demo_timerfd.c
+
 ```
 
 ## 23.8 Tổng kết

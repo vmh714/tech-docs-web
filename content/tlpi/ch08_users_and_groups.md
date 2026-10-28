@@ -1,4 +1,4 @@
-# Chương 8: NGƯỜI DÙNG VÀ NHÓM (USERS AND GROUPS)
+# Chương 8: Người dùng và Nhóm (Users and Groups)
 
 Mỗi người dùng (user) có một tên đăng nhập (login name) duy nhất và một mã định danh người dùng dạng số (numeric user identifier - UID) đi kèm. Người dùng có thể thuộc về một hoặc nhiều nhóm (group). Mỗi nhóm cũng có một tên duy nhất và một mã định danh nhóm (group identifier - GID).
 
@@ -21,6 +21,7 @@ Theo thứ tự, các trường này bao gồm:
 
 - ID người dùng (User ID - UID): Đây là ID dạng số của người dùng này. Nếu trường này có giá trị `0`, thì tài khoản này có các đặc quyền siêu người dùng (superuser privileges). Thông thường chỉ có một tài khoản như vậy, với tên đăng nhập là `root`. Trên Linux 2.2 trở về trước, ID người dùng được duy trì dưới dạng giá trị 16-bit, cho phép dải giá trị từ 0 đến 65.535; trên Linux 2.4 trở về sau, chúng được lưu trữ bằng 32-bit, cho phép một dải giá trị lớn hơn nhiều.
 
+> [!NOTE]
 > Có thể (nhưng không phổ biến) có nhiều hơn một bản ghi trong tệp mật khẩu có cùng ID người dùng, do đó cho phép nhiều tên đăng nhập cho cùng một ID người dùng. Điều này cho phép nhiều người dùng truy cập vào cùng một tài nguyên (ví dụ: tệp) bằng các mật khẩu khác nhau. Các tên đăng nhập khác nhau có thể được liên kết với các tập hợp ID nhóm khác nhau.
 
 - ID nhóm (Group ID - GID): Đây là ID dạng số của nhóm đầu tiên mà người dùng này là thành viên. Các tư cách thành viên nhóm bổ sung cho người dùng này được định nghĩa trong tệp nhóm của hệ thống (system group file).
@@ -106,6 +107,7 @@ struct passwd {
 
 Các trường `pw_gecos` và `pw_passwd` của cấu trúc `passwd` không được định nghĩa trong SUSv3, nhưng có sẵn trên tất cả các hệ triển khai UNIX. Trường `pw_passwd` chỉ chứa thông tin hợp lệ nếu tính năng mật khẩu ẩn (password shadowing) không được bật. (Về mặt lập trình, cách đơn giản nhất để xác định xem mật khẩu ẩn có được bật hay không là thực hiện một lời gọi hàm `getpwnam()` thành công, tiếp theo là gọi hàm `getspnam()` — sẽ được mô tả ngay sau đây — để xem nó có trả về bản ghi mật khẩu ẩn cho cùng tên người dùng đó hay không). Một số hệ triển khai khác cung cấp các trường bổ sung không chuẩn trong cấu trúc này.
 
+> [!NOTE]
 > Trường `pw_gecos` có nguồn gốc từ các hệ triển khai UNIX thời kỳ đầu, nơi trường này chứa thông tin được sử dụng để giao tiếp với một máy tính chạy Hệ điều hành Tổng hợp General Electric (General Electric Comprehensive Operating System - GECOS). Mặc dù cách sử dụng này từ lâu đã trở nên lỗi thời, tên trường vẫn được giữ lại và trường này được sử dụng để ghi lại thông tin về người dùng.
 
 Hàm `getpwuid()` trả về chính xác thông tin giống như `getpwnam()`, nhưng thực hiện tra cứu bằng cách sử dụng ID người dùng dạng số (numeric user ID) được truyền vào qua tham số `uid`.

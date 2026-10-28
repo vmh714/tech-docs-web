@@ -1,4 +1,4 @@
-# Chương 30: LUỒNG (THREADS): ĐỒNG BỘ HÓA LUỒNG
+# Chương 30: Luồng: Đồng bộ hóa luồng (Threads: Thread Synchronization)
 
 Trong chương này, chúng tôi mô tả hai công cụ mà các luồng (threads) có thể sử dụng để đồng bộ hóa các hành động của chúng: mutex và biến điều kiện (condition variables). Mutex cho phép các luồng đồng bộ hóa việc sử dụng một tài nguyên chia sẻ (shared resource), nhờ đó, ví dụ, một luồng không cố gắng truy cập một biến chia sẻ cùng lúc với một luồng khác đang sửa đổi nó. Biến điều kiện (condition variable) thực hiện một tác vụ bổ sung: chúng cho phép các luồng thông báo cho nhau rằng một biến chia sẻ (hoặc tài nguyên chia sẻ khác) đã thay đổi trạng thái.
 
@@ -139,7 +139,7 @@ glob++; /* hoặc: ++glob; */
 
 Tuy nhiên, trên nhiều kiến trúc phần cứng (ví dụ: các kiến trúc RISC), trình biên dịch (compiler) vẫn sẽ cần chuyển đổi câu lệnh đơn này thành mã máy (machine code) mà các bước thực hiện của nó tương đương với ba câu lệnh bên trong vòng lặp trong `threadFunc()`. Nói cách khác, bất chấp vẻ ngoài đơn giản của nó, thậm chí toán tử tăng giá trị trong C có thể không mang tính nguyên tử (atomic), và nó có thể biểu hiện hành vi mà chúng ta đã mô tả ở trên.
 
-Để tránh các vấn đề có thể xảy ra khi các luồng cố gắng cập nhật một biến được chia sẻ (shared variable), chúng ta phải sử dụng một mutex (viết tắt của mutual exclusion - loại trừ tương hoả) để đảm bảo rằng tại một thời điểm chỉ có một luồng duy nhất có thể truy cập biến đó. Tổng quát hơn, mutex có thể được sử dụng để đảm bảo quyền truy cập mang tính nguyên tử (atomic access) đối với bất kỳ tài nguyên được chia sẻ nào (shared resource), nhưng việc bảo vệ các biến được chia sẻ là ứng dụng phổ biến nhất.
+Để tránh các vấn đề có thể xảy ra khi các luồng cố gắng cập nhật một biến được chia sẻ (shared variable), chúng ta phải sử dụng một mutex (viết tắt của mutual exclusion - loại trừ tương hỗ) để đảm bảo rằng tại một thời điểm chỉ có một luồng duy nhất có thể truy cập biến đó. Tổng quát hơn, mutex có thể được sử dụng để đảm bảo quyền truy cập mang tính nguyên tử (atomic access) đối với bất kỳ tài nguyên được chia sẻ nào (shared resource), nhưng việc bảo vệ các biến được chia sẻ là ứng dụng phổ biến nhất.
 
 Một mutex có hai trạng thái: đã khóa (locked) và chưa khóa (unlocked). Tại bất kỳ thời điểm nào, có tối đa một luồng được giữ khóa trên một mutex. Việc cố gắng khóa một mutex vốn đã bị khóa sẽ hoặc làm tiến trình/luồng bị chặn (block) hoặc thất bại kèm theo một mã lỗi, tùy thuộc vào phương pháp được sử dụng để đặt khóa.
 
@@ -198,7 +198,7 @@ Sau khi khởi tạo, một mutex ở trạng thái chưa được khóa (unlock
 ## include <pthread.h>
 int pthread_mutex_lock(pthread_mutex_t *mutex);
 int pthread_mutex_unlock(pthread_mutex_t *mutex);
-                  Cả hai đều trả về 0 khi thành công, hoặc một số lỗi dương nếu có lỗi
+                  Cả hai đều trả về 0 khi thành công, hoặc một số nguyên dương mã lỗi khi thất bại
 ```
 
 Để khóa một mutex, chúng ta chỉ định mutex đó trong lệnh gọi hàm `pthread_mutex_lock()`. Nếu mutex hiện đang chưa bị khóa, lệnh gọi này sẽ khóa mutex lại và trả về ngay lập tức. Nếu mutex hiện đang bị khóa bởi một thread (luồng) khác, thì `pthread_mutex_lock()` sẽ chặn (block) cho đến khi mutex được mở khóa, tại thời điểm đó nó sẽ khóa mutex lại và trả về.
@@ -278,7 +278,7 @@ API Pthreads cung cấp hai biến thể của hàm `pthread_mutex_lock()`: `pth
 
 Hàm `pthread_mutex_trylock()` hoạt động giống như `pthread_mutex_lock()`, ngoại trừ việc nếu mutex đang bị khóa, `pthread_mutex_trylock()` sẽ thất bại và trả về lỗi `EBUSY`.
 
-Hàm `pthread_mutex_timedlock()` hoạt động giống như `pthread_mutex_lock()`, ngoại trừ việc tiến trình gọi (caller) có thể chỉ định thêm một tham số bổ sung là `abstime`, thiết lập giới hạn thời gian mà thread sẽ ngủ (sleep) trong lúc chờ đợi để chiếm quyền sở hữu mutex. Nếu khoảng thời gian được chỉ định bởi tham số `abstime` trôi qua mà tiến trình gọi vẫn chưa trở thành chủ sở hữu của mutex, `pthread_mutex_timedlock()` sẽ trả về lỗi `ETIMEDOUT`.
+Hàm `pthread_mutex_timedlock()` hoạt động giống như `pthread_mutex_lock()`, ngoại trừ việc luồng gọi (caller) có thể chỉ định thêm một tham số bổ sung là `abstime`, thiết lập giới hạn thời gian mà luồng sẽ ngủ (sleep) trong lúc chờ đợi để chiếm quyền sở hữu mutex. Nếu khoảng thời gian được chỉ định bởi tham số `abstime` trôi qua mà luồng gọi vẫn chưa trở thành chủ sở hữu của mutex, `pthread_mutex_timedlock()` sẽ trả về lỗi `ETIMEDOUT`.
 
 Các hàm `pthread_mutex_trylock()` và `pthread_mutex_timedlock()` ít được sử dụng hơn rất nhiều so với `pthread_mutex_lock()`. Trong hầu hết các ứng dụng được thiết kế tốt, một thread chỉ nên giữ mutex trong một khoảng thời gian ngắn, để các thread khác không bị cản trở thực thi song song (in parallel). Điều này đảm bảo rằng các thread khác đang bị chặn (blocked) trên mutex sẽ sớm được cấp quyền khóa mutex. Một thread sử dụng `pthread_mutex_trylock()` để liên tục thăm dò (poll) mutex xem nó có thể khóa được hay không sẽ phải đối mặt với rủi ro bị đói tài nguyên (starved) quyền truy cập mutex, trong khi các thread khác trong hàng đợi (queued threads) lần lượt được cấp quyền truy cập mutex thông qua `pthread_mutex_lock()`.
 
@@ -290,6 +290,7 @@ Thoạt nhìn, điều này có vẻ tốn kém. Tuy nhiên, hãy xem xét vòng
 
 Để hiểu rõ hơn vấn đề này, việc chạy một số chương trình kiểm thử đơn giản trên cùng một hệ thống cho thấy 20 triệu vòng lặp khóa và mở khóa một vùng tập tin sử dụng `fcntl()` (Mục 55.3) mất 44 giây, và 20 triệu vòng lặp tăng và giảm một semaphore System V (Chương 47) mất 28 giây. Vấn đề với các khóa tập tin (file locks) và semaphore là chúng luôn đòi hỏi một lời gọi hệ thống (System Call) cho các thao tác khóa và mở khóa, và mỗi lời gọi hệ thống đều có một chi phí nhỏ nhưng đáng kể (Mục 3.1). Ngược lại, mutex được thực hiện bằng các thao tác ngôn ngữ máy nguyên tử (atomic machine-language operations) (được thực hiện trên các vị trí bộ nhớ có thể nhìn thấy bởi tất cả các luồng) và chỉ yêu cầu các lời gọi hệ thống trong trường hợp xảy ra tranh chấp khóa (lock contention).
 
+> [!NOTE]
 > Trên Linux, mutex được triển khai bằng cách sử dụng futex (tên viết tắt của fast user space mutex - mutex không gian người dùng nhanh), và các trường hợp tranh chấp khóa được xử lý bằng cách sử dụng lời gọi hệ thống `futex()`. Chúng tôi không mô tả futex trong cuốn sách này (chúng không dành cho việc sử dụng trực tiếp trong các ứng dụng không gian người dùng - user-space applications), nhưng các chi tiết có thể được tìm thấy trong [Drepper, 2004 (a)], tài liệu này cũng mô tả cách mutex được triển khai bằng cách sử dụng futex. [Franke et al., 2002] là một bài báo (nay đã lỗi thời) được viết bởi các nhà phát triển futex, mô tả việc triển khai futex ban đầu và xem xét các mức tăng hiệu năng thu được từ futex.
 
 ### 30.1.4 Tình trạng bế tắc của Mutex (Mutex Deadlocks)
@@ -312,10 +313,11 @@ Một chiến lược thay thế ít được sử dụng hơn là "thử, rồi
 
 Giá trị khởi tạo tĩnh `PTHREAD_MUTEX_INITIALIZER` chỉ có thể được sử dụng để khởi tạo một mutex được cấp phát tĩnh (statically allocated) với các thuộc tính mặc định (default attributes). Trong tất cả các trường hợp khác, chúng ta phải khởi tạo mutex một cách động (dynamically) bằng cách sử dụng `pthread_mutex_init()`.
 
-```
 ## include <pthread.h>
+
 int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
-                      Trả về 0 khi thành công, hoặc một số dương biểu thị mã lỗi khi thất bại
+Trả về 0 khi thành công, hoặc một số dương biểu thị mã lỗi khi thất bại
+
 ```
 
 Tham số `mutex` xác định mutex cần khởi tạo. Tham số `attr` là một con trỏ trỏ tới đối tượng `pthread_mutexattr_t` đã được khởi tạo trước đó để định nghĩa các thuộc tính cho mutex. (Chúng ta sẽ bàn thêm về các thuộc tính của mutex ở phần tiếp theo). Nếu `attr` được chỉ định là `NULL`, thì mutex sẽ được gán các thuộc tính mặc định khác nhau.
@@ -330,7 +332,6 @@ Trong số các trường hợp mà chúng ta bắt buộc phải sử dụng `p
 
 Khi một mutex được cấp phát tự động hoặc động không còn cần thiết nữa, nó nên được hủy (destroy) bằng cách sử dụng `pthread_mutex_destroy()`. (Không bắt buộc phải gọi `pthread_mutex_destroy()` trên một mutex đã được khởi tạo tĩnh bằng `PTHREAD_MUTEX_INITIALIZER`.)
 
-```
 ## include <pthread.h>
 int pthread_mutex_destroy(pthread_mutex_t *mutex);
                       Trả về 0 khi thành công, hoặc một số dương biểu thị mã lỗi khi thất bại
@@ -366,7 +367,7 @@ Việc kiểm tra lỗi (Error checking) được thực hiện trên tất cả
 
 Một mutex đệ quy (recursive mutex) duy trì khái niệm về số lượng khóa (lock count). Khi một Thread lần đầu tiên giành được mutex, số lượng khóa được đặt thành 1. Mỗi thao tác khóa tiếp theo bởi cùng Thread đó sẽ tăng số lượng khóa lên, và mỗi thao tác mở khóa sẽ giảm số lượng đó xuống. Mutex chỉ được giải phóng (tức là sẵn sàng cho các Thread khác giành quyền sở hữu) khi số lượng khóa giảm về 0. Việc mở khóa một mutex chưa bị khóa sẽ thất bại, cũng như việc mở khóa một mutex hiện đang bị khóa bởi một Thread khác.
 
-Việc triển khai luồng (threading implementation) trên Linux cung cấp các hàm khởi tạo tĩnh phi tiêu chuẩn (nonstandard static initializers) cho mỗi kiểu mutex trên (ví dụ: `PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP`), do đó việc sử dụng `pthread_mutex_init()` là không bắt buộc để khởi tạo các kiểu mutex này đối với các mutex được phân bổ tĩnh (statically allocated). Tuy nhiên, các ứng dụng có tính di port (portable applications) nên tránh sử dụng các trình khởi tạo này.
+Việc triển khai luồng (threading implementation) trên Linux cung cấp các hàm khởi tạo tĩnh phi tiêu chuẩn (nonstandard static initializers) cho mỗi kiểu mutex trên (ví dụ: `PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP`), do đó việc sử dụng `pthread_mutex_init()` là không bắt buộc để khởi tạo các kiểu mutex này đối với các mutex được phân bổ tĩnh (statically allocated). Tuy nhiên, các ứng dụng có tính di động (portable applications) nên tránh sử dụng các trình khởi tạo này.
 
 Ngoài các kiểu mutex trên, SUSv3 định nghĩa kiểu `PTHREAD_MUTEX_DEFAULT`, đây là kiểu mutex mặc định nếu chúng ta sử dụng `PTHREAD_MUTEX_INITIALIZER` hoặc chỉ định `attr` là `NULL` trong lệnh gọi `pthread_mutex_init()`. Hành vi của kiểu mutex này cố ý không được xác định (undefined) trong cả ba kịch bản được mô tả ở phần đầu của mục này, điều này cho phép sự linh hoạt tối đa để triển khai mutex hiệu quả. Trên Linux, một mutex `PTHREAD_MUTEX_DEFAULT` hoạt động giống như một mutex `PTHREAD_MUTEX_NORMAL`.
 
@@ -421,7 +422,7 @@ if (s != 0)
  errExitEN(s, "pthread_mutex_unlock");
 ```
 
-Và trong tiến trình (thread) chính (consumer), chúng ta có thể sử dụng đoạn mã sau:
+Và trong luồng chính (consumer thread), chúng ta có thể sử dụng đoạn mã sau:
 
 ```
 for (;;) {
@@ -459,16 +460,16 @@ Theo SUSv3, việc áp dụng các thao tác mà chúng ta mô tả trong phần
 
 ### 30.2.2 Báo hiệu và Chờ trên Biến điều kiện (Signaling and Waiting on Condition Variables)
 
-Các thao tác trên biến điều kiện chính là báo hiệu (signal) và chờ (wait). Thao tác báo hiệu là một thông báo cho một hoặc nhiều tiến trình đang chờ rằng trạng thái của biến dùng chung (shared variable) đã thay đổi. Thao tác chờ là phương1 thức chặn (block) cho đến khi nhận được thông báo như vậy.
+Các thao tác trên biến điều kiện chính là báo hiệu (signal) và chờ (wait). Thao tác báo hiệu là một thông báo cho một hoặc nhiều tiến trình đang chờ rằng trạng thái của biến dùng chung (shared variable) đã thay đổi. Thao tác chờ là phương thức chặn (block) cho đến khi nhận được thông báo như vậy.
 
 Các hàm `pthread_cond_signal()` và `pthread_cond_broadcast()` đều báo hiệu cho biến điều kiện được chỉ định bởi `cond`. Hàm `pthread_cond_wait()` chặn một tiến trình cho đến khi biến điều kiện `cond` nhận được tín hiệu.
 
-```
+```c
 ## include <pthread.h>
 int pthread_cond_signal(pthread_cond_t *cond);
 int pthread_cond_broadcast(pthread_cond_t *cond);
 int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
-                    Tất cả trả về 0 nếu thành công, hoặc một số lỗi dương nếu có lỗi
+                    Tất cả trả về 0 nếu thành công, hoặc một số nguyên dương mã lỗi khi thất bại
 ```
 
 Sự khác biệt giữa `pthread_cond_signal()` và `pthread_cond_broadcast()` nằm ở những gì xảy ra nếu có nhiều tiến trình bị chặn (blocked) trong `pthread_cond_wait()`. Với `pthread_cond_signal()`, chúng ta chỉ được đảm bảo rằng ít nhất một trong số các tiến trình bị chặn được đánh thức; với `pthread_cond_broadcast()`, tất cả các tiến trình bị chặn đều được đánh thức.
@@ -479,22 +480,17 @@ Sử dụng `pthread_cond_broadcast()` luôn mang lại kết quả chính xác 
 - 2. Một tiến trình được lập lịch trước. Tiến trình này kiểm tra trạng thái của (các) biến dùng chung (dưới sự bảo vệ của mutex liên quan) và thấy rằng có công việc cần làm. Tiến trình thực hiện công việc được yêu cầu, thay đổi trạng thái của (các) biến dùng chung để biểu thị rằng công việc đã được hoàn thành, và mở khóa mutex liên quan.
 - 3. Lần lượt từng tiến trình trong số các tiến trình còn lại khóa mutex và kiểm tra trạng thái của biến dùng chung. Tuy nhiên, do sự thay đổi được thực hiện bởi tiến trình đầu tiên, các tiến trình này thấy rằng không có công việc nào cần làm, do đó chúng mở khóa mutex và quay trở lại trạng thái ngủ (tức là gọi lại `pthread_cond_wait()`).
 
-```
-
-Ngược lại, `pthread_cond_broadcast()` xử lý trường hợp các luồng (thread) đang chờ được thiết kế để thực hiện các tác vụ khác nhau (trong trường hợp đó, chúng có thể có các điều kiện kiểm tra - predicate liên kết với biến điều kiện khác nhau).
+Ngược lại, `pthread_cond_broadcast()` xử lý trường hợp các luồng (thread) đang chờ được thiết kế để thực hiện các tác vụ khác nhau (trong trường hợp đó, chúng có thể có các vị từ - predicate liên kết với biến điều kiện khác nhau).
 
 Một biến điều kiện (condition variable) không lưu trữ thông tin trạng thái nào cả. Nó đơn giản là một cơ chế để truyền đạt thông tin về trạng thái của ứng dụng. Nếu không có luồng nào đang chờ trên biến điều kiện tại thời điểm nó phát tín hiệu (signal), thì tín hiệu đó sẽ bị mất. Một luồng thực hiện chờ trên biến điều kiện sau đó sẽ chỉ được mở khóa (unblock) khi biến này phát tín hiệu thêm một lần nữa.
 
 Hàm `pthread_cond_timedwait()` hoạt động giống như `pthread_cond_wait()`, ngoại trừ việc tham số `abstime` chỉ định giới hạn trên về thời gian mà luồng sẽ ngủ (sleep) trong khi chờ biến điều kiện phát tín hiệu.
 
-```
-
+```c
 ## include <pthread.h>
-
 int pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
-const struct timespec *abstime);
-Trả về 0 khi thành công, hoặc một số mã lỗi dương khi có lỗi
-
+                            const struct timespec *abstime);
+                    Trả về 0 khi thành công, hoặc một số nguyên dương mã lỗi khi thất bại
 ```
 
 Tham số `abstime` là một cấu trúc `timespec` (Mục 23.4.2) chỉ định thời gian tuyệt định (absolute time) được tính bằng giây và nano giây kể từ thời điểm gốc Epoch (Section 10.1). Nếu khoảng thời gian do `abstime` chỉ định trôi qua mà biến điều kiện vẫn chưa phát tín hiệu, thì `pthread_cond_timedwait()` sẽ trả về mã lỗi `ETIMEDOUT`.
@@ -563,6 +559,7 @@ Trong đoạn mã trên, cả hai lần truy cập vào biến chia sẻ đều 
 
 Hàm `pthread_cond_wait()` tự động thực hiện việc mở khóa và khóa mutex theo yêu cầu trong hai bước cuối cùng này. Ở bước thứ ba, việc giải phóng mutex và chặn luồng trên biến điều kiện được thực hiện một cách nguyên tử (atomically). Nói cách khác, luồng khác không thể có được mutex và phát tín hiệu cho biến điều kiện trước khi luồng gọi `pthread_cond_wait()` kịp bị chặn trên biến điều kiện đó.
 
+> [!NOTE]
 > Có một hệ quả rút ra từ quan sát về mối quan hệ tự nhiên giữa biến điều kiện và mutex: tất cả các luồng đồng thời chờ trên một biến điều kiện cụ thể phải chỉ định cùng một mutex trong các lời gọi `pthread_cond_wait()` (hoặc `pthread_cond_timedwait()`) của chúng. Trên thực tế, một lời gọi `pthread_cond_wait()` sẽ liên kết động biến điều kiện với một mutex duy nhất trong suốt thời gian diễn ra lời gọi đó. Chuẩn SUSv3 lưu ý rằng kết quả của việc sử dụng nhiều hơn một mutex cho các lời gọi `pthread_cond_wait()` đồng thời trên cùng một biến điều kiện là không xác định (undefined).
 
 Kết hợp các chi tiết trên lại với nhau, giờ đây chúng ta có thể sửa đổi luồng (thread) chính (tiêu thụ - consumer) để sử dụng `pthread_cond_wait()`, như sau:
@@ -592,6 +589,7 @@ errExitEN(s, "pthread_mutex_unlock");
 
 Chúng ta kết thúc với một quan sát cuối cùng về việc sử dụng `pthread_cond_signal()` (và `pthread_cond_broadcast()`). Trong mã nguồn của bên sản xuất (producer) được hiển thị trước đó, chúng ta đã gọi `pthread_mutex_unlock()`, và sau đó gọi `pthread_cond_signal()`; nghĩa là, trước tiên chúng ta mở khóa mutex liên kết với biến chia sẻ (shared variable), và sau đó phát tín hiệu cho biến điều kiện (condition variable) tương ứng. Chúng ta có thể đảo ngược hai bước này; SUSv3 cho phép thực hiện theo cả hai thứ tự.
 
+> [!NOTE]
 > [Butenhof, 1996] chỉ ra rằng, trên một số triển khai, việc mở khóa mutex rồi mới phát tín hiệu cho biến điều kiện có thể mang lại hiệu suất tốt hơn so với thực hiện theo thứ tự ngược lại. Nếu mutex chỉ được mở khóa sau khi biến điều kiện được phát tín hiệu, luồng thực hiện `pthread_cond_wait()` có thể thức dậy trong khi mutex vẫn đang bị khóa, và sau đó ngay lập tức chuyển lại trạng thái ngủ khi phát hiện thấy mutex đang bị khóa. Điều này dẫn đến hai lần chuyển đổi ngữ cảnh (context switch) thừa thãi. Một số triển khai loại bỏ vấn đề này bằng cách áp dụng một kỹ thuật gọi là "biến hình chờ" (wait morphing), kỹ thuật này sẽ di chuyển luồng được báo hiệu từ hàng đợi chờ của biến điều kiện sang hàng đợi chờ của mutex mà không cần thực hiện chuyển đổi ngữ cảnh nếu mutex đang bị khóa.
 
 ### 30.2.3 Kiểm tra Vị từ của Biến Điều kiện (Condition Variable's Predicate)
@@ -749,12 +747,9 @@ exit(EXIT_SUCCESS);
 Hàm `pthread_cond_init()` được sử dụng để khởi tạo động một biến điều kiện (condition variable). Các trường hợp chúng ta cần sử dụng `pthread_cond_init()` tương tự như những trường hợp cần dùng `pthread_mutex_init()` để khởi tạo động một mutex (Phần [30.1.5](#page-22-0)); nghĩa là chúng ta phải sử dụng `pthread_cond_init()` để khởi tạo các biến điều kiện được cấp phát tự động và động, cũng như để khởi tạo một biến điều kiện cấp phát tĩnh với các thuộc tính (attributes) khác với mặc định.
 
 ```c
-
 ## include <pthread.h>
-
 int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr);
-Trả về 0 nếu thành công, hoặc một số dương biểu thị lỗi khi thất bại
-
+                    Trả về 0 nếu thành công, hoặc một số nguyên dương mã lỗi khi thất bại
 ```
 
 Tham số `cond` xác định biến điều kiện cần khởi tạo. Giống như mutex, chúng ta có thể chỉ định một tham số `attr` đã được khởi tạo trước đó để xác định các thuộc tính cho biến điều kiện. Nhiều hàm Pthreads khác nhau có thể được sử dụng để khởi tạo các thuộc tính trong đối tượng `pthread_condattr_t` được trỏ tới bởi `attr`. Nếu `attr` là `NULL`, một tập hợp thuộc tính mặc định sẽ được gán cho biến điều kiện.
@@ -764,12 +759,9 @@ SUSv3 quy định rằng việc khởi tạo một biến điều kiện đã đ
 Khi một biến điều kiện được cấp phát tự động hoặc động không còn cần thiết nữa, nó phải được hủy bằng hàm `pthread_cond_destroy()`. Không cần thiết phải gọi `pthread_cond_destroy()` trên một biến điều kiện được khởi tạo tĩnh bằng `PTHREAD_COND_INITIALIZER`.
 
 ```c
-
 ## include <pthread.h>
-
 int pthread_cond_destroy(pthread_cond_t *cond);
-Trả về 0 nếu thành công, hoặc một số dương biểu thị lỗi khi thất bại
-
+                    Trả về 0 nếu thành công, hoặc một số nguyên dương mã lỗi khi thất bại
 ```
 
 Việc hủy một biến điều kiện chỉ được coi là an toàn khi không có luồng (thread) nào đang đợi trên nó. Nếu biến điều kiện nằm trong một vùng nhớ được cấp phát động, thì nó nên được hủy trước khi giải phóng vùng nhớ đó. Một biến điều kiện được cấp phát tự động nên bị hủy trước khi hàm chứa nó trả về (returns).
@@ -801,4 +793,5 @@ Boolean lookup(char *key, void **value)
 
 Trong các nguyên mẫu (prototype) trên, `tree` là một cấu trúc trỏ đến gốc của cây (bạn sẽ cần định nghĩa một cấu trúc phù hợp cho mục đích này). Mỗi phần tử của cây nắm giữ một cặp khóa-giá trị (key-value pair). Bạn cũng sẽ cần định nghĩa cấu trúc cho từng phần tử để bao gồm một mutex bảo vệ phần tử đó sao cho tại một thời điểm chỉ có một thread có thể truy cập nó. Các hàm `initialize()`, `add()`, và `lookup()` tương đối đơn giản để triển khai. Thao tác `delete()` đòi hỏi thêm một chút nỗ lực.
 
+> [!NOTE]
 > Việc loại bỏ nhu cầu duy trì một cây cân bằng (balanced tree) giúp đơn giản hóa đáng kể các yêu cầu khóa (locking requirement) của việc triển khai, nhưng lại mang theo rủi ro là các mẫu đầu vào (input pattern) nhất định sẽ dẫn đến một cấu trúc cây hoạt động kém hiệu quả. Việc duy trì một cây cân bằng đòi hỏi phải di chuyển các nút (node) giữa các cây con trong các thao tác `add()` và `delete()`, điều này đòi hỏi các chiến lược khóa phức tạp hơn rất nhiều.

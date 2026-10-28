@@ -1,6 +1,6 @@
-# Chương 57: SOCKET DOMAIN UNIX: UNIX DOMAIN SOCKETS
+# Chương 57: Socket: Miền UNIX (Sockets: UNIX Domain)
 
-Chương này xem xét việc sử dụng các socket domain UNIX (UNIX domain socket), cho phép giao tiếp giữa các tiến trình (Process) trên cùng một hệ thống máy chủ (Host system). Chúng ta sẽ thảo luận về việc sử dụng cả socket kiểu hướng kết nối (stream socket) và socket kiểu bản tin (datagram socket) trong domain UNIX. Chúng ta cũng mô tả việc sử dụng quyền hạn tập tin (File permissions) để kiểm soát quyền truy cập vào các UNIX domain socket, việc sử dụng hàm `socketpair()` để tạo một cặp UNIX domain socket được kết nối với nhau, và không gian tên socket ẩn danh (abstract socket namespace) trên Linux.
+Chương này xem xét việc sử dụng các socket miền UNIX (UNIX domain socket), cho phép giao tiếp giữa các tiến trình (Process) trên cùng một hệ thống máy chủ (Host system). Chúng ta sẽ thảo luận về việc sử dụng cả socket dạng luồng (stream socket) và socket dạng datagram (datagram socket) trong miền UNIX. Chúng ta cũng mô tả việc sử dụng quyền hạn tập tin (File permissions) để kiểm soát quyền truy cập vào các UNIX domain socket, việc sử dụng hàm `socketpair()` để tạo một cặp UNIX domain socket được kết nối với nhau, và không gian tên socket trừu tượng (abstract socket namespace) trên Linux.
 
 ## 57.1 Địa chỉ Socket Domain UNIX: struct sockaddr\_un
 
@@ -37,10 +37,12 @@ SUSv3 không quy định kích thước của trường `sun_path`. Các phiên 
 
 Việc gọi hàm `memset()` trong [Liệt kê 57-1](#page-17-0) đảm bảo rằng tất cả các trường trong cấu trúc đều mang giá trị 0. (Lệnh `strncpy()` tiếp theo tận dụng điều này bằng cách chỉ định đối số cuối cùng nhỏ hơn kích thước của trường `sun_path` một đơn vị, nhằm đảm bảo trường này luôn có một null-byte kết thúc). Việc sử dụng `memset()` để xóa toàn bộ cấu trúc thay vì khởi tạo từng trường riêng lẻ sẽ giúp đảm bảo rằng bất kỳ trường phi chuẩn nào được cung cấp bởi một số hệ thống triển khai cũng sẽ được khởi tạo về 0.
 
+> [!NOTE]
 > Hàm `bzero()` có nguồn gốc từ BSD là một giải pháp thay thế cho `memset()` dùng để làm sạch nội dung của một cấu trúc. SUSv3 định nghĩa `bzero()` và hàm liên quan `bcopy()` (tương tự như `memmove()`), nhưng đánh dấu cả hai hàm này là LEGACY (cũ/kém ưu tiên), đồng thời lưu ý rằng `memset()` và `memmove()` được ưu tiên sử dụng hơn. SUSv4 đã loại bỏ hoàn toàn đặc tả kỹ thuật của `bzero()` và `bcopy()`.
 
 Khi được sử dụng để gán địa chỉ cho một UNIX domain socket, hàm `bind()` sẽ tạo ra một mục nhập (Entry) trong hệ thống tập tin (File system). (Do đó, thư mục được chỉ định làm một phần của đường dẫn socket cần phải có quyền truy cập và quyền ghi). Quyền sở hữu của tập tin được xác định theo các quy tắc thông thường đối với việc tạo tập tin (Mục 15.3.1). Tập tin này được đánh dấu là một socket. Khi hàm `stat()` được gọi trên đường dẫn này, nó trả về giá trị `S_IFSOCK` trong thành phần loại tập tin của trường `st_mode` thuộc cấu trúc stat (Mục 15.1). Khi liệt kê bằng lệnh `ls -l`, một UNIX domain socket được hiển thị với ký tự `s` ở cột đầu tiên, và lệnh `ls -F` sẽ gắn thêm một dấu bằng (`=`) vào đường dẫn của socket đó.
 
+> [!NOTE]
 > Mặc dù UNIX domain socket được nhận diện bằng các đường dẫn, hoạt động I/O trên các socket này không liên quan đến các thao tác trên thiết bị bên dưới (Underlying device).
 
 Các điểm sau đây rất đáng chú ý khi thực hiện gán địa chỉ cho một UNIX domain socket:
@@ -197,7 +199,7 @@ Tiêu chuẩn SUSv3 không chỉ định kích thước tối đa cho các datag
 
 [Liệt kê 57-6](#page-23-0) và [Liệt kê 57-7](#page-24-0) minh họa một ứng dụng máy khách - máy chủ (client-server) đơn giản sử dụng socket datagram miền UNIX. Cả hai chương trình này đều sử dụng tệp tiêu đề (header file) được hiển thị trong [Liệt kê 57-5.](#page-22-0)
 
-```
+```c
 Liệt kê 57-5: Tệp tiêu đề được sử dụng bởi ud_ucase_sv.c và ud_ucase_cl.c
 ––––––––––––––––––––––––––––––––––––––––––––––––––––––– sockets/ud_ucase.h
 ## include <sys/un.h>
@@ -334,7 +336,7 @@ Một số hệ thống bỏ qua các quyền trên tệp socket (SUSv3 cho phé
 
 Đôi khi, việc một tiến trình đơn lẻ tạo ra một cặp socket và kết nối chúng lại với nhau là rất hữu ích. Điều này có thể được thực hiện bằng cách sử dụng hai lời gọi `socket()`, một lời gọi `bind()`, và sau đó là các lời gọi `listen()`, `connect()`, và `accept()` (đối với socket luồng), hoặc một lời gọi `connect()` (đối với socket datagram). System call `socketpair()` cung cấp một cách viết tắt cho thao tác này.
 
-```
+```c
 ## include <sys/socket.h>
 int socketpair(int domain, int type, int protocol, int sockfd[2]);
                                              Trả về 0 khi thành công, hoặc –1 khi lỗi
@@ -346,10 +348,9 @@ Việc chỉ định `type` là `SOCK_STREAM` sẽ tạo ra một đường ốn
 
 Thông thường, một cặp socket được sử dụng tương tự như một pipe. Sau lời gọi `socketpair()`, tiến trình sau đó tạo ra một tiến trình con thông qua `fork()`. Tiến trình con kế thừa các bản sao của các file descriptor của tiến trình cha, bao gồm các descriptor tham chiếu đến cặp socket. Do đó, tiến trình cha và con có thể sử dụng cặp socket này để thực hiện IPC (Inter-Process Communication - Giao tiếp giữa các tiến trình).
 
-```
-
 Một điểm khác biệt giữa việc sử dụng `socketpair()` và việc tạo thủ công một cặp socket đã được kết nối là các socket này không được gán (bind) vào bất kỳ địa chỉ nào. Điều này có thể giúp chúng ta tránh được toàn bộ các lỗ hổng bảo mật (security vulnerabilities), vì các socket này không hiển thị đối với bất kỳ tiến trình (process) nào khác.
 
+> [!NOTE]
 > Bắt đầu từ phiên bản kernel 2.6.27, Linux cung cấp một cách sử dụng thứ hai cho tham số kiểu (`type`), cho phép kết hợp hai cờ phi tiêu chuẩn bằng phép toán OR với kiểu socket. Cờ `SOCK_CLOEXEC` khiến nhân hệ điều hành (kernel) bật cờ close-on-exec (`FD_CLOEXEC`) cho hai file descriptor mới. Cờ này hữu ích vì những lý do tương tự như cờ `O_CLOEXEC` của hàm `open()` được mô tả ở Mục 4.3.1. Cờ `SOCK_NONBLOCK` khiến kernel thiết lập cờ `O_NONBLOCK` trên cả hai mô tả tệp mở (open file descriptions) cơ sở, nhờ đó các thao tác I/O trong tương lai trên socket sẽ chuyển sang chế độ không chặn (nonblocking). Điều này giúp tiết kiệm các lời gọi hàm `fcntl()` bổ sung để đạt được cùng một kết quả.
 
 ## 57.6 Không gian tên Socket trừu tượng của Linux (The Linux Abstract Socket Namespace)
@@ -412,6 +413,6 @@ Tham khảo các nguồn thông tin bổ sung được liệt kê tại Mục [5
 ## 57.8 Bài tập
 
 - **57-1.** Trong Mục [57.3,](#page-22-1) chúng ta đã lưu ý rằng các socket miền UNIX kiểu datagram (UNIX domain datagram socket) là đáng tin cậy. Hãy viết các chương trình để minh họa rằng nếu một tiến trình gửi (sender) truyền các datagram đến một UNIX domain datagram socket nhanh hơn tốc độ đọc của tiến trình nhận (receiver), thì tiến trình gửi cuối cùng sẽ bị chặn (block), và tiếp tục bị chặn cho đến khi tiến trình nhận đọc bớt một số datagram đang chờ xử lý (pending datagram).
-- **57-2.** Viết lại các chương trình trong [Listing 57-3](#page-19-0) (`us_xfr_sv.c`) và [Listing 57-4](#page-20-0) (`us_xfr_cl.c`) để sử dụng không gian tên socket trừu tượng (abstract socket namespace) đặc thù của Linux (Mục [57.6](#page-26-0)).
+- **57-2.** Viết lại các chương trình trong [Liệt kê 57-3](#page-19-0) (`us_xfr_sv.c`) và [Liệt kê 57-4](#page-20-0) (`us_xfr_cl.c`) để sử dụng không gian tên socket trừu tượng (abstract socket namespace) đặc thù của Linux (Mục [57.6](#page-26-0)).
 - **57-3.** Triển khai lại máy chủ (server) và máy khách (client) cấp phát số thứ tự (sequence-number) của Mục 44.8 bằng cách sử dụng các socket miền UNIX kiểu dòng dữ liệu (UNIX domain stream socket).
 - **57-4.** Giả sử rằng chúng ta tạo ra hai UNIX domain datagram socket được bind (liên kết) với các đường dẫn `/somepath/a` và `/somepath/b`, và chúng ta kết nối (connect) socket `/somepath/a` tới `/somepath/b`. Điều gì sẽ xảy ra nếu chúng ta tạo một datagram socket thứ ba và cố gắng gửi (`sendto()`) một datagram thông qua socket đó đến `/somepath/a`? Hãy viết một chương trình để tìm ra câu trả lời. Nếu bạn có quyền truy cập vào các hệ thống UNIX khác, hãy kiểm thử chương trình trên các hệ thống đó để xem câu trả lời có khác biệt hay không.

@@ -1,4 +1,4 @@
-# Chương 1: Giới thiệu về Device Driver
+# Chương 1: Giới thiệu về Driver thiết bị (An Introduction to Device Drivers)
 
 Một trong những ưu điểm lớn nhất của các hệ điều hành tự do (free operating systems), tiêu biểu là Linux, đó là mã nguồn bên trong của chúng được mở cho tất cả mọi người cùng xem. Hệ điều hành, từng là một vùng đất tối tăm và bí ẩn với mã nguồn chỉ giới hạn cho một nhóm nhỏ lập trình viên, nay đã có thể được kiểm tra, thấu hiểu và chỉnh sửa một cách dễ dàng bởi bất kỳ ai có đủ kỹ năng cần thiết. Linux đã góp phần dân chủ hóa các hệ điều hành. Tuy nhiên, Linux Kernel (nhân Linux) vẫn là một khối mã nguồn lớn và phức tạp, và những ai muốn trở thành kernel hacker (lập trình viên nhân) cần một điểm khởi đầu để tiếp cận mã nguồn mà không bị ngợp trước sự phức tạp đó. Thông thường, các device driver (trình điều khiển thiết bị) đóng vai trò là chiếc cổng chào đó.
 
@@ -22,9 +22,7 @@ Sự khác biệt giữa cơ chế và chính sách là một trong những tư 
 
 Ví dụ, việc quản lý màn hình đồ họa trong Unix được chia nhỏ giữa X server (máy chủ X) — nơi hiểu rõ phần cứng và cung cấp một giao diện thống nhất cho các chương trình người dùng — và các trình quản lý cửa sổ (window manager) cùng trình quản lý phiên làm việc (session manager) — những thành phần triển khai một chính sách cụ thể mà không cần biết gì về phần cứng. Mọi người có thể sử dụng cùng một window manager trên các phần cứng khác nhau và những người dùng khác nhau có thể chạy các cấu hình khác nhau trên cùng một máy trạm (workstation). Ngتمm chí, các môi trường màn hình nền hoàn toàn khác nhau như KDE và GNOME có thể cùng tồn tại trên một hệ thống. Một ví dụ khác là cấu trúc phân tầng của mạng TCP/IP: hệ điều hành cung cấp cơ chế trừu tượng hóa socket (socket abstraction), không áp đặt bất kỳ chính sách nào liên quan đến dữ liệu cần truyền, trong khi các server khác nhau đảm nhận các dịch vụ (và các chính sách đi kèm với chúng). Hơn nữa, một server như *ftpd* cung cấp cơ chế truyền tệp, trong khi người dùng có thể sử dụng bất kỳ client nào họ thích; cả client dòng lệnh (command-line) lẫn client đồ họa đều tồn tại và bất kỳ ai cũng có thể viết một giao diện người dùng mới để truyền tệp.
 
-Khi nói đến các driver, việc phân tách cơ chế và chính sách tương tự cũng được áp dụng. Driver đĩa mềm (floppy driver) hoàn toàn không có chính sách — vai trò của nó chỉ là hiển thị đĩa mềm như một mảng dữ liệu liên tục có thể.
-
-các khối dữ liệu. Các tầng cao hơn của hệ thống sẽ cung cấp các chính sách, chẳng hạn như ai được phép truy cập ổ đĩa mềm, ổ đĩa được truy cập trực tiếp hay thông qua hệ thống tệp (filesystem), và người dùng có thể gắn kết (mount) hệ thống tệp trên ổ đĩa đó hay không. Vì các môi trường khác nhau thường cần sử dụng phần cứng theo các cách khác nhau, điều quan trọng là driver phải hoàn toàn không có chính sách càng tốt.
+Khi nói đến các driver, việc phân tách cơ chế và chính sách tương tự cũng được áp dụng. Driver đĩa mềm (floppy driver) hoàn toàn không có chính sách — vai trò của nó chỉ đơn thuần là biểu diễn đĩa mềm dưới dạng một mảng liên tục các khối dữ liệu. Các tầng cao hơn của hệ thống sẽ cung cấp các chính sách, chẳng hạn như ai được phép truy cập ổ đĩa mềm, ổ đĩa được truy cập trực tiếp hay thông qua hệ thống tệp (filesystem), và liệu người dùng có thể gắn kết (mount) hệ thống tệp trên ổ đĩa đó hay không. Vì các môi trường khác nhau thường có nhu cầu sử dụng phần cứng theo những cách khác nhau, điều quan trọng là driver phải giữ tính độc lập với chính sách (policy-free) càng nhiều càng tốt.
 
 Khi viết driver, lập trình viên nên đặc biệt chú ý đến khái niệm cơ bản này: viết mã nguồn kernel (kernel code) để truy cập phần cứng, nhưng không ép buộc các chính sách cụ thể lên người dùng, vì những người dùng khác nhau có sẵn những nhu cầu khác nhau. Driver nên giải quyết việc làm cho phần cứng khả dụng, và để lại mọi vấn đề về việc *cách thức* sử dụng phần cứng cho các ứng dụng. Do đó, một driver được coi là linh hoạt nếu nó cung cấp quyền truy cập vào các khả năng của phần cứng mà không thêm vào các ràng buộc nào. Tuy nhiên, đôi khi, một số quyết định về chính sách vẫn phải được đưa ra. Ví dụ, một driver I/O số (digital I/O) có thể chỉ cung cấp quyền truy cập phần cứng theo độ rộng byte (byte-wide access) nhằm tránh phải viết thêm mã nguồn để xử lý từng bit riêng lẻ.
 
@@ -129,7 +127,7 @@ Nếu bạn nghĩ về mức độ phụ thuộc chặt chẽ của một hệ t
 
 ## Các Vấn Đề Về Bảo Mật
 
-Bảo mật là một mối quan tâm ngày càng trở nên quan trọng trong thờimodern (thời hiện đại). Chúng ta sẽ thảo luận về các vấn đề liên quan đến bảo mật khi chúng xuất hiện xuyên suốt cuốn sách này. Tuy nhiên, có một số khái niệm chung đáng được đề cập ngay bây giờ.
+Bảo mật là một mối quan tâm ngày càng trở nên quan trọng trong thời đại ngày nay. Chúng ta sẽ thảo luận về các vấn đề liên quan đến bảo mật khi chúng xuất hiện xuyên suốt cuốn sách này. Tuy nhiên, có một số khái niệm chung đáng được đề cập ngay bây giờ.
 
 Bất kỳ kiểm tra bảo mật nào trong hệ thống đều được thực thi bởi mã nguồn nhân (kernel code). Nếu nhân có các lỗ hổng bảo mật, thì toàn bộ hệ thống sẽ có lỗ hổng. Trong bản phân phối nhân chính thức (official kernel distribution), chỉ người dùng được cấp quyền mới có thể tải các mô-đun; system call (lời gọi hệ thống) *init\_module* kiểm tra xem tiến trình gọi có được cấp quyền để tải một mô-đun vào nhân hay không. Do đó, khi chạy một nhân chính thức, chỉ có superuser (siêu người dùng),\* hoặc kẻ xâm nhập đã thành công trong việc leo thang đặc quyền, mới có thể khai thác sức mạnh của mã nguồn đặc quyền (privileged code).
 
@@ -137,7 +135,7 @@ Khi có thể, các nhà phát triển trình điều khiển (driver writer) n�
 
 ** | Chương 1: Giới thiệu về Trình điều khiển Thiết bị**
 
-Về mặt kỹ thuật, chỉ những ai có capability (tính năng/đặc quyền) `CAP_SYS_MODULE` mới có thể thực hiện thao tác này. Chúng ta sẽ thảo luận về các capability trong Chương 6.
+Về mặt kỹ thuật, chỉ tiến trình sở hữu đặc quyền (capability) `CAP_SYS_MODULE` mới có thể thực hiện thao tác này. Chúng ta sẽ thảo luận chi tiết về các capability trong Chương 6.
 
 Là một người viết trình điều khiển thiết bị, bạn nên nhận thức được các tình huống mà một số loại truy cập thiết bị có thể ảnh hưởng bất lợi đến toàn bộ hệ thống và phải cung cấp các cơ chế kiểm soát thích hợp. Ví dụ, các thao tác thiết bị ảnh hưởng đến tài nguyên toàn cục (như thiết lập đường ngắt - interrupt line), có thể làm hỏng phần cứng (ví dụ: nạp firmware), hoặc có thể ảnh hưởng đến người dùng khác (như thiết lập kích thước khối mặc định trên ổ băng từ - tape drive), thường chỉ có sẵn cho những người dùng có đủ đặc quyền, và việc kiểm tra này phải được thực hiện ngay bên trong trình điều khiển.
 

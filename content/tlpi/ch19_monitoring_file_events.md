@@ -1,4 +1,4 @@
-# Chương 19: GIÁM SÁT SỰ KIỆN TỆP
+# Chương 19: Giám sát sự kiện tập tin (Monitoring File Events)
 
 Một số ứng dụng cần có khả năng giám sát các tệp (file) hoặc thư mục (directory) nhằm xác định xem các sự kiện có xảy ra đối với các đối tượng được giám sát hay không. Ví dụ, một trình quản lý tệp giao diện đồ họa (graphical file manager) cần có khả năng xác định khi nào tệp được thêm vào hoặc xóa khỏi thư mục đang được hiển thị, hoặc một tiến trình nền (daemon) có thể muốn giám sát tệp cấu hình của nó để biết liệu tệp đó đã bị thay đổi hay chưa.
 
@@ -8,6 +8,7 @@ Cơ chế `inotify` thay thế cho một cơ chế cũ hơn là `dnotify`, vốn
 
 Cơ chế `inotify` và `dnotify` là đặc trưng của Linux (Linux-specific). (Một số hệ thống khác cung cấp các cơ chế tương tự. Ví dụ, các hệ thống BSD cung cấp API `kqueue`).
 
+> [!NOTE]
 > Một số thư viện cung cấp một API có tính trừu tượng và khả năng khả chuyển (portable) cao hơn so với `inotify` và `dnotify`. Việc sử dụng các thư viện này có thể được ưu tiên hơn đối với một số ứng dụng. Một số thư viện trong số đó sử dụng `inotify` hoặc `dnotify` trên các hệ thống hỗ trợ chúng. Hai thư viện như vậy là FAM (File Alteration Monitor, http://oss.sgi.com/projects/fam/) và Gamin (http://www.gnome.org/~veillard/gamin/).
 
 ## 19.1 Tổng quan
@@ -25,6 +26,7 @@ Cơ chế giám sát của `inotify` không mang tính đệ quy (recursive). N�
 
 Một file descriptor của `inotify` có thể được giám sát bằng cách sử dụng `select()`, `poll()`, `epoll`, và kể từ Linux 2.6.25, là I/O hướng sự kiện tín hiệu (signal-driven I/O). Nếu có các sự kiện sẵn sàng để đọc, các giao diện này sẽ chỉ ra rằng file descriptor của `inotify` có thể đọc được (readable). Xem Chương 63 để biết thêm chi tiết về các giao diện này.
 
+> [!NOTE]
 > Cơ chế `inotify` là một thành phần tùy chọn của Linux kernel được cấu hình thông qua các tùy chọn `CONFIG_INOTIFY` và `CONFIG_INOTIFY_USER`.
 
 ## 19.2 Giao diện inotify (the inotify API)
@@ -194,6 +196,7 @@ Nếu bộ đệm (buffer) được truyền vào hàm `read()` quá nhỏ để
 
 Sử dụng kích thước bộ đệm lớn hơn mức tối thiểu cho phép một ứng dụng truy xuất hiệu quả nhiều sự kiện chỉ với một lần gọi `read()`. Một lệnh `read()` từ một File Descriptor của inotify sẽ trả về giá trị nhỏ hơn giữa số lượng sự kiện hiện đang có sẵn và số lượng sự kiện có thể chứa vừa vặn trong bộ đệm được cung cấp.
 
+> [!NOTE]
 > Lời gọi `ioctl(fd, FIONREAD, &numbytes)` trả về số lượng byte hiện có sẵn để đọc từ thể hiện (instance) inotify được tham chiếu bởi File Descriptor `fd`.
 
 Các sự kiện được đọc từ một File Descriptor inotify tạo thành một hàng đợi có thứ tự (ordered queue). Do đó, ví dụ, được đảm bảo rằng khi một tệp được đổi tên, sự kiện `IN_MOVED_FROM` sẽ được đọc trước sự kiện `IN_MOVED_TO`.

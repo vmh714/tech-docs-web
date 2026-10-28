@@ -1,6 +1,6 @@
-# Chương 9: Giao tiếp với Phần cứng
+# Chương 9: Giao tiếp với phần cứng (Communicating with Hardware)
 
-Mặc dù việc vọc vạch với *scull* và các mô phỏng tương tự là bước khởi đầu tốt để làm quen với giao diện phần mềm của một Linux device driver, việc triển khai một thiết bị *thực tế* lại đòi hỏi phải có phần cứng. Driver đóng vai trò là lớp trừu tượng (abstraction layer) giữa các khái niệm phần mềm và vi mạch phần cứng; do đó, nó cần phải giao tiếp được với cả hai phía. Cho đến nay, chúng ta đã xem xét các cơ chế bên trong của các khái niệm phần mềm; chương này sẽ hoàn thiện bức tranh tổng thể bằng cách chỉ cho bạn cách một driver có thể truy cập các cổng I/O (I/O ports) và bộ nhớ I/O (I/O memory) trong khi vẫn đảm bảo tính di port (portable) giữa các nền tảng Linux khác nhau.
+Mặc dù việc vọc vạch với *scull* và các mô phỏng tương tự là bước khởi đầu tốt để làm quen với giao diện phần mềm của một Linux device driver, việc triển khai một thiết bị *thực tế* lại đòi hỏi phải có phần cứng. Driver đóng vai trò là lớp trừu tượng (abstraction layer) giữa các khái niệm phần mềm và vi mạch phần cứng; do đó, nó cần phải giao tiếp được với cả hai phía. Cho đến nay, chúng ta đã xem xét các cơ chế bên trong của các khái niệm phần mềm; chương này sẽ hoàn thiện bức tranh tổng thể bằng cách chỉ cho bạn cách một driver có thể truy cập các cổng I/O (I/O ports) và bộ nhớ I/O (I/O memory) trong khi vẫn đảm bảo tính di động (portable) giữa các nền tảng Linux khác nhau.
 
 Chương này tiếp tục duy trì truyền thống độc lập với phần cứng cụ thể càng nhiều càng tốt. Tuy nhiên, ở những nơi cần ví dụ cụ thể, chúng tôi sử dụng các cổng I/O số đơn giản (chẳng hạn như cổng song song chuẩn trên PC) để minh họa cách các lệnh I/O hoạt động, và sử dụng bộ nhớ video frame-buffer thông thường để minh họa I/O ánh xạ bộ nhớ (memory-mapped I/O).
 
@@ -82,7 +82,7 @@ Cần lưu ý rằng hầu hết các nguyên hàm đồng bộ hóa (synchroniz
 
 Một số kiến trúc cho phép kết hợp hiệu quả giữa một phép gán (assignment) và một hàng rào bộ nhớ. Kernel cung cấp một vài macro thực hiện việc kết hợp này; trong trường hợp mặc định, chúng được định nghĩa như sau:
 
-```
+```c
 ## define set_mb(var, value) do {var = value; mb( );} while 0
 ## define set_wmb(var, value) do {var = value; wmb( );} while 0
 ## define set_rmb(var, value) do {var = value; rmb( );} while 0
@@ -92,13 +92,13 @@ Tại những nơi phù hợp, tệp *<asm/system.h>* định nghĩa các macro 
 
 ## Sử dụng Cổng I/O (I/O Ports)
 
-Cổng I/O (I/O port) là phương tiện mà qua đó các trình điều khiển (driver) giao tiếp với nhiều thiết bị, ít nhất là trong phần lớn thời gian. Phần dụng này đề cập đến các hàm khác nhau có sẵn để tận dụng các cổng I/O; chúng ta cũng sẽ chạm đến một số vấn đề về khả năng di port (portability).
+Cổng I/O (I/O port) là phương tiện mà qua đó các trình điều khiển (driver) giao tiếp với nhiều thiết bị, ít nhất là trong phần lớn thời gian. Phần này đề cập đến các hàm khác nhau có sẵn để sử dụng các cổng I/O; chúng ta cũng sẽ đề cập đến một số vấn đề về khả năng di động (portability).
 
 ### Cấp phát Cổng I/O (I/O Port Allocation)
 
 Như bạn có thể đoán, bạn không nên tự ý lao vào và bắt đầu thao tác trên các cổng I/O mà không đảm bảo trước rằng bạn có quyền truy cập độc quyền (exclusive access) vào các cổng đó. Kernel cung cấp một giao diện đăng ký (registration interface) cho phép driver của bạn chiếm giữ các cổng mà nó cần. Hàm cốt lõi trong giao diện đó là *request_region*:
 
-```
+```c
 ## include <linux/ioport.h>
 struct resource *request_region(unsigned long first, unsigned long n,
  const char *name);
@@ -359,7 +359,7 @@ Từ bây giờ, chúng tôi chỉ gọi đơn giản là "giao diện song song
 
 Để quan sát những gì xảy ra trên đầu nối song song và nếu bạn có chút hứng thú làm việc với phần cứng, bạn có thể hàn một vài đèn LED vào các chân ngõ ra. Mỗi đèn LED nên được mắc nối tiếp với một điện trở 1-KΩ dẫn đến chân nối đất (ground pin) (trừ khi, tất nhiên, đèn LED của bạn đã tích hợp sẵn điện trở). Nếu bạn kết nối chân ngõ ra với chân ngõ vào, bạn sẽ tự tạo ra tín hiệu ngõ vào để đọc từ các cổng ngõ vào.
 
-Lưu ý rằng bạn không thể chỉ kết nối máy in với cổng song song và thấy dữ liệu được gửi đến *short*. Driver này triển khai việc truy cập đơn giản vào các cổng I/O và không thực hiện quá trình bắt tay (handshake) mà máy in cần để xử lý dữ liệu. Trong chương tiếp theo, chúng tôi sẽ trình bày một driver mẫu (có tên là *shortprint*), có khả năng điều khiển máy printer song song; tuy nhiên, driver đó sử dụng ngắt (interrupt), vì vậy chúng ta chưa thể tìm hiểu ngay bây giờ.
+Lưu ý rằng bạn không thể chỉ kết nối máy in với cổng song song và thấy dữ liệu được gửi đến *short*. Driver này triển khai việc truy cập đơn giản vào các cổng I/O và không thực hiện quá trình bắt tay (handshake) mà máy in cần để xử lý dữ liệu. Trong chương tiếp theo, chúng tôi sẽ trình bày một driver mẫu (có tên là *shortprint*), có khả năng điều khiển máy in song song; tuy nhiên, driver đó sử dụng ngắt (interrupt), vì vậy chúng ta chưa thể đề cập ngay bây giờ.
 
 Nếu bạn định quan sát dữ liệu song song bằng cách hàn đèn LED vào đầu nối kiểu D (D-type connector), chúng tôi khuyên bạn không nên sử dụng chân 9 và 10, vì chúng ta sẽ nối chúng lại với nhau sau để chạy mã nguồn mẫu được trình bày trong Chương 10.
 
@@ -384,7 +384,7 @@ echo -n "any string" > /dev/short0
 
 ```
 
-Mỗi đèn LED giám sát một bit đơn của cổng ngõ ra. Hãy nhớ rằng chỉ ký tự cuối cùng được ghi mới giữ nguyên trạng thái trên các chân ngõ ra đủ lâu để mắt bạn có thể nhậnω ra. Vì lý do đó, chúng tôi khuyên bạn nên ngăn chặn việc tự động chèn ký tự xuống dòng ở cuối (trailing newline) bằng cách truyền tùy chọn *-n* cho *echo*.
+Mỗi đèn LED giám sát một bit đơn của cổng ngõ ra. Hãy nhớ rằng chỉ ký tự cuối cùng được ghi mới giữ nguyên trạng thái trên các chân ngõ ra đủ lâu để mắt bạn có thể nhận ra. Vì lý do đó, chúng tôi khuyên bạn nên ngăn chặn việc tự động chèn ký tự xuống dòng ở cuối (trailing newline) bằng cách truyền tùy chọn *-n* cho *echo*.
 
 Quá trình đọc được thực hiện bằng một hàm tương tự, được xây dựng xung quanh *inb* thay vì *outb*. Để đọc các giá trị "có ý nghĩa" từ cổng song song, bạn cần có một phần cứng nào đó được kết nối với các chân ngõ vào của đầu nối để tạo ra tín hiệu. Nếu không có tín hiệu, bạn sẽ đọc một dòng vô tận các byte giống hệt nhau. Nếu bạn chọn đọc từ một cổng ngõ ra, rất có thể bạn sẽ nhận lại giá trị cuối cùng được ghi vào cổng đó (điều này áp dụng cho giao diện song song và hầu hết các mạch I/O số khác đang được sử dụng phổ biến). Do đó, những ai không thích cầm mỏ hàn có thể đọc giá trị ngõ ra hiện tại trên cổng 0x378 bằng cách chạy một lệnh như:
 
@@ -457,7 +457,7 @@ Trước hết, bạn nhận thấy hàm mới *ioremap\_nocache*. Chúng ta đ�
 
 ### Truy cập Bộ nhớ I/O (I/O Memory)
 
-Trên một số nền tảng, bạn có thể lách luật bằng cách sử dụng giá trị trả về từ *ioremap* như một con trỏ thông thường. Tuy nhiên, việc sử dụng như vậy không mang tính diพ. (portable), và các nhà phát triển kernel ngày càng nỗ lực loại bỏ mọi cách sử dụng như vậy. Cách thức đúng đắn để truy cập bộ nhớ I/O (I/O memory) là thông qua một tập hợp các hàm (được định nghĩa qua *<asm/io.h>*) được cung cấp cho mục đích này.
+Trên một số nền tảng, bạn có thể lách luật bằng cách sử dụng giá trị trả về từ *ioremap* như một con trỏ thông thường. Tuy nhiên, việc sử dụng như vậy không có tính di động (portable), và các nhà phát triển kernel ngày càng nỗ lực loại bỏ mọi cách sử dụng như vậy. Cách thức đúng đắn để truy cập bộ nhớ I/O (I/O memory) là thông qua một tập hợp các hàm (được định nghĩa qua *<asm/io.h>*) được cung cấp cho mục đích này.
 
 Để đọc từ bộ nhớ I/O (I/O memory), hãy sử dụng một trong các hàm sau:
 
@@ -581,7 +581,7 @@ Module này bổ sung cho chức năng của *short* bằng cách cho phép truy
 
 Vì *silly* cung cấp quyền truy cập vào bộ nhớ ISA, nó phải bắt đầu bằng cách ánh xạ các địa chỉ vật lý ISA thành các địa chỉ ảo của nhân (kernel virtual addresses). Trong những ngày đầu của nhân Linux, người ta có thể đơn giản gán một con trỏ tới địa chỉ ISA quan tâm, sau đó tham chiếu trực tiếp (dereference) nó. Tuy nhiên, trong thế giới hiện đại, chúng ta phải làm việc với hệ thống bộ nhớ ảo (virtual memory system) và ánh xạ lại dải bộ nhớ trước. Việc ánh xạ này được thực hiện bằng *ioremap*, như đã giải thích trước đó đối với *short*:
 
-```
+```c
 ## define ISA_BASE 0xA0000
 ## define ISA_MAX 0x100000 /* dành cho việc truy cập bộ nhớ nói chung */
  /* dòng này xuất hiện trong hàm silly_init */
@@ -642,24 +642,24 @@ Một cái nhìn vào mã nguồn kernel (kernel source) sẽ cho thấy một t
 
 Chương này đã giới thiệu các ký hiệu sau liên quan đến việc quản lý phần cứng:
 
-```
+```c
 ## include <linux/kernel.h>
 void barrier(void)
 ```
 
 Hàng rào bộ nhớ "phần mềm" (software memory barrier) này yêu cầu trình biên dịch coi tất cả các vùng nhớ là dễ thay đổi (volatile) qua chỉ thị này.
 
-```
 ## include <asm/system.h>
+
 void rmb(void);
 void read_barrier_depends(void);
 void wmb(void);
 void mb(void);
+
 ```
 
 Các hàng rào bộ nhớ phần cứng (hardware memory barriers). Chúng yêu cầu CPU (và trình biên dịch) kiểm tra và đồng bộ hóa tất cả các thao tác đọc bộ nhớ, ghi bộ nhớ, hoặc cả hai qua chỉ thị này.
 
-```
 ## include <asm/io.h>
 unsigned inb(unsigned port);
 void outb(unsigned char byte, unsigned port);
@@ -690,41 +690,47 @@ void outsl(unsigned port, void *addr, unsigned long count);
 
 Các "hàm chuỗi" (string functions) được tối ưu hóa để truyền dữ liệu từ một cổng đầu vào đến một vùng nhớ, hoặc ngược lại. Các việc truyền dữ liệu này được thực hiện bằng cách đọc hoặc ghi cùng một cổng với số lần lặp lại là `count`.
 
-```
 ## include <linux/ioport.h>
+
 struct resource *request_region(unsigned long start, unsigned long len, char
- *name);
+*name);
 void release_region(unsigned long start, unsigned long len);
 int check_region(unsigned long start, unsigned long len);
-    Các hàm cấp phát tài nguyên (resource allocators) cho các cổng I/O. Hàm kiểm tra (đã lỗi thời - deprecated) trả về 0 nếu thành công và nhỏ hơn 0 trong trường hợp xảy ra lỗi.
+Các hàm cấp phát tài nguyên (resource allocators) cho các cổng I/O. Hàm kiểm tra (đã lỗi thời - deprecated) trả về 0 nếu thành công và nhỏ hơn 0 trong trường hợp xảy ra lỗi.
 struct resource *request_mem_region(unsigned long start, unsigned long len,
- char *name);
+char *name);
 void release_mem_region(unsigned long start, unsigned long len);
 int check_mem_region(unsigned long start, unsigned long len);
-    Các hàm xử lý việc cấp phát tài nguyên cho các vùng nhớ (memory regions).
+Các hàm xử lý việc cấp phát tài nguyên cho các vùng nhớ (memory regions).
+
 ## include <asm/io.h>
+
 void *ioremap(unsigned long phys_addr, unsigned long size);
 void *ioremap_nocache(unsigned long phys_addr, unsigned long size);
 void iounmap(void *virt_addr);
-    ioremap ánh xạ lại một dải địa chỉ vật lý vào không gian địa chỉ ảo (virtual address space) của bộ xử lý, làm cho nó khả dụng đối với kernel. iounmap giải phóng ánh xạ khi không còn cần thiết nữa.
+ioremap ánh xạ lại một dải địa chỉ vật lý vào không gian địa chỉ ảo (virtual address space) của bộ xử lý, làm cho nó khả dụng đối với kernel. iounmap giải phóng ánh xạ khi không còn cần thiết nữa.
+
 ## include <asm/io.h>
+
 unsigned int ioread8(void *addr);
 unsigned int ioread16(void *addr);
 unsigned int ioread32(void *addr);
 void iowrite8(u8 value, void *addr);
 void iowrite16(u16 value, void *addr);
 void iowrite32(u32 value, void *addr);
-    Các hàm truy cập (accessor functions) được sử dụng để làm việc với I/O memory.
+Các hàm truy cập (accessor functions) được sử dụng để làm việc với I/O memory.
 void ioread8_rep(void *addr, void *buf, unsigned long count);
 void ioread16_rep(void *addr, void *buf, unsigned long count);
 void ioread32_rep(void *addr, void *buf, unsigned long count);
 void iowrite8_rep(void *addr, const void *buf, unsigned long count);
 void iowrite16_rep(void *addr, const void *buf, unsigned long count);
 void iowrite32_rep(void *addr, const void *buf, unsigned long count);
-    Các phiên bản "lặp lại" (repeating versions) của các hàm nguyên thủy I/O memory.
+Các phiên bản "lặp lại" (repeating versions) của các hàm nguyên thủy I/O memory.
+
 ```
 
 ```c
+
 unsigned readb(address);
 unsigned readw(address);
 unsigned readl(address);
@@ -734,8 +740,9 @@ void writel(unsigned value, address);
 memset_io(address, value, count);
 memcpy_fromio(dest, source, nbytes);
 memcpy_toio(dest, source, nbytes);
-    Các hàm cũ, không an toàn về kiểu dữ liệu (type-unsafe) dùng để truy cập bộ nhớ I/O (I/O memory).
+Các hàm cũ, không an toàn về kiểu dữ liệu (type-unsafe) dùng để truy cập bộ nhớ I/O (I/O memory).
 void *ioport_map(unsigned long port, unsigned int count);
 void ioport_unmap(void *addr);
-    Một nhà phát triển driver muốn xử lý các cổng I/O (I/O ports) giống như bộ nhớ I/O có thể chuyển các cổng đó cho hàm ioport_map. Việc hủy ánh xạ (mapping) nên được thực hiện (bằng ioport_unmap) khi không còn cần thiết nữa.
+Một nhà phát triển driver muốn xử lý các cổng I/O (I/O ports) giống như bộ nhớ I/O có thể chuyển các cổng đó cho hàm ioport_map. Việc hủy ánh xạ (mapping) nên được thực hiện (bằng ioport_unmap) khi không còn cần thiết nữa.
+
 ```

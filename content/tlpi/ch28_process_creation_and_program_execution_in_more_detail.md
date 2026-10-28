@@ -1,4 +1,4 @@
-# Chương 28: CHI TIẾT VỀ TẠO TIẾN TRÌNH VÀ THỰC THI CHƯƠNG TRÌNH
+# Chương 28: Tạo tiến trình và Thực thi chương trình chi tiết (Process Creation and Program Execution in More Detail)
 
 Chương này mở rộng nội dung đã trình bày từ Chương [24](#page-0-0) đến [27](#page-50-0) bằng cách đề cập đến nhiều chủ đề liên quan đến việc tạo tiến trình (process creation) và thực thi chương trình (program execution). Chúng tôi mô tả tính năng kế toán tiến trình (process accounting), một tính năng của kernel có nhiệm vụ ghi lại một bản ghi kế toán cho mỗi tiến trình trên hệ thống khi nó kết thúc (terminate). Sau đó, chúng ta sẽ tìm hiểu về System Call `clone()` đặc trưng của Linux, đây là API mức thấp (low-level API) được sử dụng để tạo các luồng (thread) trên Linux. Tiếp theo là phần so sánh hiệu năng giữa `fork()`, `vfork()` và `clone()`. Cuối cùng, chúng ta kết thúc chương bằng bản tổng kết về ảnh hưởng của `fork()` và `exec()` đối với các thuộc tính của một tiến trình (process).
 
@@ -12,6 +12,7 @@ Về mặt lịch sử, mục đích chính của tính năng kế toán tiến 
 
 Mặc dù có sẵn trên hầu hết các bản triển khai UNIX, kế toán tiến trình không được quy định trong chuẩn SUSv3. Định dạng của các bản ghi kế toán, cũng như vị trí của tệp kế toán, có sự khác biệt nhất định giữa các hệ thống. Chúng tôi mô tả chi tiết dành cho Linux trong phần này, đồng thời lưu ý một số điểm khác biệt từ các hệ thống UNIX khác xuyên suốt nội dung.
 
+> [!NOTE]
 > Trên Linux, kế toán tiến trình là một thành phần kernel tùy chọn được cấu hình thông qua tùy chọn `CONFIG_BSD_PROCESS_ACCT`.
 
 ### Bật và tắt tính năng kế toán tiến trình
@@ -296,12 +297,14 @@ int clone(int (*func) (void *), void *child_stack, int flags, void *func_arg, ..
 
 Giống như `fork()`, một tiến trình con được tạo bằng `clone()` là bản sao gần như chính xác của tiến trình cha (Parent Process). Không giống như `fork()`, tiến trình con được clone không tiếp tục chạy từ điểm gọi hàm, mà thay vào đó bắt đầu bằng cách gọi hàm được chỉ định trong tham số `func`; chúng ta sẽ gọi đây là hàm tiến trình con (child function). Khi được gọi, hàm tiến trình con sẽ nhận được giá trị được chỉ định trong `func_arg`. Bằng cách ép kiểu (casting) phù hợp, hàm tiến trình con có thể tự do diễn giải tham số này; ví dụ, như một `int` hoặc như một con trỏ trỏ đến một cấu trúc (structure). (Việc diễn giải nó như một con trỏ là khả thi vì tiến trình con được clone hoặc nhận được một bản sao, hoặc chia sẻ vùng nhớ của tiến trình gọi).
 
+> [!NOTE]
 > Bên trong kernel, `fork()`, `vfork()`, và `clone()` cuối cùng được triển khai bởi cùng một hàm (`do_fork()` trong `kernel/fork.c`). Ở cấp độ này, việc clone gần gũi hơn rất nhiều với việc fork: `sys_clone()` không có các tham số `func` và `func_arg`, và sau khi gọi, `sys_clone()` trả về ở tiến trình con theo cách thức giống như `fork()`. Phần nội dung chính mô tả hàm bao bọc (wrapper function) `clone()` mà glibc cung cấp cho `sys_clone()`. (Hàm này được định nghĩa trong các mã nguồn hợp ngữ glibc đặc thù theo kiến trúc, chẳng hạn như trong `sysdeps/unix/sysv/linux/i386/clone.S`). Hàm bao bọc này sẽ gọi `func` sau khi `sys_clone()` trả về ở tiến trình con.
 
 Tiến trình con được clone sẽ chấm dứt hoạt động khi `func` trả về (trong trường hợp đó giá trị trả về của nó chính là trạng thái thoát của tiến trình) hoặc khi tiến trình thực hiện lời gọi đến `exit()` (hoặc `_exit()`). Tiến trình cha có thể chờ tiến trình con được clone theo cách thông thường bằng cách sử dụng `wait()` hoặc các hàm tương tự.
 
 Vì một tiến trình con được tạo bằng clone (cloned child) có thể (giống như `vfork()`) chia sẻ bộ nhớ của tiến trình cha (parent), nó không thể sử dụng stack của tiến trình cha. Thay vào đó, tiến trình gọi (`caller`) phải cấp phát một khối bộ nhớ có kích thước phù hợp để làm stack cho tiến trình con và truyền một con trỏ trỏ đến khối bộ nhớ đó trong tham số `child_stack`. Trên hầu hết các kiến trúc phần cứng (hardware architecture), stack phát triển theo chiều giảm dần (grows downward), do đó tham số `child_stack` phải trỏ tới vùng địa chỉ cao (high end) của khối bộ nhớ đã được cấp phát.
 
+> [!NOTE]
 > Sự phụ thuộc vào kiến trúc đối với hướng phát triển của stack là một điểm thiết kế chưa tối ưu của `clone()`. Trên kiến trúc Intel IA-64, một API `clone` cải tiến được cung cấp dưới dạng `clone2()`. System Call này định nghĩa phạm vi stack của tiến trình con theo cách không phụ thuộc vào hướng phát triển của stack, bằng cách cung cấp cả địa chỉ bắt đầu (start address) và kích thước (size) của stack. Xem trang tài liệu hướng dẫn (manual page) để biết thêm chi tiết.
 
 Tham số `flags` của `clone()` phục vụ hai mục đích. Đầu tiên, byte thấp (lower byte) của nó chỉ định tín hiệu kết thúc (termination signal) của tiến trình con, đây là tín hiệu sẽ được gửi tới tiến trình cha khi tiến trình con kết thúc. (Nếu một cloned child bị dừng bởi một tín hiệu, tiến trình cha vẫn nhận được `SIGCHLD`.) Byte này có thể mang giá trị 0, trong trường hợp đó không có tín hiệu nào được tạo ra. (Bằng cách sử dụng tệp đặc trưng của Linux là `/proc/PID/stat`, chúng ta có thể xác định tín hiệu kết thúc của bất kỳ Process nào; hãy xem trang manual `proc(5)` để biết thêm chi tiết.)
@@ -405,6 +408,7 @@ $ **./t_clone x** Sử dụng `CLONE_FILES`
 
 child has terminated file descriptor 3 has been closed Việc đóng file descriptor của tiến trình con đã ảnh hưởng đến tiến trình cha
 
+> [!NOTE]
 > Chúng tôi minh họa một ví dụ phức tạp hơn về việc sử dụng `clone()` trong tệp `procexec/demo_clone.c` nằm trong gói mã nguồn của cuốn sách này.
 
 ### 28.2.1 Đối số flags của clone()
@@ -415,6 +419,7 @@ Tại thời điểm này, cần lưu ý rằng, ở một mức độ nào đó
 
 Trong quá trình mô tả sau đây, đôi khi chúng tôi sẽ đề cập đến hai bản cài đặt chính của POSIX threads có sẵn trên Linux: bản cài đặt LinuxThreads cũ hơn và bản cài đặt NPTL gần đây hơn. Thông tin thêm về hai bản cài đặt này có thể được tìm thấy trong Mục 33.5.
 
+> [!NOTE]
 > Bắt đầu từ kernel phiên bản 2.6.16, Linux cung cấp một System Call mới là `unshare()`, cho phép một tiến trình con (child process) được tạo ra bằng `clone()` (hoặc `fork()`, `vfork()`) hủy bỏ một phần việc chia sẻ thuộc tính (tức là đảo ngược các tác động của một số bit cờ `clone()`) đã được thiết lập khi tiến trình con đó được tạo. Để biết thêm chi tiết, hãy xem trang tài liệu hướng dẫn (manual page) `unshare(2)`.
 
 ## Chia sẻ bảng File Descriptor: CLONE\_FILES
@@ -449,6 +454,7 @@ Các nhóm luồng được giới thiệu từ Linux 2.4 để cho phép các t
 
 Kể từ Linux 2.4, `getpid()` trả về TGID của luồng gọi hàm. Nói cách khác, TGID chính là process ID.
 
+> [!NOTE]
 > Việc cài đặt `clone()` trong Linux 2.2 trở về trước không cung cấp `CLONE_THREAD`. Thay vào đó, LinuxThreads cài đặt các POSIX threads dưới dạng các tiến trình chia sẻ nhiều thuộc tính khác nhau (ví dụ: bộ nhớ ảo - virtual memory) nhưng lại có các process ID khác nhau. Vì lý do tương thích, ngay cả trên các nhân Linux hiện đại, cơ chế cài đặt của LinuxThreads vẫn không sử dụng cờ `CLONE_THREAD`, do đó các luồng trong cơ chế đó tiếp tục có các process ID riêng biệt.
 
 ```text
@@ -478,6 +484,7 @@ Mỗi luồng trong một nhóm luồng được phân biệt bằng một đị
 
 Luồng đầu tiên trong một nhóm luồng mới có thread ID trùng với thread group ID của nó. Luồng này được gọi là trưởng nhóm luồng (thread group leader).
 
+> [!NOTE]
 > Các thread ID mà chúng ta đang thảo luận ở đây không giống với các thread ID (kiểu dữ liệu `pthread_t`) được sử dụng bởi các POSIX threads. Các định danh phía sau được tạo ra và quản lý nội bộ (trong user space) bởi thư viện cài đặt POSIX threads.
 
 Tất cả các luồng trong một nhóm luồng đều có chung một parent process ID — đó là ID của trưởng nhóm luồng. Chỉ khi tất cả các luồng trong một nhóm luồng đã chấm dứt hoạt động (terminate), tín hiệu `SIGCHLD` (hoặc một tín hiệu kết thúc khác) mới được gửi đến tiến trình cha đó. Ngữ nghĩa này tương ứng với các yêu cầu của POSIX threads.
@@ -618,6 +625,7 @@ Các cờ này không thể được sử dụng cùng với waitid().
 
 [Bảng 28-3](#page-97-1) minh họa một số so sánh về tốc độ đối với các phương pháp tạo tiến trình khác nhau. Kết quả được thu thập bằng cách sử dụng một chương trình kiểm thử thực thi một vòng lặp liên tục tạo ra một tiến trình con (child process) rồi chờ nó kết thúc. Bảng này so sánh các phương pháp khác nhau sử dụng ba kích thước bộ nhớ tiến trình khác nhau, được biểu thị qua giá trị Tổng bộ nhớ ảo (Total virtual memory). Sự khác biệt về kích thước bộ nhớ được mô phỏng bằng cách cho chương trình gọi `malloc()` để cấp phát thêm bộ nhớ trên vùng nhớ heap trước khi tiến hành đo thời gian.
 
+> [!NOTE]
 > Các giá trị về kích thước tiến trình (Tổng bộ nhớ ảo) trong [Bảng 28-3](#page-97-1) được lấy từ giá trị VSZ do lệnh `ps –o "pid vsz cmd"` hiển thị.
 
 | Phương pháp tạo | Tổng Bộ Nhớ Ảo       |       |                   |       |                   |       |  |  |  |
@@ -644,6 +652,7 @@ Hàng dữ liệu đầu tiên chứa các giá trị cho System Call fork(). T�
 
 Hàng dữ liệu thứ hai cung cấp các số liệu thống kê tương tự cho hàm vfork(). Chúng ta thấy rằng khi kích thước tiến trình tăng lên, thời gian vẫn giữ nguyên—bởi vì không có bảng trang hoặc trang nhớ nào được sao chép trong suốt quá trình vfork(), kích thước bộ nhớ ảo của tiến trình gọi không gây ra ảnh hưởng nào. Sự khác biệt giữa các số liệu thống kê của fork() và vfork() thể hiện tổng thời gian cần thiết cho việc sao chép bảng trang của tiến trình trong mỗi trường hợp.
 
+> [!NOTE]
 > Những biến động nhỏ ở các giá trị của vfork() và clone() trong [Bảng 28-3](#page-97-1) là do sai số lấy mẫu và sự biến động của bộ lập lịch (scheduler). Ngay cả khi tạo các tiến trình có kích thước lên tới 300 MB, thời gian thực thi cho hai system call này vẫn được duy trì ở mức không đổi.
 
 Dòng dữ liệu thứ ba cho thấy các thống kê về việc tạo tiến trình (Process) sử dụng hàm `clone()` với các cờ (flags) sau:
@@ -654,6 +663,7 @@ CLONE_VM | CLONE_VFORK | CLONE_FS | CLONE_SIGHAND | CLONE_FILES
 
 Hai cờ đầu tiên trong số này mô phỏng hành vi của hàm `vfork()`. Các cờ còn lại chỉ định rằng tiến trình cha (Parent Process) và tiến trình con (Child Process) phải chia sẻ các thuộc tính hệ thống tệp (File-system attributes) của chúng (gồm umask, thư mục gốc và thư mục làm việc hiện tại), bảng xử lý tín hiệu (Table of signal dispositions), và bảng mô tả tệp đang mở (Table of open file descriptors). Sự khác biệt giữa dữ liệu của `clone()` và `vfork()` thể hiện một lượng nhỏ công việc bổ sung được thực hiện trong `vfork()` để sao chép thông tin này sang tiến trình con. Chi phí sao chép các thuộc tính hệ thống tệp và bảng xử lý tín hiệu là một hằng số. Tuy nhiên, chi phí sao chép bảng mô tả tệp đang mở thay đổi tùy theo số lượng mô tả tệp (File Descriptor). Ví dụ, việc mở 100 mô tả tệp trong tiến trình cha đã làm tăng thời gian thực của `vfork()` (ở cột đầu tiên của bảng) từ 3.52 lên 5.04 giây, nhưng không làm thay đổi thời gian đối với `clone()`.
 
+> [!NOTE]
 > Thời gian đo được đối với `clone()` là dành cho hàm bao bọc (Wrapper function) `clone()` của glibc, chứ không phải các lệnh gọi trực tiếp đến System Call `sys_clone()`. Các thử nghiệm khác (không được tóm tắt ở đây) cho thấy sự khác biệt về thời gian không đáng kể giữa việc sử dụng `sys_clone()` và việc gọi `clone()` với một hàm con thoát ngay lập tức.
 
 Sự khác biệt giữa `fork()` và `vfork()` là khá rõ rệt. Tuy nhiên, cần ghi nhớ các điểm sau:
@@ -661,6 +671,7 @@ Sự khác biệt giữa `fork()` và `vfork()` là khá rõ rệt. Tuy nhiên, 
 - Cột dữ liệu cuối cùng, nơi `vfork()` nhanh hơn `fork()` hơn 30 lần, tương ứng với một tiến trình lớn. Các tiến trình thông thường sẽ nằm ở đâu đó gần với hai cột đầu tiên của bảng hơn.
 - Do thời gian cần thiết để tạo tiến trình thường nhỏ hơn rất nhiều so với thời gian cần thiết cho một lệnh `exec()`, sự khác biệt sẽ ít rõ rệt hơn nhiều nếu một lệnh `fork()` hoặc `vfork()` được theo sau bởi một lệnh `exec()`. Điều này được minh họa bằng cặp dòng dữ liệu cuối cùng trong [Table 28-3](#page-97-1), nơi mỗi tiến trình con thực thi một lệnh `exec()` thay vì thoát ngay lập tức. Chương trình được thực thi là lệnh `true` (`/bin/true`, được chọn vì nó không tạo ra đầu ra). Trong trường hợp này, chúng ta thấy rằng sự khác biệt tương đối giữa `fork()` và `vfork()` thấp hơn nhiều.
 
+> [!NOTE]
 > Trên thực tế, dữ liệu được hiển thị trong [Table 28-3](#page-97-1) không cho thấy toàn bộ chi phí của một lệnh `exec()`, bởi vì tiến trình con thực thi cùng một chương trình trong mỗi vòng lặp của bài kiểm tra. Do đó, chi phí I/O đĩa để đọc chương trình vào bộ nhớ thực tế đã bị loại bỏ, vì chương trình sẽ được đọc vào bộ đệm ẩn của kernel (Kernel Buffer Cache - Page Cache) trong lần thực thi `exec()` đầu tiên và sau đó vẫn ở đó. Nếu mỗi vòng lặp của bài kiểm tra thực thi một chương trình khác nhau (ví dụ: một bản sao có tên khác của cùng một chương trình đó), thì chúng ta sẽ quan sát thấy chi phí lớn hơn cho một lệnh `exec()`.
 
 ## 28.4 Ảnh hưởng của exec() và fork() đối với các Thuộc tính Tiến trình (Process Attributes)

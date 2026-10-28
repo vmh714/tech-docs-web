@@ -1,4 +1,4 @@
-# Chương 7. Trình điều khiển thiết bị đầu vào (Input Drivers)
+# Chương 7: Trình điều khiển thiết bị đầu vào (Input Drivers)
 
 ## Trong chương này
 
@@ -144,38 +144,38 @@ Liệt kê 7.1 chứa mã nguồn của *coord.c*, liên tục tạo ra các t�
 
 **Liệt kê 7.1. Ứng dụng mô phỏng chuyển động chuột (coord.c)**
 
-```
 ## include <fcntl.h>
+
 int
 main(int argc, char *argv[])
 {
- int sim_fd;
- int x, y;
- char buffer[10];
- /* Open the sysfs coordinate node */
- sim_fd = open("/sys/devices/platform/vms/coordinates", O_RDWR);
- if (sim_fd < 0) {
- perror("Couldn't open vms coordinate file\n");
- exit(-1);
- }
- while (1) {
- /* Generate random relative coordinates */
- x = random()%20;
- y = random()%20;
- if (x%2) x = -x; if (y%2) y = -y;
- /* Convey simulated coordinates to the virtual mouse driver */
- sprintf(buffer, "%d %d %d", x, y, 0);
- write(sim_fd, buffer, strlen(buffer));
- fsync(sim_fd);
- sleep(1);
- }
- close(sim_fd);
+int sim_fd;
+int x, y;
+char buffer[10];
+/* Open the sysfs coordinate node */
+sim_fd = open("/sys/devices/platform/vms/coordinates", O_RDWR);
+if (sim_fd < 0) {
+perror("Couldn't open vms coordinate file\n");
+exit(-1);
 }
+while (1) {
+/* Generate random relative coordinates */
+x = random()%20;
+y = random()%20;
+if (x%2) x = -x; if (y%2) y = -y;
+/* Convey simulated coordinates to the virtual mouse driver */
+sprintf(buffer, "%d %d %d", x, y, 0);
+write(sim_fd, buffer, strlen(buffer));
+fsync(sim_fd);
+sleep(1);
+}
+close(sim_fd);
+}
+
 ```
 
 #### Liệt kê 7.2. Trình điều khiển đầu vào cho chuột ảo (vms.c)
 
-```
 ## include <linux/fs.h>
 ## include <asm/uaccess.h>
 ## include <linux/pci.h>
@@ -402,7 +402,7 @@ static void fn_boot_it(struct vc_data *vc,
 }
 ```
 
-Đối với các phím thông thường, keycode đã dịch được gửi đến terminal ảo (virtual terminal) tương ứng và quy tắc đường truyền N_TTY (N_TTY line discipline). (Chúng ta đã thảo luận về virtual terminals và line disciplines trong Chương 6, "Serial Drivers.") Điều này được thực hiện như sau bởi *drivers/char/keyboard.c*: **5.**
+Đối với các phím thông thường, keycode đã dịch được gửi đến terminal ảo (virtual terminal) tương ứng và kỷ luật dòng N_TTY (N_TTY line discipline). (Chúng ta đã thảo luận về virtual terminals và line disciplines trong Chương 6, "Serial Drivers.") Điều này được thực hiện như sau bởi *drivers/char/keyboard.c*: **5.**
 
 ```
 /* Thêm keycode vào bộ đệm lật (flip buffer) */
@@ -594,7 +594,9 @@ Driver chuột PS/2 cơ bản có khả năng hỗ trợ các thiết bị tuân
 - `synaptics_init()` điền vào cấu trúc `psmouse` địa chỉ của các hàm giao thức liên quan.
 - Hàm xử lý giao thức `synaptics_process_byte()`, được gán trong `synaptics_init()`, sẽ được gọi từ ngữ cảnh ngắt (interrupt context) khi `serio` phát hiện chuyển động của chuột. Nếu bạn mở rộng hàm `synaptics_process_byte()`, bạn sẽ thấy các chuyển động của touchpad được báo cáo về các ứng dụng người dùng (user applications) thông qua `mousedev`.
 
-#### Bảng 7.4. Driver giao thức chuột PS/2 cho Touchpad Synaptics
+#### Liệt kê 7.4. Driver giao thức chuột PS/2 cho Touchpad Synaptics
+
+REPLACE:
 
 ```
 drivers/input/mouse/psmouse-base.c:
@@ -698,7 +700,7 @@ Một số bộ điều khiển cảm ứng giao tiếp qua USB. Một ví dụ 
 
 Nhiều thiết bị PDA có các tấm nền cảm ứng điện trở bốn dây chồng lên màn hình LCD của chúng. Các bản cực X và Y của tấm nền (hai dây cho mỗi trục) kết nối với bộ chuyển đổi tương tự sang số (analog-to-digital converter - ADC), cung cấp giá trị đọc số của sự chênh lệch điện áp tương tự phát sinh từ việc chạm vào màn hình. Trình điều khiển đầu vào (input driver) thu thập tọa độ từ ADC và phân phối nó đến không gian người dùng (user space).
 
-Các thể hiện (instances) khác nhau của cùng một tấm nền cảm ứng có thể tạo ra các dải tọa độ hơi khác nhau (các giá trị tối đa theo hướng X và Y) do đặc thù của quy trình sản xuất. Để tách biệt các ứng dụng khỏi sự biến động này, màn hình cảm ứng được *hiệu chuẩn* (calibrated) trước khi sử dụng. Việc hiệu chuẩn thường được khởiinitiated bởi giao diện đồ họa người dùng (GUI) bằng cách hiển thị các dấu chữ thập ở ranh giới màn hình và các điểm thuận lợi khác, đồng thời yêu cầu người dùng chạm vào các điểm đó. Các tọa độ được tạo ra sẽ được lập trình ngược lại vào bộ điều khiển cảm ứng bằng cách sử dụng các lệnh phù hợp nếu nó hỗ trợ tự hiệu chuẩn, hoặc được sử dụng để điều chỉnh tỷ lệ (scale) luồng tọa độ trong phần mềm nếu không.
+Các thể hiện (instances) khác nhau của cùng một tấm nền cảm ứng có thể tạo ra các dải tọa độ hơi khác nhau (các giá trị tối đa theo hướng X và Y) do đặc thù của quy trình sản xuất. Để tách biệt các ứng dụng khỏi sự biến động này, màn hình cảm ứng được *hiệu chuẩn* (calibrated) trước khi sử dụng. Việc hiệu chuẩn thường được khởi chạy bởi giao diện đồ họa người dùng (GUI) bằng cách hiển thị các dấu chữ thập ở ranh giới màn hình và các điểm thuận lợi khác, đồng thời yêu cầu người dùng chạm vào các điểm đó. Các tọa độ được tạo ra sẽ được lập trình ngược lại vào bộ điều khiển cảm ứng bằng cách sử dụng các lệnh phù hợp nếu nó hỗ trợ tự hiệu chuẩn, hoặc được sử dụng để điều chỉnh tỷ lệ (scale) luồng tọa độ trong phần mềm nếu không.
 
 Hệ thống con đầu vào (input subsystem) cũng chứa một trình điều khiển sự kiện (event driver) có tên là *tsdev*, tạo ra thông tin tọa độ theo giao thức màn hình cảm ứng Compaq. Nếu hệ thống của bạn báo cáo các sự kiện cảm ứng thông qua *tsdev*, các ứng dụng hiểu giao thức này có thể thu thập đầu vào cảm ứng từ `/dev/input/tsX.` Tuy nhiên, trình điều khiển này đã được lên lịch để loại bỏ khỏi nhân chính (mainline kernel) nhằm ưu tiên cho thư viện *tslib* ở không gian người dùng (user space). Tệp *Documentation/feature-removalschedule.txt* liệt kê các tính năng sắp bị loại bỏ khỏi cây mã nguồn nhân (kernel source tree).
 
@@ -830,5 +832,5 @@ Bảng 7.1 tóm tắt các cấu trúc dữ liệu chính được sử dụng t
 | sysfs_remove_group()                                      | fs/sysfs/group.c         | Xóa một nhóm sysfs được tạo<br>bằng sysfs_create_group()                                                                                                    |
 | tty_insert_flip_char()                                    | include/linux/tty_flip.h | Gửi một ký tự đến tầng line<br>discipline                                                                                                                   |
 
-| platform_device_register_simple() drivers/base/platform.c |                          | Tạo một platform device đơn giản                                                                                                                            |
+| platform_device_register_simple()                         | drivers/base/platform.c  | Tạo một platform device đơn giản                                                                                                                            |
 | platform_device_unregister()                              | drivers/base/platform.c  | Hủy đăng ký một platform device                                                                                                                               |
