@@ -7,6 +7,11 @@ let currentDocId = null;
 let currentDocList = []; // Flattened list of all documents for prev/next
 let headingsList = []; // TOC headings for current document
 
+/* Cache & Pre-cache Configuration (LRU) */
+const DOC_CACHE_LIMIT = 20;
+const docRenderCache = new Map();
+const mermaidSvgCache = new Map();
+
 /* ==========================================================================
    1. UTILITIES & HTML ESCAPING
    ========================================================================== */
@@ -559,8 +564,236 @@ function renderMarkdown(mdText)
 }
 
 /* ==========================================================================
-   5. DOCUMENT LOADER & VIEW CONTROLLER
+   5. DOCUMENT CACHE & VIEW CONTROLLER
    ========================================================================== */
+function getCachedDocument(docId)
+{
+    if (docRenderCache.has(docId))
+    {
+        const entry = docRenderCache.get(docId);
+        // Refresh LRU order
+        docRenderCache.delete(docId);
+        docRenderCache.set(docId, entry);
+        return entry;
+    }
+    return null;
+}
+
+function setCachedDocument(docId, data)
+{
+    if (docRenderCache.size >= DOC_CACHE_LIMIT)
+    {
+        const oldestKey = docRenderCache.keys().next().value;
+        docRenderCache.delete(oldestKey);
+    }
+    docRenderCache.set(docId, data);
+}
+
+function buildIndexGridHtml(ctx, activeDocId)
+{
+    let gridHtml = `
+        <div class="index-quick-grid-card">
+            <div class="index-quick-grid-title">🔢 Bàn Phím Số Chọn Chương Nhanh</div>
+            <div class="chapter-grid">
+    `;
+    ctx.items.forEach((item, idx) =>
+    {
+        const fn = item.file.toLowerCase();
+        let btnText = '';
+        let isSpecial = false;
+
+        if (fn.includes('index.md')) { btnText = 'Mục Lục'; isSpecial = true; }
+        else if (fn.includes('learn_summary')) { btnText = 'Tổng Quan'; isSpecial = true; }
+        else if (fn.includes('frontmatter')) { btnText = 'Lời Tựa'; isSpecial = true; }
+        else
+        {
+            const m = fn.match(/ch(\d+)/) || fn.match(/(\d{2})_/);
+            btnText = m ? m[1] : String(idx + 1).padStart(2, '0');
+        }
+
+        const activeClass = item.id === activeDocId ? 'active' : '';
+        const specialClass = isSpecial ? 'special-btn' : '';
+        gridHtml += `
+            <button class="chap-grid-btn ${specialClass} ${activeClass}" 
+                    title="${escapeHtml(item.title)}" 
+                    onclick="loadDocument('${item.id}')">
+                ${btnText}
+            </button>
+        `;
+    });
+    gridHtml += `</div></div>`;
+    return gridHtml;
+}
+
+function parseAndCacheDocument(meta, rawMarkdown)
+{
+    const wordCount = rawMarkdown.trim().split(/\s+/).length;
+    const readMinutes = Math.max(1, Math.ceil(wordCount / 180));
+
+    // Parse Markdown into HTML and capture headingsList
+    let bodyHtml = renderMarkdown(rawMarkdown);
+    const headings = Array.isArray(headingsList) ? [...headingsList] : [];
+
+    // Prepend quick chapter palette on index/summary pages
+    const ctx = getCurrentBookContext(meta.id);
+    if (ctx && (meta.id.endsWith('_INDEX') || meta.id === 'cpp_summary'))
+    {
+        bodyHtml = buildIndexGridHtml(ctx, meta.id) + bodyHtml;
+    }
+
+    const cacheEntry = {
+        meta: meta,
+        bodyHtml: bodyHtml,
+        headingsList: headings,
+        wordCount: wordCount,
+        readMinutes: readMinutes
+    };
+
+    setCachedDocument(meta.id, cacheEntry);
+    return cacheEntry;
+}
+
+function applyDocumentToView(cacheEntry)
+{
+    const meta = cacheEntry.meta;
+
+    // Tag styling
+    const tagClass = meta.tag.toLowerCase().includes('linux') ? 'tag-linux' : 'tag-cpp';
+    const tagEl = document.getElementById('doc-tag');
+    if (tagEl)
+    {
+        tagEl.className = 'doc-tag ' + tagClass;
+        tagEl.textContent = meta.tag;
+    }
+
+    // Word count & Read time calculation
+    const readTimeEl = document.getElementById('doc-read-time');
+    if (readTimeEl)
+    {
+        readTimeEl.textContent = `⏱️ ~${cacheEntry.readMinutes} phút đọc (${cacheEntry.wordCount.toLocaleString()} từ)`;
+    }
+
+    // Main Title
+    const titleEl = document.getElementById('doc-main-title');
+    if (titleEl)
+    {
+        titleEl.textContent = meta.title;
+    }
+
+    // Body Render
+    const bodyContainer = document.getElementById('markdown-body');
+    if (bodyContainer)
+    {
+        bodyContainer.innerHTML = cacheEntry.bodyHtml;
+    }
+
+    // Sync Table of Contents
+    headingsList = cacheEntry.headingsList ? [...cacheEntry.headingsList] : [];
+    buildToc();
+
+    // Update Top & Bottom Chapter Navigator Controls
+    updateChapterNav(meta.id);
+
+    // Render Bottom Prev / Next Navigation
+    renderFooterNav(meta.id);
+
+    // Render All Mermaid Schematics in Current Document
+    renderAllMermaidDiagrams();
+}
+
+function precacheAdjacentChapters(currentId)
+{
+    if (typeof DOCS_CONTENT === 'undefined')
+    {
+        return;
+    }
+
+    // Prioritize current book chapter sequence
+    const ctx = getCurrentBookContext(currentId);
+    let sequence = [];
+    let currentIndex = -1;
+
+    if (ctx && Array.isArray(ctx.items))
+    {
+        sequence = ctx.items;
+        currentIndex = ctx.currentIndex;
+    }
+    else if (Array.isArray(currentDocList))
+    {
+        sequence = currentDocList;
+        currentIndex = sequence.findIndex(d => d.id === currentId);
+    }
+
+    if (currentIndex === -1 || sequence.length === 0)
+    {
+        return;
+    }
+
+    // Cache ±2 chapters: prioritize +1 and -1 first, then +2 and -2
+    const targetIndices = [
+        currentIndex + 1,
+        currentIndex - 1,
+        currentIndex + 2,
+        currentIndex - 2
+    ];
+
+    const tasks = [];
+    for (let i = 0; i < targetIndices.length; i++)
+    {
+        const idx = targetIndices[i];
+        if (idx >= 0 && idx < sequence.length)
+        {
+            const item = sequence[idx];
+            if (item && !docRenderCache.has(item.id))
+            {
+                tasks.push(item);
+            }
+        }
+    }
+
+    if (tasks.length === 0)
+    {
+        return;
+    }
+
+    const idleProcessor = (deadline) =>
+    {
+        while ((deadline.timeRemaining() > 6 || deadline.didTimeout) && tasks.length > 0)
+        {
+            const item = tasks.shift();
+            if (item && !docRenderCache.has(item.id))
+            {
+                const rawText = DOCS_CONTENT[item.id];
+                if (rawText)
+                {
+                    parseAndCacheDocument(item, rawText);
+                }
+            }
+        }
+
+        if (tasks.length > 0)
+        {
+            scheduleIdle(idleProcessor);
+        }
+    };
+
+    const scheduleIdle = (typeof window !== 'undefined' && window.requestIdleCallback)
+        ? (cb) => window.requestIdleCallback(cb, { timeout: 2000 })
+        : (cb) => setTimeout(() => cb({ timeRemaining: () => 15, didTimeout: true }), 40);
+
+    if (typeof requestAnimationFrame !== 'undefined')
+    {
+        requestAnimationFrame(() =>
+        {
+            scheduleIdle(idleProcessor);
+        });
+    }
+    else
+    {
+        scheduleIdle(idleProcessor);
+    }
+}
+
 function loadDocument(docId)
 {
     const targetItem = currentDocList.find(d => d.id === docId);
@@ -572,36 +805,49 @@ function loadDocument(docId)
 
     currentDocId = docId;
 
-    // Update active book card in sidebar if search is not active
-    const searchInput = document.getElementById('sidebar-filter-input');
-    if (!searchInput || !searchInput.value.trim())
-    {
-        renderBookCards();
-    }
+    // Update active book card in sidebar without destroying DOM
+    updateSidebarActiveState();
 
-    // Content retrieval (from embedded DOCS_CONTENT or fetch fallback)
-    let rawText = (typeof DOCS_CONTENT !== 'undefined' && DOCS_CONTENT[docId]) ? DOCS_CONTENT[docId] : null;
-
-    if (rawText)
+    // 1. Try In-Memory LRU Cache
+    const cached = getCachedDocument(docId);
+    if (cached)
     {
-        renderDocumentView(targetItem, rawText);
+        applyDocumentToView(cached);
     }
     else
     {
-        // Fallback fetch
-        fetch(targetItem.file)
-            .then(res => res.text())
-            .then(text => renderDocumentView(targetItem, text))
-            .catch(err =>
-            {
-                document.getElementById('markdown-body').innerHTML = `
-                    <div class="callout-box callout-caution">
-                        <div class="callout-header">⚠️ LỖI NẠP TÀI LIỆU</div>
-                        <p>Không thể tải file: <code>${targetItem.file}</code>. Vui lòng kiểm tra lại kết nối hoặc chạy lại sync.py.</p>
-                    </div>
-                `;
-            });
+        // Content retrieval (from embedded DOCS_CONTENT or fetch fallback)
+        let rawText = (typeof DOCS_CONTENT !== 'undefined' && DOCS_CONTENT[docId]) ? DOCS_CONTENT[docId] : null;
+
+        if (rawText)
+        {
+            const entry = parseAndCacheDocument(targetItem, rawText);
+            applyDocumentToView(entry);
+        }
+        else
+        {
+            // Fallback fetch
+            fetch(targetItem.file)
+                .then(res => res.text())
+                .then(text =>
+                {
+                    const entry = parseAndCacheDocument(targetItem, text);
+                    applyDocumentToView(entry);
+                })
+                .catch(err =>
+                {
+                    document.getElementById('markdown-body').innerHTML = `
+                        <div class="callout-box callout-caution">
+                            <div class="callout-header">⚠️ LỖI NẠP TÀI LIỆU</div>
+                            <p>Không thể tải file: <code>${targetItem.file}</code>. Vui lòng kiểm tra lại kết nối hoặc chạy lại sync.py.</p>
+                        </div>
+                    `;
+                });
+        }
     }
+
+    // 2. Instant scroll reset (prevents layout thrashing on 48,000px documents)
+    window.scrollTo(0, 0);
 
     // Close Mobile Drawer upon selection
     closeSidebar();
@@ -611,80 +857,14 @@ function loadDocument(docId)
     window.location.hash = '#/doc/' + docId;
     localStorage.setItem('techdocs_last_doc', docId);
 
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // 3. Background Pre-caching for 2 previous & 2 next chapters during idle time
+    precacheAdjacentChapters(docId);
 }
 
 function renderDocumentView(meta, rawMarkdown)
 {
-    // Tag styling
-    const tagClass = meta.tag.toLowerCase().includes('linux') ? 'tag-linux' : 'tag-cpp';
-    document.getElementById('doc-tag').className = 'doc-tag ' + tagClass;
-    document.getElementById('doc-tag').textContent = meta.tag;
-
-    // Word count & Read time calculation
-    const wordCount = rawMarkdown.trim().split(/\s+/).length;
-    const readMinutes = Math.max(1, Math.ceil(wordCount / 180));
-    document.getElementById('doc-read-time').textContent = `⏱️ ~${readMinutes} phút đọc (${wordCount.toLocaleString()} từ)`;
-
-    // Main Title
-    document.getElementById('doc-main-title').textContent = meta.title;
-
-    // Body Render
-    const bodyContainer = document.getElementById('markdown-body');
-    let bodyHtml = renderMarkdown(rawMarkdown);
-
-    // If viewing an INDEX page or summary, prepend Quick Chapter Number Grid
-    const ctx = getCurrentBookContext(meta.id);
-    if (ctx && (meta.id.endsWith('_INDEX') || meta.id === 'cpp_summary'))
-    {
-        let gridHtml = `
-            <div class="index-quick-grid-card">
-                <div class="index-quick-grid-title">🔢 Bàn Phím Số Chọn Chương Nhanh</div>
-                <div class="chapter-grid">
-        `;
-        ctx.items.forEach((item, idx) =>
-        {
-            const fn = item.file.toLowerCase();
-            let btnText = '';
-            let isSpecial = false;
-
-            if (fn.includes('index.md')) { btnText = 'Mục Lục'; isSpecial = true; }
-            else if (fn.includes('learn_summary')) { btnText = 'Tổng Quan'; isSpecial = true; }
-            else if (fn.includes('frontmatter')) { btnText = 'Lời Tựa'; isSpecial = true; }
-            else
-            {
-                const m = fn.match(/ch(\d+)/) || fn.match(/(\d{2})_/);
-                btnText = m ? m[1] : String(idx + 1).padStart(2, '0');
-            }
-
-            const activeClass = item.id === meta.id ? 'active' : '';
-            const specialClass = isSpecial ? 'special-btn' : '';
-            gridHtml += `
-                <button class="chap-grid-btn ${specialClass} ${activeClass}" 
-                        title="${escapeHtml(item.title)}" 
-                        onclick="loadDocument('${item.id}')">
-                    ${btnText}
-                </button>
-            `;
-        });
-        gridHtml += `</div></div>`;
-        bodyHtml = gridHtml + bodyHtml;
-    }
-
-    bodyContainer.innerHTML = bodyHtml;
-
-    // Build Table of Contents
-    buildToc();
-
-    // Update Top & Bottom Chapter Navigator Controls
-    updateChapterNav(meta.id);
-
-    // Render Bottom Prev / Next Navigation
-    renderFooterNav(meta.id);
-
-    // Render All Mermaid Schematics in Current Document
-    renderAllMermaidDiagrams();
+    const entry = parseAndCacheDocument(meta, rawMarkdown);
+    applyDocumentToView(entry);
 }
 
 /* ==========================================================================
@@ -1342,12 +1522,23 @@ async function renderAllMermaidDiagrams()
             continue;
         }
 
+        const cacheKey = rawCode + '__' + currentTheme;
+        if (mermaidSvgCache.has(cacheKey))
+        {
+            if (document.body.contains(target))
+            {
+                target.innerHTML = mermaidSvgCache.get(cacheKey);
+            }
+            continue;
+        }
+
         mermaidRenderCounter++;
         const renderId = 'mermaid_svg_' + snippetId.replace(/[^a-zA-Z0-9_]/g, '_') + '_' + mermaidRenderCounter;
 
         try
         {
             const { svg } = await mermaid.render(renderId, rawCode);
+            mermaidSvgCache.set(cacheKey, svg);
             if (document.body.contains(target))
             {
                 target.innerHTML = svg;
@@ -1449,7 +1640,7 @@ function renderBookCards()
         const isActive = isCurrentDocInBook(cat.id);
 
         html += `
-            <div class="book-menu-card ${isActive ? 'active' : ''}" onclick="selectBook('${cat.id}')">
+            <div class="book-menu-card ${isActive ? 'active' : ''}" data-book-id="${cat.id}" onclick="selectBook('${cat.id}')">
                 <div class="book-card-header">
                     <span class="book-card-icon">${cat.icon}</span>
                     <span class="book-card-badge">${totalItems} ${cat.id === 'cpp' ? 'tài liệu' : 'chương'}</span>
@@ -1466,6 +1657,34 @@ function renderBookCards()
 
     html += `</div>`;
     navContent.innerHTML = html;
+}
+
+function updateSidebarActiveState()
+{
+    const searchInput = document.getElementById('sidebar-filter-input');
+    if (searchInput && searchInput.value.trim())
+    {
+        const items = document.querySelectorAll('.sidebar .nav-item[data-id]');
+        items.forEach(el =>
+        {
+            el.classList.toggle('active', el.getAttribute('data-id') === currentDocId);
+        });
+        return;
+    }
+
+    const cards = document.querySelectorAll('.book-menu-card[data-book-id]');
+    if (!cards || cards.length === 0)
+    {
+        renderBookCards();
+        return;
+    }
+
+    cards.forEach(card =>
+    {
+        const bookId = card.getAttribute('data-book-id');
+        const isActive = isCurrentDocInBook(bookId);
+        card.classList.toggle('active', !!isActive);
+    });
 }
 
 function isCurrentDocInBook(catId)
@@ -1490,7 +1709,7 @@ function selectBook(catId)
     const targetDoc = cat.items[0];
     loadDocument(targetDoc.id);
     closeSidebar();
-    renderBookCards();
+    updateSidebarActiveState();
 }
 
 function filterDocs(query)
