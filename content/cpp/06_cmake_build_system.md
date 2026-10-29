@@ -200,7 +200,7 @@ target_link_libraries(media_player PRIVATE
 │ CƠ CHẾ QUÉT SINGLE-PASS CỦA LINKER (GNU LD) TRÊN STATIC ARCHIVES (.A)       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ 1. Trình tự sai: math ──▶ dsp ──▶ codec                                     │
-│    ld quét math: Không có symbol chưa giải quyết. Bỏ qua math.               │
+│    ld quét math: Không có symbol chưa giải quyết. Bỏ qua math.              │
 │    ld quét dsp:  Không có symbol chưa giải quyết. Bỏ qua dsp.               │
 │    ld quét codec: Yêu cầu 'dsp::filter' ──▶ Không tìm lại dsp được nữa!     │
 │    == LỖI: undefined reference to 'dsp::filter' ==                          │
@@ -299,7 +299,7 @@ find_package(OpenCV REQUIRED)
 │ CMake find_package() ──▶ Nạp nhầm /usr/lib (x86) ──▶ aarch64-ld báo lỗi!    │
 │                                                                             │
 │ Khi có CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY:                              │
-│ CMake find_package() ──▶ Bị ép CHỈ quét trong /opt/sysroot/aarch64 (ARM)     │
+│ CMake find_package() ──▶ Bị ép CHỈ quét trong /opt/sysroot/aarch64 (ARM)    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

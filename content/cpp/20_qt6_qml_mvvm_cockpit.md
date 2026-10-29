@@ -69,7 +69,7 @@
 │      ▼                                                                       │
 │  (3) lọc bỏ U+0300..U+036F  +  toLower()                                     │
 │      ▼                                                                       │
-│  "chung ta cua tuong lai"   ◀── so khớp contains() với query đã chuẩn hoá    │
+│  "chung ta cua tuong lai"   <── so khớp contains() với query đã chuẩn hoá    │
 │                                                                              │
 │  CACHE: chuẩn hoá 1 LẦN khi SetArena() vào m_normalizedCache                 │
 │         ==> setFilter() chỉ còn O(N) contains(), không normalize lại          │

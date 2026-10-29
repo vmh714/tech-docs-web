@@ -485,12 +485,12 @@
 Trình biên dịch C++ (`g++`) áp dụng kỹ thuật **Name Mangling** để hỗ trợ Function Overloading (nạp chồng hàm) và Namespace. Tên hàm `createPlugin()` trong bảng symbol của file ELF `.so` không còn giữ nguyên chuỗi `"createPlugin"` mà bị mã hóa thành chuỗi phức tạp như `_Z12createPluginv`.
 
 ```
-┌────────────────────────────────────────────────────────┐
-│ C++ Code:      createPlugin()                          │
-│ Compiler:   ──▶ Bị Name Mangling thành: _Z12createPluginv│
-│ dlsym call: ──▶ Tìm chuỗi "createPlugin"                │
-│                 ──▶ Thất bại! Trả về NULL              │
-└────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ C++ Code:      createPlugin()                            │
+│ Compiler:   ──▶ Bị Name Mangling: _Z12createPluginv      │
+│ dlsym call: ──▶ Tìm chuỗi "createPlugin"                 │
+│                 ──▶ Thất bại! Trả về NULL                │
+└──────────────────────────────────────────────────────────┘
 ```
 
 Hàm `dlsym()` là C-API của hệ điều hành POSIX, chỉ tìm kiếm chuỗi ký tự thô khớp từng byte (raw symbol name matching) chứ không có khả năng tự động demangle tên hàm C++.

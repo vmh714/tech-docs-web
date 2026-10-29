@@ -22,7 +22,7 @@
   │ + vptr           │────────────────────▶│ [0] Derived::virtualFunc │
   │ + virtualFunc()  │                     │ [1] Derived::~Derived    │
   │ + ~Derived()     │                     └──────────────────────────┘
-  └──────────────────┘
+ ─────────────────────────────────────────────────────────────────────┘
 ```
 
 > [!NOTE]
@@ -479,7 +479,7 @@ void configure(CentralGateway& gw)
 │ BỐ CỤC BỘ NHỚ ĐA KẾ THỪA THƯỜNG (2 BẢN SAO NETWORKDEVICE)                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ CentralGateway:                                                             │
-│   ├── [CanNode Subobject]      ──▶ [m_deviceId] (Bản sao 1)                │
+│   ├── [CanNode Subobject]      ──▶ [m_deviceId] (Bản sao 1)                 │
 │   └── [EthernetNode Subobject] ──▶ [m_deviceId] (Bản sao 2 - Trùng lặp!)    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -675,9 +675,9 @@ public:
 │ KIẾN TRÚC CŨ (VI PHẠM SOLID - MONOLITHIC GOD OBJECT)                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ObstacleDetectionPipeline (2000+ dòng)                                     │
-│  ├── [V4L2 Linux I/O] ──▶ Đọc frame trực tiếp từ /dev/video0 (Tight coupling)│
-│  ├── [Switch-case 400L] ──▶ YOLOv8 / SSD / TensorRT (Vi phạm OCP & SRP)      │
-│  ├── [ThermalCamera] ──▶ Throw exception getRGBFrame() (Vi phạm LSP)       │
+│  ├── [V4L2 Linux I/O] ──▶ Đọc trực tiếp từ /dev/video0 (Tight coupling)     │
+│  ├── [Switch-case 400L] ──▶ YOLOv8 / SSD / TensorRT (Vi phạm OCP & SRP)     │
+│  ├── [ThermalCamera] ──▶ Throw exception getRGBFrame() (Vi phạm LSP)        │
 │  ├── [IAutoVehicleDev] ──▶ Ép implement cả steer() & brake() (Vi phạm ISP)  │
 │  └── [CAN Bus Writer] ──▶ Gửi tín hiệu phanh khẩn cấp trực tiếp             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -1157,9 +1157,9 @@ class Base
 │                                                                             │
 │ 2. SOA (100% HIỆU QUẢ CACHE, LIÊN TỤC CHO AVX2 / ARM NEON SIMD):            │
 │    Cache Line 64B của mảng z:                                               │
-│    ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬───...───┬──────┐ │
-│    │ Z[0] │ Z[1] │ Z[2] │ Z[3] │ Z[4] │ Z[5] │ Z[6] │ Z[7] │  ...  │Z[15] │ │
-│    └──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴───────┴──────┘ │
+│    ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬───...───┬─────┐        │
+│    │Z[0] │Z[1] │Z[2] │Z[3] │Z[4] │Z[5] │Z[6] │Z[7] │  ...  │Z[15]│          │
+│    └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴───────┴─────┘          │
 │    ▲────────────────── 8 x float32 (256-bit AVX2) ──────────────────▲       │
 │    ──▶ 1 Cache Line nạp trọn vẹn 16 giá trị Z! SIMD xử lý 8 float/chu kỳ.   │
 └─────────────────────────────────────────────────────────────────────────────┘

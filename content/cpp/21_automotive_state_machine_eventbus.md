@@ -40,7 +40,7 @@ State Pattern thay `switch` khổng lồ bằng bảng ảo: `PlayerContext` gi�
 │    Transition(Buffering)                                                     │
 │      └─ Buffering::OnEnter ──▶ Transition(Playing)                           │
 │           └─ Playing::OnEnter ──▶ Publish(StateChanged=Playing)   ① phát      │
-│      ◀── quay về khung ngoài ──▶ Publish(StateChanged=Buffering)  ② phát SAU  │
+│      <── quay về khung ngoài ──▶ Publish(StateChanged=Buffering)  ② phát SAU  │
 │    ==> HMI nhận Playing rồi Buffering ==> UI nhảy ngược, stack sâu bất định   │
 │                                                                              │
 │  TRAMPOLINE (ĐÚNG — oke/PlayerContext.cpp):                                  │
@@ -62,7 +62,7 @@ State Pattern thay `switch` khổng lồ bằng bảng ảo: `PlayerContext` gi�
 │  Toàn bộ IN-STRUCT. 0 heap. 0 std::function. 0 virtual.                      │
 │                                                                              │
 │  [0]{h=CliHarness, c=&cli }                                                  │
-│  [1]{h=nullptr,    c=null } ◀── TOMBSTONE: Unsubscribe giữa lúc Publish      │
+│  [1]{h=nullptr,    c=null } <── TOMBSTONE: Unsubscribe giữa lúc Publish      │
 │  [2]{h=ViewModel,  c=&vm  }     KHÔNG dịch mảng ==> chỉ số đang duyệt của    │
 │  [3..7] trống                   Publish() vẫn hợp lệ ==> không UAF, không    │
 │                                 bỏ sót/gọi trùng subscriber                  │

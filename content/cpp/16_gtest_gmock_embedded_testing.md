@@ -39,21 +39,21 @@ test/
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  VÒNG ĐỜI VERIFY CỦA GMOCK — VÌ SAO MOCK PHẢI LÀ BIẾN CỤC BỘ TRÊN STACK     │
+│  VÒNG ĐỜI VERIFY CỦA GMOCK — VÌ SAO MOCK PHẢI LÀ BIẾN CỤC BỘ TRÊN STACK      │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  TEST_F(PlaybackFixture, TestCase)                                           │
 │  {                                                                           │
-│      MockAudioSink sink;              ◀── ARRANGE: Dựng mock trên Stack      │
+│      MockAudioSink sink;              <── ARRANGE: Dựng mock trên Stack      │
 │      EXPECT_CALL(sink, Play()).Times(1);                                     │
 │                                                                              │
-│      PlayerContext ctx{sink, bus};    ◀── ACT: Kích hoạt nghiệp vụ           │
+│      PlayerContext ctx{sink, bus};    <── ACT: Kích hoạt nghiệp vụ           │
 │      ctx.SelectAndPlaySong(1);                                               │
 │                                                                              │
-│      EXPECT_EQ(ctx.CurrentState(), PlaybackState::Playing); ◀── ASSERT       │
-│  }   ◀────── ~MockAudioSink() TỰ ĐỘNG CHẠY VERIFY KHI RA KHỎI PHẠM VI!       │
+│      EXPECT_EQ(ctx.CurrentState(), PlaybackState::Playing); <── ASSERT       │
+│  }   <────── ~MockAudioSink() TỰ ĐỘNG CHẠY VERIFY KHI RA KHỎI PHẠM VI!       │
 │              Nếu Times(1) chưa thỏa mãn ──▶ BÁO LỖI TEST NGAY LẬP TỨC!       │
 │                                                                              │
-│  ⚠️ CẠM BẪY CHẾT NGƯỜI: Cấp phát mock bằng new mà quên delete                │
+│  [!] CẠM BẪY CHẾT NGƯỜI: Cấp phát mock bằng new mà quên delete               │
 │     ──▶ Destructor không bao giờ chạy ──▶ EXPECT_CALL không verify           │
 │     ──▶ Test LUÔN BÁO XANH DÙ CODE LOGIC BỊ HỎNG HOÀN TOÀN!                  │
 └──────────────────────────────────────────────────────────────────────────────┘

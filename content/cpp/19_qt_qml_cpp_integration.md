@@ -12,7 +12,7 @@
 ┌─────────────────────────┐         ┌─────────────────────────┐         ┌─────────────────────────┐
 │   1. MODEL (Backend)    │         │  2. VIEWMODEL (Bridge)  │         │    3. VIEW (Frontend)   │
 │                         │         │                         │         │                         │
-│  • Pure C++ Domain Data │ ◀─────▶ │  • Qt C++ (QObject)     │ ◀─────▶ │  • QML Declarative UI   │
+│  • Pure C++ Domain Data │ <─────▶ │  • Qt C++ (QObject)     │ <─────▶ │  • QML Declarative UI   │
 │  • Không phụ thuộc Qt   │ (Pure   │  • Q_PROPERTY / Signal  │ (Data   │  • Qt Quick Controls    │
 │  • Business & Physics   │  C++)   │  • QAbstractListModel   │ Binding)│  • Scene Graph (GPU)    │
 └─────────────────────────┘         └─────────────────────────┘         └─────────────────────────┘

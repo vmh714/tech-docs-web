@@ -205,17 +205,17 @@
 │  0xFFFF_FFFF_FFFF_FFFF ┌─────────────────────────────────────────────────┐  │
 │                        │ Kernel Space (Dành riêng cho OS Kernel)         │  │
 │  0x0000_7FFF_FFFF_FFFF ├─────────────────────────────────────────────────┤  │
-│                        │ [Stack] (Biến cục bộ / Stack Frames)    ⬇ grows │  │
+│                        │ [Stack] (Biến cục bộ / Stack Frames)    ▼ grows │  │
 │                        ├─────────────────────────────────────────────────┤  │
 │                        │ ~~~ GAP ~~~ (Guard Page bảo vệ đáy Stack)       │  │
 │                        ├─────────────────────────────────────────────────┤  │
-│                        │ Memory Map (.so / mmap / malloc > 128KB)⬇ grows │  │
+│                        │ Memory Map (.so / mmap / malloc > 128KB)▼ grows │  │
 │                        ├─────────────────────────────────────────────────┤  │
 │                        │ ~~~ GAP ~~~                                     │  │
 │                        ├─────────────────────────────────────────────────┤  │
-│                        │ [Heap] (Cấp phát động new/malloc)       ⬆ grows │  │
+│                        │ [Heap] (Cấp phát động new/malloc)       ▲ grows │  │
 │                        ├─────────────────────────────────────────────────┤  │
-│                        │ .bss    (Biến static/global chưa gán giá trị = 0)│  │
+│                        │ .bss    (Biến static/global chưa gán = 0)       │  │
 │                        │ .data   (Biến static/global đã khởi tạo giá trị)│  │
 │                        │ .rodata (Hằng số const, String Literals "abc")  │  │
 │                        │ .text   (Mã máy CPU thực thi - Read/Execute)    │  │
@@ -295,7 +295,7 @@
     NGUYÊN LÝ PHÂN BIỆT CỐT LÕI (2 Câu Hỏi Quyết Định):
     1. Có Identity không? (Lấy địa chỉ &expr được không?) ──▶ YES: glvalue | NO: prvalue
     2. Có Move được không? (Tài nguyên sắp hủy/tái dụng?) ──▶ YES: rvalue  | NO: lvalue
-    ===> xvalue (eXpiring value) chính là giao thoa: Vừa có Identity VỪA Move được (glvalue ∩ rvalue)!
+ ---------------------------------------------------------------------------------!
 ```
 
 ```

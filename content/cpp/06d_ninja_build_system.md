@@ -90,12 +90,12 @@ build bin/app: CXX_EXECUTABLE_LINKER src/main.cpp.o
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ CƠ CHẾ THEO DÕI HEADER PHỤ THUỘC TỐC ĐỘ CAO (.NINJA_DEPS)                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│   Compiler (g++) ──▶ Sinh file thô main.o.d                                │
+│   Compiler (g++) ──▶ Sinh file thô main.o.d                                 │
 │                            │                                                │
 │                            ▼                                                │
 │   Ninja Engine   ──▶ Parse 1 lần duy nhất ──▶ Ghi vào nhị phân .ninja_deps  │
 │                                                                             │
-│   Lần Build sau: ──▶ Đọc trực tiếp .ninja_deps ──▶ Kiểm tra < 10ms (Zero I/O)│
+│   Lần Build sau: ──▶ Đọc trực tiếp .ninja_deps ──▶ Kiểm tra < 10ms (Zero IO)│
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

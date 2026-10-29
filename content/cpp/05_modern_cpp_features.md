@@ -151,12 +151,12 @@ void registerSpeedAlert()
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ SỰ CỐ DANGLING REFERENCE TRÊN STACK FRAME KHI GỌI ASYNC CALLBACK           │
+│ SỰ CỐ DANGLING REFERENCE TRÊN STACK FRAME KHI GỌI ASYNC CALLBACK            │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Thời điểm t0: Đăng ký Callback                                              │
-│ [ Stack Frame: registerSpeedAlert ] ── alertMsg ("Cảnh báo...") ◄──┐       │
+│ [ Stack Frame: registerSpeedAlert ] ── alertMsg ("Cảnh báo...") <──┐        │
 │                                                                     │       │
-│ Thời điểm t1: Hàm kết thúc -> Frame Stack BỊ GIẢI PHÓNG            │       │
+│ Thời điểm t1: Hàm kết thúc -> Frame Stack BỊ GIẢI PHÓNG            │        │
 │ [ Vùng nhớ Stack bị ghi đè bởi hàm khác ]                           │       │
 │                                                                     │       │
 │ Thời điểm t2: Event Bus kích hoạt Callback                          │       │

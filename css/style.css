@@ -944,18 +944,32 @@ pre code
 {
     margin: 0;
     padding: 18px 20px;
-    font-family: Consolas, 'Cascadia Code', 'Segoe UI Mono', monospace !important;
+    font-family: 'JetBrains Mono', Consolas, 'Cascadia Code', 'Courier New', monospace !important;
     font-size: 0.84rem;
     line-height: 1.35;
     letter-spacing: 0px !important;
+    font-variant-ligatures: none !important;
+    font-feature-settings: "calt" 0, "liga" 0 !important;
     font-variant-east-asian: normal !important;
-    font-feature-settings: normal !important;
     color: var(--code-text);
     background: transparent;
     overflow-x: auto;
     white-space: pre !important;
+    word-break: normal !important;
+    word-wrap: normal !important;
+    tab-size: 4;
     -webkit-overflow-scrolling: touch;
-    font-weight: 600;
+    font-weight: 500;
+}
+
+.ascii-art code
+{
+    font-family: inherit !important;
+    font-size: inherit !important;
+    font-variant-ligatures: none !important;
+    font-feature-settings: "calt" 0, "liga" 0 !important;
+    white-space: pre !important;
+    letter-spacing: 0px !important;
 }
 
 /* ==========================================================================

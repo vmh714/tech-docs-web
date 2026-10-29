@@ -142,12 +142,12 @@ extern "C" void TIM2_IRQHandler(void)
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ BỐ CỤC STACK FRAME CỦA ISR KHI C++ EXCEPTION UNWINDER CỐ TRUY NGƯỢC        │
+│ BỐ CỤC STACK FRAME CỦA ISR KHI C++ EXCEPTION UNWINDER CỐ TRUY NGƯỢC         │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ ARM Cortex-M4 Hardware Context: [ R0-R3, R12, LR, PC, xPSR ] (Phần cứng lưu)│
+│ ARM Cortex-M4 Hardware Context: [ R0-R3, R12, LR, PC, xPSR ] (Phần cứng)    │
 │                                                                             │
 │ C++ Exception Unwinder (.eh_frame):                                         │
-│ Cố gắng tìm con trỏ Frame Pointer và Unwind Table của C++...                 │
+│ Cố gắng tìm con trỏ Frame Pointer và Unwind Table của C++...                │
 │ ──▶ Không tìm thấy frame hợp lệ ──▶ Đọc trúng vùng cấm (Memory Fault)       │
 │ ──▶ HARD FAULT TRAP KÍCH HOẠT ──▶ XE DỪNG KHẨN CẤP!                         │
 └─────────────────────────────────────────────────────────────────────────────┘

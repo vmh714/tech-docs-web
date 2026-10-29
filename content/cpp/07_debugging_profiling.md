@@ -136,12 +136,12 @@ void readImuSensor(ImuPacket* packet)
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ PHÂN TÍCH STACK FRAME VÀ CON TRỎ LỖI QUA GDB REMOTE RSP                    │
+│ PHÂN TÍCH STACK FRAME VÀ CON TRỎ LỖI QUA GDB REMOTE RSP                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ (gdb) target remote 192.168.1.100:1234                                      │
 │ (gdb) continue                                                              │
 │ Program received signal SIGSEGV, Segmentation fault.                        │
-│ 0x0000007fba123456 in i2c_read_raw (addr=104, buf=0x0, len=32)             │
+│ 0x0000007fba123456 in i2c_read_raw (addr=104, buf=0x0, len=32)              │
 │                                                     ▲                       │
 │                                                     └── Con trỏ buf = NULL  │
 │ (gdb) backtrace                                                             │
@@ -270,7 +270,7 @@ public:
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ ==12891== 25,600 bytes in 400 blocks are definitely lost in loss record 1   │
 │ ==12891==    at 0x4C2FB0F: operator new(unsigned long)                      │
-│ ==12891==    by 0x401234: PlaylistManager::addSong(...) (playlist.cpp:21)  │
+│ ==12891==    by 0x401234: PlaylistManager::addSong(...) (playlist.cpp:21)   │
 │ ==12891==    by 0x401567: main (main.cpp:55)                                │
 │ ==12891==                                                                   │
 │ ==12891== LEAK SUMMARY:                                                     │
@@ -383,12 +383,12 @@ void badPipeline()
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ CƠ CHẾ ASAN SHADOW MEMORY: PHÁT HIỆN USE-AFTER-FREE LẬP TỨC                │
+│ CƠ CHẾ ASAN SHADOW MEMORY: PHÁT HIỆN USE-AFTER-FREE LẬP TỨC                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ DRAM Virtual Address: [ 0x602000000010 ]  ──▶ Đã gọi free()                 │
 │ Shadow Memory Byte:   [ 0xFD (Freed Heap Chunk) ]                           │
 │                                                                             │
-│ ==ERROR: AddressSanitizer: heap-use-after-free on address 0x602000000010     │
+│ ==ERROR: AddressSanitizer: heap-use-after-free on address 0x602000000010    │
 │ READ of size 1 at 0x602000000010 thread T0                                  │
 │     #0 0x4012de in badPipeline() /src/vision.cpp:22                         │
 │                                                                             │

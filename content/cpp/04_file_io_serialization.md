@@ -70,16 +70,16 @@ Hàm hệ thống `mmap()` (POSIX) ánh xạ trực tiếp một file trên ổ 
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ CƠ CHẾ ZERO-COPY: READ() KERNEL BUFFER COPY VS MMAP VIRTUAL ADDRESS SPACE  │
+│ CƠ CHẾ ZERO-COPY: READ() KERNEL BUFFER COPY VS MMAP VIRTUAL ADDRESS SPACE   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ 1. Truyền thống read():                                                     │
 │    Ổ đĩa / Flash ──▶ [ Page Cache Kernel ] ──(memcpy)──▶ [ User Space RAM ] │
 │                       (2 lần copy + Context Switch qua syscall tốn kém)     │
 │                                                                             │
 │ 2. Bộ nhớ ánh xạ mmap() (Zero-Copy):                                        │
-│    Ổ đĩa / Flash ──▶ [ Physical Page Frame ] ◀─────────────────────────┐    │
-│                               ▲                                         │    │
-│                               └────── Ánh xạ Page Table ────────────────┘    │
+│    Ổ đĩa / Flash ──▶ [ Physical Page Frame ] <─────────────────────────┐    │
+│                               ▲                                         │   │
+│                               └────── Ánh xạ Page Table ────────────────┘   │
 │                            [ Tiến trình User Space đọc trực tiếp ]          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -227,11 +227,11 @@ bool saveCalibrationBad(const char* path, const std::string& data)
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ QUY TRÌNH LƯU FILE NGUYÊN TỬ (ATOMIC SAVE) CHỐNG MẤT ĐIỆN ĐỘT NGỘT           │
+│ QUY TRÌNH LƯU FILE NGUYÊN TỬ (ATOMIC SAVE) CHỐNG MẤT ĐIỆN ĐỘT NGỘT          │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ 1. Ghi toàn bộ dữ liệu vào file tạm: config.json.tmp_123                     │
-│ 2. Ép flush từ Page Cache xuống phần cứng Flash: fsync(fd)                   │
-│ 3. Đổi tên nguyên tử ở tầng Filesystem: rename(tmp, config.json)             │
+│ 1. Ghi toàn bộ dữ liệu vào file tạm: config.json.tmp_123                    │
+│ 2. Ép flush từ Page Cache xuống phần cứng Flash: fsync(fd)                  │
+│ 3. Đổi tên nguyên tử ở tầng Filesystem: rename(tmp, config.json)            │
 │    (Thao tác atomic: Hoặc là giữ nguyên file cũ, hoặc là trỏ sang file mới) │
 │ 4. BẮT BUỘC: fsync(dir_fd) trên thư mục cha để flush Directory Inode Entry  │
 └─────────────────────────────────────────────────────────────────────────────┘

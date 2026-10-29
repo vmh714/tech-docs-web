@@ -159,7 +159,7 @@ void onNavPromptSafe(const std::string& promptText)
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ LUỒNG ĐIỀU PHỐI TÍN HIỆU GIỮA PRODUCER VÀ CONSUMER VỚI PREDICATE            │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ [ Producer Thread ]          [ Shared Thread-Safe Queue ] [ Consumer Thread]
+│ [ Producer Thread ]          [ Shared Thread-Safe Queue ] [ Consumer Thread ]│
 │         │                                │                        │         │
 │   1. Đẩy Frame vào Queue                 │                        │         │
 │   2. lock(mtx) ─────────────────────────▶│                        │         │
@@ -167,12 +167,12 @@ void onNavPromptSafe(const std::string& promptText)
 │   4. unlock(mtx)                         │                        │         │
 │   5. cv.notify_one() ────────────────────┼───────────────────────▶│         │
 │                                          │                  cv.wait(ulock)  │
-│                                          │                  Kiểm tra predicate
+│                                          │                  Kiểm predicate  │
 │                                          │                  Queue rỗng?     │
 │                                          │                  - Đúng: Sleep   │
 │                                          │                  - Sai: Thức dậy │
 │                                          │                  6. Rút Frame    │
-│                                          │◀───────────────── pop()          │
+│                                          │<───────────────── pop()          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -241,14 +241,14 @@ void inferenceThreadLoop()
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ CƠ CHẾ DOUBLE BUFFERING KẾT HỢP ATOMIC POINTER EXCHANGE ZERO-COPY           │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ Front Buffer (Đang Đọc - Read Only)        Back Buffer (Đang Ghi - Write)    │
+│ Front Buffer (Đang Đọc - Read Only)       Back Buffer (Đang Ghi - Write)    │
 │ ┌───────────────────────────────┐          ┌──────────────────────────────┐ │
-│ │ Buffer 0: Frame N (Ổn định)  │          │ Buffer 1: Frame N+1 (Ghi dở) │ │
+│ │ Buffer 0: Frame N (Ổn định)   │          │ Buffer 1: Frame N+1 (Ghi dở) │ │
 │ └──────────────▲────────────────┘          └──────────────▲───────────────┘ │
 │                │                                          │                 │
 │         Inference Thread                           Camera Thread            │
 │                │                                          │                 │
-│                └──── m_frontIndex.load(acquire) ◄─────────┘                 │
+│                └──── m_frontIndex.load(acquire) <─────────┘                 │
 │                      m_frontIndex.store(1-idx, release)                     │
 │                      (Hoán đổi chỉ mục trong 1 chu kỳ clock O(1))           │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -459,7 +459,7 @@ Trong các hệ thống xử lý lượng tác vụ cực lớn (hàng triệu v
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ 1. Single Global Task Queue (Truyền thống):                                 │
 │    [ Worker 1 ] ──┐                                                         │
-│    [ Worker 2 ] ──┼──▶ [ Global Mutex ] ──▶ [ Task Queue ] ──▶ NGHẼN KHÓA! │
+│    [ Worker 2 ] ──┼──▶ [ Global Mutex ] ──▶ [ Task Queue ] ──▶ NGHẼN KHÓA!  │
 │    [ Worker N ] ──┘                                                         │
 │                                                                             │
 │ 2. Work-Stealing Architecture (Intel TBB, Go Runtime, Tokos):               │
@@ -515,7 +515,7 @@ void workerFunction(int worker_id)
 │ Core 0 (Thread 0)                   Core 1 (Thread 1)                       │
 │ ┌────────────────────────────────────────────────────────────────────────┐  │
 │ │ L1 Data Cache Line (64 Bytes Shared Line):                             │  │
-│ │ [ Counter 0 (8B) ] [ Counter 1 (8B) ] ... [ Counter 7 (8B) ]          │  │
+│ │ [ Counter 0 (8B) ] [ Counter 1 (8B) ] ... [ Counter 7 (8B) ]           │  │
 │ └────────────────────────────────────────────────────────────────────────┘  │
 │        ▲                                   ▲                                │
 │        │ Ghi dữ liệu                       │ Ghi dữ liệu                    │

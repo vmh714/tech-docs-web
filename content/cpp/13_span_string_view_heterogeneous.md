@@ -22,7 +22,7 @@
 
    ĐỐI CHỨNG — trả về std::vector<uint32_t> theo giá trị:
        [3 con trỏ 24B trên stack] + 1 lần malloc + memcpy N*4B + 1 lần free
-       ==> O(N) time, O(N) heap, phân mảnh heap trên ECU
+ --------------------------------------------------------------------------------
 ```
 
 ```

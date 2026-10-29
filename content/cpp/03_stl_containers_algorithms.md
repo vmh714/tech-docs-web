@@ -87,11 +87,11 @@
 │ CƠ CHẾ CACHE MISS CỦA STD::LIST VS CIRCULAR BUFFER LIÊN TỤC TRÊN BỘ NHỚ     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ 1. STD::LIST (POINTER CHASING — MỖI LẦN TRUY CẬP = 1 LẦN CACHE MISS):       │
-│    0x7F00_1000 ┌──────────┐                                                │
+│    0x7F00_1000 ┌──────────┐                                                 │
 │    Node 0:     │ [2MB RAW]│──next (Nhảy cóc xa 48KB trên Heap) ──┐          │
 │                └──────────┘                                      │          │
 │    0x7F00_D000 ┌──────────┐                                      │          │
-│    Node 1:     │ [2MB RAW]│◀─────────────────────────────────────┘          │
+│    Node 1:     │ [2MB RAW]│<─────────────────────────────────────┘          │
 │                └──────────┘ ──▶ Prefetcher thất bại, CPU chờ DRAM 200 cycles!│
 │                                                                             │
 │ 2. INDEX-BASED CIRCULAR BUFFER (VÙNG NHỚ MẢNG LIÊN TỤC 100%):               │
@@ -262,7 +262,7 @@ void processFramesFast()
 │             [Root Node ID 0x300] (0x7F00_1000)                              │
 │             ├── Left (Nhảy 40KB) ──▶ [Node 0x150] (0x7F00_B000)             │
 │             └── Right (Nhảy 80KB) ─▶ [Node 0x480] (0x7F01_5000)             │
-│    ──▶ Mỗi bước so sánh là 1 lần Cache Miss! CPU stall chờ RAM 7 lần.        │
+│    ──▶ Mỗi bước so sánh là 1 lần Cache Miss! CPU stall chờ RAM 7 lần.       │
 │                                                                             │
 │ 2. FLAT MAP DỰA TRÊN VECTOR / ARRAY (CONTIGUOUS MEMORY + BINARY SEARCH):    │
 │    Mảng liên tục đã được sort sẵn lúc boot:                                 │
@@ -270,8 +270,8 @@ void processFramesFast()
 │    │ ID:0x050 │ ID:0x120 │ ID:0x180 │ ID:0x240 │ ID:0x310 │ ID:0x480 │      │
 │    └──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘      │
 │    ▲────────────────── 1 Cache Line 64B nạp trọn 8 phần tử ─────────▲       │
-│    ──▶ std::lower_bound chạy nhị phân hoàn toàn trong CPU Cache!             │
-│    ──▶ Nhanh hơn 3.8 lần, 0 byte cấp phát heap, 100% Deterministic!          │
+│    ──▶ std::lower_bound chạy nhị phân hoàn toàn trong CPU Cache!            │
+│    ──▶ Nhanh hơn 3.8 lần, 0 byte cấp phát heap, 100% Deterministic!         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

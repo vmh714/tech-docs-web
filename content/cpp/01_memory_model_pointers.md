@@ -41,7 +41,7 @@
 │  RSP ────────────>├──────────────────────────────────────────────────────┤  │
 │                   │  16-byte Aligned Boundary (Bắt buộc cho SIMD/movaps) │  │
 │  0x7FFF_FFFF_DC00 └──────────────────────────────────────────────────────┘  │
-│  Địa chỉ thấp (Low Address) ▼   (Chiều tăng trưởng Stack: GROWS DOWN ⬇)     │
+│  Địa chỉ thấp (Low Address) ▼   (Chiều tăng trưởng Stack: GROWS DOWN ▼)     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  * 6 tham số nguyên/con trỏ đầu: RDI, RSI, RDX, RCX, R8, R9 (Qua thanh ghi) │
 │  * Tham số số thực: XMM0 .. XMM7 | Giá trị trả về: RAX (int), XMM0 (float)  │
@@ -69,16 +69,16 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Địa chỉ cao ▲                                                               │
 │ 0x2000_2000 ┌────────────────────────────────────────────────────────────┐  │
-│             │ Task Stack (8KB) — Chiều tăng trưởng GROWS DOWN ⬇          │  │
+│             │ Task Stack (8KB) — Chiều tăng trưởng GROWS DOWN ▼          │  │
 │             │ [Frame 0: parseNode] (180B)                                │  │
 │             │ [Frame 1: parseNode] (180B)                                │  │
 │             │ ...                                                        │  │
 │             │ [Frame 44: parseNode] (180B)                               │  │
 │ 0x2000_0000 ├────────────────────────────────────────────────────────────┤  │
-│      ▲      │ ❌ VƯỢT BIÊN STACK 8KB! Con trỏ SP ghi đè vùng nhớ dưới:   │  │
+│      ▲      │ [!] VƯỢT BIÊN STACK 8KB! Con trỏ SP ghi đè vùng nhớ dưới:  │  │
 │      │      ├────────────────────────────────────────────────────────────┤  │
-│      │      │ FreeRTOS Kernel Data & Task Control Blocks (TCB)          │  │
-│      └──────┴──▶ Ghi đè con trỏ OS ──▶ Bắn ngắt vi xử lý HardFault!       │  │
+│      │      │ FreeRTOS Kernel Data & Task Control Blocks (TCB)          │   │
+│      └──────┴──▶ Ghi đè con trỏ OS ──▶ Bắn ngắt vi xử lý HardFault!       │ │
 │ Địa chỉ thấp ▼                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -212,7 +212,7 @@ void parseDiagnosticIterative(const char* buffer)
 │    │ [64B]│ FREE │ [1KB]│ FREE │ [64B]│ FREE │ [1KB]│ FREE │ [64B]│ FREE │  │
 │    └──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘  │
 │    ──▶ Tổng dung lượng trống = 35MB nhưng KHÔNG CÓ KHỐI NÀO ĐỦ 4MB LIÊN TỤC!│
-│    ──▶ malloc(4MB) THẤT BẠI ──▶ NÉM NGOẠI LỆ STD::BAD_ALLOC!               │
+│    ──▶ malloc(4MB) THẤT BẠI ──▶ NÉM NGOẠI LỆ STD::BAD_ALLOC!                │
 │                                                                             │
 │ 2. FIXED-BLOCK MEMORY POOL (CHIA BLOCK CỐ ĐỊNH, FREE-LIST O(1)):            │
 │    Mảng bộ nhớ tĩnh liên tục (Pre-allocated Static Block):                  │
@@ -373,11 +373,11 @@ void onPacketReceivedFast(const uint8_t* rawData, size_t len)
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ SO SÁNH LUỒNG GIẢI PHÓNG TÀI NGUYÊN: C-STYLE VS RAII STACK UNWINDING        │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ 1. C-STYLE THỦ CÔNG (DỄ BỎ QUÊN KHI CÓ RETURN SỚM / NGOẠI LỆ):               │
-│    open(fd) ──▶ mutex_lock() ──▶ Kiểm tra ghi file (LỖI!) ──▶ return false;  │
+│ 1. C-STYLE THỦ CÔNG (DỄ BỎ QUÊN KHI CÓ RETURN SỚM / NGOẠI LỆ):              │
+│    open(fd) ──▶ mutex_lock() ──▶ Kiểm tra ghi file (LỖI!) ──▶ return false; │
 │                                                                 │           │
-│    [close(fd)] ◀── [mutex_unlock()] ◀── (BỊ BỎ QUA HOÀN TOÀN!) ─┘           │
-│    ──▶ HẬU QUẢ: Rò rỉ File Descriptor + Treo cứng luồng khác (Deadlock)!     │
+│    [close(fd)] <── [mutex_unlock()] <── (BỊ BỎ QUA HOÀN TOÀN!) ─┘           │
+│    ──▶ HẬU QUẢ: Rò rỉ File Descriptor + Treo cứng luồng khác (Deadlock)!    │
 │                                                                             │
 │ 2. RAII CHUẨN C++ (TỰ ĐỘNG THU HỒI NHỜ STACK UNWINDING):                    │
 │    {                                                                        │
@@ -388,7 +388,7 @@ void onPacketReceivedFast(const uint8_t* rawData, size_t len)
 │    ▲                                                                   │    │
 │    └──── Ra khỏi scope: Compiler tự động gọi Destructor theo thứ tự:   │    │
 │          1. lock dtor ──▶ Tự động unlock()                             │    │
-│          2. fdGuard dtor ──▶ Tự động close(fd) ◀───────────────────────┘    │
+│          2. fdGuard dtor ──▶ Tự động close(fd) <───────────────────────┘    │
 │    ──▶ An toàn 100% trước mọi điểm return và ngoại lệ!                      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -597,7 +597,7 @@ bool recordCrashTelemetrySafe(const uint8_t* telemetryData, size_t size)
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ CƠ CHẾ THAM CHIẾU VÒNG (CIRCULAR REFERENCE) VS GIẢI PHÁP WEAK_PTR           │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ 1. LẠM DỤNG SHARED_PTR CẢ 2 CHIỀU (STRONG COUNT KHÔNG BAO GIỜ VỀ 0):       │
+│ 1. LẠM DỤNG SHARED_PTR CẢ 2 CHIỀU (STRONG COUNT KHÔNG BAO GIỜ VỀ 0):        │
 │    ┌──────────────────────────┐             ┌──────────────────────────┐    │
 │    │ TrackCluster             │──shared_ptr▶│ SensorTrack              │    │
 │    │ Strong Count: 1 (+1 từ B)│◀─shared_ptr─│ Strong Count: 1 (+1 từ A)│    │
@@ -607,7 +607,7 @@ bool recordCrashTelemetrySafe(const uint8_t* telemetryData, size_t size)
 │ 2. PHÁ VỠ VÒNG LẶP BẰNG WEAK_PTR (NON-OWNING OBSERVER):                     │
 │    ┌──────────────────────────┐             ┌──────────────────────────┐    │
 │    │ TrackCluster (Owner)     │──shared_ptr▶│ SensorTrack (Child)      │    │
-│    │ Strong: 1, Weak: 1       │◀──weak_ptr──│ Strong: 1, Weak: 0       │    │
+│    │ Strong: 1, Weak: 1       │<──weak_ptr──│ Strong: 1, Weak: 0       │    │
 │    └──────────────────────────┘             └──────────────────────────┘    │
 │    ──▶ Xóa con trỏ ngoài: Strong Count của Cluster về 0 ──▶ Destructor chạy │
 │    ──▶ SensorTrack bị hủy theo ──▶ Toàn bộ vùng nhớ giải phóng 100%!        │
@@ -986,40 +986,3 @@ public:
         sem_close(m_semReady);
     }
 };
-```
-
-> [!TIP]
-> **Bài học rút ra:**
-> - Với các dữ liệu khối lớn kích thước từ megabytes trở lên (Camera frames, LiDAR Point Clouds, Tensors), **POSIX Shared Memory (`shm_open` + `mmap`)** là lựa chọn bắt buộc để đạt được kiến trúc Zero-Copy.
-> - Kết hợp Shared Memory với POSIX Semaphore (`sem_open`) hoặc EventFD để đồng bộ trạng thái giữa Producer và Consumer với độ trễ dưới vi giây (sub-microsecond latency).
-
----
-
-## Tài Liệu Tham Khảo
-
-| Nguồn | Nội dung tham chiếu |
-|:---|:---|
-| [cppreference: std::unique_ptr](https://en.cppreference.com/w/cpp/memory/unique_ptr) | Cơ chế sở hữu độc quyền, Move-only semantics, Custom Deleter |
-| [cppreference: std::shared_ptr](https://en.cppreference.com/w/cpp/memory/shared_ptr) | Control block, Reference Counting, Atomic operations |
-| [cppreference: std::weak_ptr](https://en.cppreference.com/w/cpp/memory/weak_ptr) | Non-owning Observer, `lock()` mechanism, phá vỡ Circular References |
-| [man7.org: mmap(2)](https://man7.org/linux/man-pages/man2/mmap.2.html) | Virtual Memory Mapping, Shared Memory IPC, Flag `MAP_SHARED` |
-| [Effective Modern C++ — Item 18 (Bản dịch TV)](../../effective_modern_cpp/item_18.md) | Dùng `std::unique_ptr` để quản lý tài nguyên sở hữu độc quyền |
-| [Effective Modern C++ — Item 19 (Bản dịch TV)](../../effective_modern_cpp/item_19.md) | Dùng `std::shared_ptr` để quản lý tài nguyên sở hữu chia sẻ |
-| [Effective Modern C++ — Item 20 (Bản dịch TV)](../../effective_modern_cpp/item_20.md) | Dùng `std::weak_ptr` thay thế con trỏ tiềm ẩn nguy cơ dangling |
-| [Effective Modern C++ — Item 21 (Bản dịch TV)](../../effective_modern_cpp/item_21.md) | Ưu tiên dùng `std::make_unique` và `std::make_shared` thay vì `new` trực tiếp |
-| [Effective Modern C++ — Item 22 (Bản dịch TV)](../../effective_modern_cpp/item_22.md) | Khi dùng Pimpl Idiom, định nghĩa các hàm Special Member trong file triển khai |
-| *Computer Systems: A Programmer's Perspective (CS:APP)* — Chapter 6 & 9 | Bố cục bộ nhớ đệm (Cache Locality), Struct Alignment, Virtual Memory |
-| *C++ Core Guidelines* — Resource Management (R.1 - R.37) | Nguyên lý RAII, ngăn ngừa Memory Leaks |
-
----
-
-## Bảng Tóm Tắt Tra Cứu Nhanh (Cheatsheet)
-
-| Tình Huống | Giải Pháp |
-| :--- | :--- |
-| Sở hữu duy nhất, không chia sẻ | `std::unique_ptr<T>` — zero overhead, move-only |
-| Nhiều owner cùng chia sẻ | `std::shared_ptr<T>` — atomic ref count, nhưng instance/object không thread-safe khi ghi đồng thời |
-| Quan sát mà không sở hữu | `std::weak_ptr<T>` — `lock()` để truy cập, break circular ref |
-| Quản lý resource (file, lock, socket) | RAII wrapper class — constructor acquire, destructor release |
-| Tối ưu cache cho image processing | `alignas(64)` + SoA layout — tách hot data (ID/flag) ra mảng riêng |
-| Chia sẻ frame buffer giữa processes | `shm_open()` + `mmap(MAP_SHARED)` — Zero-Copy IPC, `msync()` để flush |
